@@ -1,5 +1,6 @@
 use wasm_bindgen::prelude::*;
 
+use crate::memory::*;
 use crate::utils;
 
 const P_CARRY: u8 = 0b00000001;
@@ -13,6 +14,7 @@ const P_NEGATIVE: u8 = 0b10000000;
 #[wasm_bindgen]
 pub struct Ch22Cpu {
     pub pc: u16,
+    pub a: u8,
     pub p: u8,
 }
 
@@ -23,6 +25,7 @@ impl Ch22Cpu {
 
         Ch22Cpu {
             pc: 0,
+            a: 0,
             p: P_INTERUPT_DISABLE, // Interrupts off for starters
         }
     }
@@ -118,6 +121,30 @@ impl Ch22Cpu {
     pub fn set_p_zero_negative(&mut self, in_operand: u8) {
         self.set_p_zero(in_operand == 0);
         self.set_p_negative((in_operand & 0b10000000) != 0);
+    }
+
+    pub fn handle_instruction(&mut self, opcode: u8, memory: &Ch22Memory) -> bool {
+        let mut handled = true;
+
+        match opcode {
+            0xa9 => {
+                // LDA imm
+                self.lda(memory.read(self.pc));
+                self.pc += 1;
+            }
+            _ => {
+                handled = false;
+            }
+        }
+
+        handled
+    }
+}
+
+impl Ch22Cpu {
+    fn lda(&mut self, operand: u8) {
+        self.a = operand;
+        self.set_p_zero_negative(operand);
     }
 }
 
