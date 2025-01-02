@@ -3,19 +3,27 @@ use wasm_bindgen::prelude::*;
 use crate::memory::*;
 use crate::utils;
 
-const P_CARRY: u8 = 0b00000001;
-const P_ZERO: u8 = 0b00000010;
-const P_INTERUPT_DISABLE: u8 = 0b00000100;
-const P_DECIMAL_MODE: u8 = 0b00001000;
-const P_BREAK: u8 = 0b00010000;
-const P_OVERFLOW: u8 = 0b01000000;
-const P_NEGATIVE: u8 = 0b10000000;
+const P_CARRY_FLAG: u8 = 0b00000001;
+const P_ZERO_FLAG: u8 = 0b00000010;
+const P_I_INTERRUPT_DISABLE_FLAG: u8 = 0b00000100;
+const P_DECIMAL_MODE_FLAG: u8 = 0b00001000;
+const P_BREAK_FLAG: u8 = 0b00010000;
+const P_BIT_5_FLAG: u8 = 0b00100000;
+const P_OVERFLOW_FLAG: u8 = 0b01000000;
+const P_NEGATIVE_FLAG: u8 = 0b10000000;
 
 #[wasm_bindgen]
 pub struct Ch22Cpu {
     pub pc: u16,
     pub a: u8,
-    pub p: u8,
+    pub p_carry: bool,
+    pub p_zero: bool,
+    pub p_interrupt_disable: bool,
+    pub p_decimal_mode: bool,
+    pub p_break: bool,
+    pub p_bit_5: bool,
+    pub p_overflow: bool,
+    pub p_negative: bool,
 }
 
 #[wasm_bindgen]
@@ -26,101 +34,50 @@ impl Ch22Cpu {
         Ch22Cpu {
             pc: 0,
             a: 0,
-            p: P_INTERUPT_DISABLE, // Interrupts off for starters
+            p_carry: false,
+            p_zero: false,
+            p_interrupt_disable: true,
+            p_decimal_mode: false,
+            p_break: false,
+            p_bit_5: false,
+            p_overflow: false,
+            p_negative: false,
         }
     }
 
-    pub fn debug(&self) -> String {
-        format!("PC: {:#06x}", self.pc)
+    pub fn get_p(&self) -> u8 {
+        (if self.p_carry { P_CARRY_FLAG } else { 0 })
+            | (if self.p_zero { P_ZERO_FLAG } else { 0 })
+            | (if self.p_interrupt_disable {
+                P_I_INTERRUPT_DISABLE_FLAG
+            } else {
+                0
+            })
+            | (if self.p_decimal_mode {
+                P_DECIMAL_MODE_FLAG
+            } else {
+                0
+            })
+            | (if self.p_break { P_BREAK_FLAG } else { 0 })
+            | (if self.p_bit_5 { P_BIT_5_FLAG } else { 0 })
+            | (if self.p_overflow { P_OVERFLOW_FLAG } else { 0 })
+            | (if self.p_negative { P_NEGATIVE_FLAG } else { 0 })
     }
 
-    pub fn set_p_carry(&mut self, carry: bool) {
-        if carry {
-            self.p |= P_CARRY
-        } else {
-            self.p &= !P_CARRY
-        }
-    }
-
-    pub fn get_p_carry(&self) -> bool {
-        self.p & P_CARRY != 0
-    }
-
-    pub fn set_p_zero(&mut self, zero: bool) {
-        if zero {
-            self.p |= P_ZERO
-        } else {
-            self.p &= !P_ZERO
-        }
-    }
-
-    pub fn get_p_zero(&self) -> bool {
-        self.p & P_ZERO != 0
-    }
-
-    pub fn set_p_interrupt_disable(&mut self, interrupt_disable: bool) {
-        if interrupt_disable {
-            self.p |= P_INTERUPT_DISABLE
-        } else {
-            self.p &= !P_INTERUPT_DISABLE
-        }
-    }
-
-    pub fn get_p_interrupt_disable(&self) -> bool {
-        self.p & P_INTERUPT_DISABLE != 0
-    }
-
-    pub fn set_p_decimal_mode(&mut self, decimal_mode: bool) {
-        if decimal_mode {
-            self.p |= P_DECIMAL_MODE
-        } else {
-            self.p &= !P_DECIMAL_MODE
-        }
-    }
-
-    pub fn get_p_decimal_mode(&self) -> bool {
-        self.p & P_DECIMAL_MODE != 0
-    }
-
-    pub fn set_p_break(&mut self, brk: bool) {
-        if brk {
-            self.p |= P_BREAK
-        } else {
-            self.p &= !P_BREAK
-        }
-    }
-
-    pub fn get_p_break(&self) -> bool {
-        self.p & P_BREAK != 0
-    }
-
-    pub fn set_p_overflow(&mut self, overflow: bool) {
-        if overflow {
-            self.p |= P_OVERFLOW
-        } else {
-            self.p &= !P_OVERFLOW
-        }
-    }
-
-    pub fn get_p_overflow(&self) -> bool {
-        self.p & P_OVERFLOW != 0
-    }
-
-    pub fn set_p_negative(&mut self, negative: bool) {
-        if negative {
-            self.p |= P_NEGATIVE
-        } else {
-            self.p &= !P_NEGATIVE
-        }
-    }
-
-    pub fn get_p_negative(&self) -> bool {
-        self.p & P_NEGATIVE != 0
+    pub fn set_p(&mut self, p: u8) {
+        self.p_carry = p & P_CARRY_FLAG != 0;
+        self.p_zero = p & P_ZERO_FLAG != 0;
+        self.p_interrupt_disable = p & P_I_INTERRUPT_DISABLE_FLAG != 0;
+        self.p_decimal_mode = p & P_DECIMAL_MODE_FLAG != 0;
+        self.p_break = p & P_BREAK_FLAG != 0;
+        self.p_bit_5 = p & P_BIT_5_FLAG != 0;
+        self.p_overflow = p & P_OVERFLOW_FLAG != 0;
+        self.p_negative = p & P_NEGATIVE_FLAG != 0;
     }
 
     pub fn set_p_zero_negative(&mut self, in_operand: u8) {
-        self.set_p_zero(in_operand == 0);
-        self.set_p_negative((in_operand & 0b10000000) != 0);
+        self.p_zero = in_operand == 0;
+        self.p_negative = (in_operand & 0b10000000) != 0;
     }
 
     pub fn handle_instruction(&mut self, opcode: u8, memory: &Ch22Memory) -> bool {
