@@ -1,7 +1,43 @@
+use js_sys::Function;
 use wasm_bindgen::prelude::*;
+use web_sys::console;
 
 use crate::memory::*;
 use crate::utils;
+
+#[wasm_bindgen]
+pub struct Ch22Cpu {
+    js_advance_cycles: Function,
+}
+
+#[wasm_bindgen]
+impl Ch22Cpu {
+    pub fn new(js_advance_cycles: Function) -> Ch22Cpu {
+        utils::set_panic_hook();
+
+        Ch22Cpu { js_advance_cycles }
+    }
+
+    pub fn handle_advance_cycles(&self, cycles: u8, check_interrupt: bool) {
+        self.js_advance_cycles
+            .call2(&JsValue::NULL, &cycles.into(), &check_interrupt.into())
+            .expect("js_advance_cycles error");
+    }
+
+    pub fn handle_instruction(
+        &mut self,
+        opcode: u8,
+        memory: &mut Ch22Memory,
+        cpuState: &mut Ch22CpuState,
+    ) -> bool {
+        let mut cycle_manager = CycleManager::new(
+            memory,
+            Box::new(|cycles, check_interrupt| self.handle_advance_cycles(cycles, check_interrupt)),
+        );
+
+        cpuState.handle_instruction(opcode, &mut cycle_manager)
+    }
+}
 
 const P_CARRY_FLAG: u8 = 0b00000001;
 const P_ZERO_FLAG: u8 = 0b00000010;
@@ -13,7 +49,7 @@ const P_OVERFLOW_FLAG: u8 = 0b01000000;
 const P_NEGATIVE_FLAG: u8 = 0b10000000;
 
 #[wasm_bindgen]
-pub struct Ch22Cpu {
+pub struct Ch22CpuState {
     pub pc: u16,
     pub a: u8,
     pub p_carry: bool,
@@ -27,11 +63,9 @@ pub struct Ch22Cpu {
 }
 
 #[wasm_bindgen]
-impl Ch22Cpu {
-    pub fn new() -> Ch22Cpu {
-        utils::set_panic_hook();
-
-        Ch22Cpu {
+impl Ch22CpuState {
+    pub fn new() -> Ch22CpuState {
+        Ch22CpuState {
             pc: 0,
             a: 0,
             p_carry: false,
@@ -79,34 +113,97 @@ impl Ch22Cpu {
         self.p_zero = in_operand == 0;
         self.p_negative = (in_operand & 0b10000000) != 0;
     }
-
-    pub fn handle_instruction(&mut self, opcode: u8, memory: &Ch22Memory) -> bool {
-        let mut handled = true;
-
-        match opcode {
-            0xa9 => {
-                // LDA imm
-                self.lda(memory.read(self.pc));
-                self.pc += 1;
-            }
-            _ => {
-                handled = false;
-            }
-        }
-
-        handled
-    }
 }
 
-impl Ch22Cpu {
+impl Ch22CpuState {
+    fn read_u16_from_pc(&mut self, bus_cycle_manager: &mut CycleManager) -> u16 {
+        let low = bus_cycle_manager.read(self.pc, false, false);
+        self.pc += 1;
+        let high = bus_cycle_manager.read(self.pc, false, false);
+        self.pc += 1;
+
+        ((high as u16) << 8) | (low as u16)
+    }
+
+    fn abs_address(&mut self, bus_cycle_manager: &mut CycleManager) -> u16 {
+        self.read_u16_from_pc(bus_cycle_manager)
+    }
+
     fn lda(&mut self, operand: u8) {
         self.a = operand;
         self.set_p_zero_negative(operand);
     }
+
+    fn handle_instruction(&mut self, opcode: u8, cycle_manager: &mut CycleManager) -> bool {
+        match opcode {
+            0x8d => {
+                // STA abs
+                let address = self.abs_address(cycle_manager);
+
+                cycle_manager.write(address, self.a, true, true);
+            }
+            0xa9 => {
+                // LDA imm
+                let val = cycle_manager.read(self.pc, false, false);
+                self.pc += 1;
+
+                self.lda(val);
+            }
+            _ => return false,
+        }
+
+        cycle_manager.complete();
+
+        true
+    }
 }
 
-impl Default for Ch22Cpu {
-    fn default() -> Self {
-        Ch22Cpu::new()
+pub struct CycleManager<'a> {
+    pub cycles: u8,
+    memory: &'a mut Ch22Memory,
+    advance_cycles_handler: Box<dyn Fn(u8, bool) + 'a>,
+}
+
+impl<'a> CycleManager<'a> {
+    fn new(memory: &'a mut Ch22Memory, advance_cycles_handler: Box<dyn Fn(u8, bool) + 'a>) -> Self {
+        CycleManager {
+            cycles: 1, // for opcode read
+            memory,
+            advance_cycles_handler,
+        }
+    }
+
+    fn read(&mut self, address: u16, sync: bool, check_interrupt: bool) -> u8 {
+        if sync {
+            (self.advance_cycles_handler)(self.cycles, check_interrupt);
+
+            self.cycles = 0;
+        }
+
+        let value = self.memory.read(address);
+
+        self.cycles += 1;
+
+        //console::log_1(&format!("read {:x} {:x}", address, value).into());
+
+        value
+    }
+
+    fn write(&mut self, address: u16, value: u8, sync: bool, check_interrupt: bool) {
+        if sync {
+            (self.advance_cycles_handler)(self.cycles, check_interrupt);
+
+            self.cycles = 0;
+        }
+        //console::log_1(&format!("write {:x} {:x}", address, value).into());
+
+        self.memory.write(address, value);
+
+        self.cycles += 1;
+    }
+
+    fn complete(&self) {
+        (self.advance_cycles_handler)(self.cycles, false);
+        //console::log_1(&format!("complete {:x}", self.cycles).into());
     }
 }
