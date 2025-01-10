@@ -24,18 +24,17 @@ impl Ch22Cpu {
             .expect("js_advance_cycles error");
     }
 
-    pub fn handle_instruction(
+    pub fn handle_next_instruction(
         &mut self,
-        opcode: u8,
         memory: &mut Ch22Memory,
-        cpuState: &mut Ch22CpuState,
-    ) -> bool {
+        cpu_state: &mut Ch22CpuState,
+    ) -> Option<u8> {
         let mut cycle_manager = CycleManager::new(
             memory,
             Box::new(|cycles, check_interrupt| self.handle_advance_cycles(cycles, check_interrupt)),
         );
 
-        cpuState.handle_instruction(opcode, &mut cycle_manager)
+        cpu_state.handle_next_instruction(&mut cycle_manager)
     }
 }
 
@@ -134,7 +133,10 @@ impl Ch22CpuState {
         self.set_p_zero_negative(operand);
     }
 
-    fn handle_instruction(&mut self, opcode: u8, cycle_manager: &mut CycleManager) -> bool {
+    fn handle_next_instruction(&mut self, cycle_manager: &mut CycleManager) -> Option<u8> {
+        let opcode = cycle_manager.read(self.pc, false, false);
+        self.pc += 1;
+
         match opcode {
             0x8d => {
                 // STA abs
@@ -149,12 +151,12 @@ impl Ch22CpuState {
 
                 self.lda(val);
             }
-            _ => return false,
+            _ => return Some(opcode),
         }
 
         cycle_manager.complete();
 
-        true
+        None
     }
 }
 
@@ -167,7 +169,7 @@ pub struct CycleManager<'a> {
 impl<'a> CycleManager<'a> {
     fn new(memory: &'a mut Ch22Memory, advance_cycles_handler: Box<dyn Fn(u8, bool) + 'a>) -> Self {
         CycleManager {
-            cycles: 1, // for opcode read
+            cycles: 0,
             memory,
             advance_cycles_handler,
         }
