@@ -1,6 +1,6 @@
 use js_sys::Function;
 use wasm_bindgen::prelude::*;
-use web_sys::console;
+//use web_sys::console;
 
 use crate::memory::*;
 use crate::utils;
@@ -18,7 +18,7 @@ impl Ch22Cpu {
         Ch22Cpu { js_advance_cycles }
     }
 
-    pub fn handle_advance_cycles(&self, cycles: u8, check_interrupt: bool) {
+    fn handle_advance_cycles(&self, cycles: u8, check_interrupt: bool) {
         self.js_advance_cycles
             .call2(&JsValue::NULL, &cycles.into(), &check_interrupt.into())
             .expect("js_advance_cycles error");
@@ -114,18 +114,24 @@ impl Ch22CpuState {
     }
 }
 
+pub trait CycleManagerTrait {
+    fn read(&mut self, address: u16, sync: bool, check_interrupt: bool) -> u8;
+    fn write(&mut self, address: u16, value: u8, sync: bool, check_interrupt: bool);
+    fn complete(&self);
+}
+
 impl Ch22CpuState {
-    fn read_u16_from_pc(&mut self, bus_cycle_manager: &mut CycleManager) -> u16 {
-        let low = bus_cycle_manager.read(self.pc, false, false);
+    fn read_u16_from_pc(&mut self, cycle_manager: &mut impl CycleManagerTrait) -> u16 {
+        let low = cycle_manager.read(self.pc, false, false);
         self.pc += 1;
-        let high = bus_cycle_manager.read(self.pc, false, false);
+        let high = cycle_manager.read(self.pc, false, false);
         self.pc += 1;
 
         ((high as u16) << 8) | (low as u16)
     }
 
-    fn abs_address(&mut self, bus_cycle_manager: &mut CycleManager) -> u16 {
-        self.read_u16_from_pc(bus_cycle_manager)
+    fn abs_address(&mut self, cycle_manager: &mut impl CycleManagerTrait) -> u16 {
+        self.read_u16_from_pc(cycle_manager)
     }
 
     fn lda(&mut self, operand: u8) {
@@ -133,7 +139,10 @@ impl Ch22CpuState {
         self.set_p_zero_negative(operand);
     }
 
-    fn handle_next_instruction(&mut self, cycle_manager: &mut CycleManager) -> Option<u8> {
+    pub fn handle_next_instruction(
+        &mut self,
+        cycle_manager: &mut impl CycleManagerTrait,
+    ) -> Option<u8> {
         let opcode = cycle_manager.read(self.pc, false, false);
         self.pc += 1;
 
@@ -160,8 +169,8 @@ impl Ch22CpuState {
     }
 }
 
-pub struct CycleManager<'a> {
-    pub cycles: u8,
+struct CycleManager<'a> {
+    cycles: u8,
     memory: &'a mut Ch22Memory,
     advance_cycles_handler: Box<dyn Fn(u8, bool) + 'a>,
 }
@@ -174,7 +183,9 @@ impl<'a> CycleManager<'a> {
             advance_cycles_handler,
         }
     }
+}
 
+impl<'a> CycleManagerTrait for CycleManager<'a> {
     fn read(&mut self, address: u16, sync: bool, check_interrupt: bool) -> u8 {
         if sync {
             (self.advance_cycles_handler)(self.cycles, check_interrupt);

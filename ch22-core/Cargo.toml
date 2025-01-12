@@ -14,7 +14,11 @@ version = "0.3.76"
 features = ['console']
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "lib"]
 
 [features]
 default = ["console_error_panic_hook"]
+
+[dev-dependencies]
+rstest = "0.24.0"
+rstest_reuse = "0.7.0"
