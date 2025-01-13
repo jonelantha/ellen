@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "build": "wasm-pack build ch22-core --target web",
-    "clippy": "cd ch22-core && cargo clippy"
+    "clippy": "cd ch22-core && cargo clippy && cargo clippy --tests",
+    "test": "cd ch22-core && cargo test"
   },
   "devDependencies": {},
   "dependencies": {}

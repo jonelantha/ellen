@@ -106,7 +106,7 @@ impl CycleManagerTrait for CycleManagerMock {
         let value = *self
             .memory
             .get(&address)
-            .expect(&format!("memory not set {:x}", address));
+            .unwrap_or_else(|| panic!("memory not set {:x}", address));
 
         self.cycles.push((address, value, "read".to_owned()));
 

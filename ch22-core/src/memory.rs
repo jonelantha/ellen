@@ -55,7 +55,7 @@ impl Ch22Memory {
     pub fn write(&mut self, address: u16, value: u8) {
         match address {
             ..0x8000 => self.whole_ram[address as usize] = value,
-            0x8000..0xc000 => return,
+            0x8000..0xc000 => (),
             _ => self.js_write_fallback(address, value),
         }
     }

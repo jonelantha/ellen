@@ -114,10 +114,10 @@ impl Ch22CpuState {
     }
 }
 
-pub trait CycleManagerTrait {
-    fn read(&mut self, address: u16, sync: bool, check_interrupt: bool) -> u8;
-    fn write(&mut self, address: u16, value: u8, sync: bool, check_interrupt: bool);
-    fn complete(&self);
+impl Default for Ch22CpuState {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Ch22CpuState {
@@ -173,6 +173,12 @@ impl Ch22CpuState {
     }
 }
 
+pub trait CycleManagerTrait {
+    fn read(&mut self, address: u16, sync: bool, check_interrupt: bool) -> u8;
+    fn write(&mut self, address: u16, value: u8, sync: bool, check_interrupt: bool);
+    fn complete(&self);
+}
+
 struct CycleManager<'a> {
     cycles: u8,
     memory: &'a mut Ch22Memory,
@@ -189,7 +195,7 @@ impl<'a> CycleManager<'a> {
     }
 }
 
-impl<'a> CycleManagerTrait for CycleManager<'a> {
+impl CycleManagerTrait for CycleManager<'_> {
     fn read(&mut self, address: u16, sync: bool, check_interrupt: bool) -> u8 {
         if sync {
             (self.advance_cycles_handler)(self.cycles, check_interrupt);
