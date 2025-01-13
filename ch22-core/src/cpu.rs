@@ -123,11 +123,15 @@ pub trait CycleManagerTrait {
 impl Ch22CpuState {
     fn read_u16_from_pc(&mut self, cycle_manager: &mut impl CycleManagerTrait) -> u16 {
         let low = cycle_manager.read(self.pc, false, false);
-        self.pc += 1;
+        self.inc_pc();
         let high = cycle_manager.read(self.pc, false, false);
-        self.pc += 1;
+        self.inc_pc();
 
         ((high as u16) << 8) | (low as u16)
+    }
+
+    fn inc_pc(&mut self) {
+        self.pc = self.pc.wrapping_add(1);
     }
 
     fn abs_address(&mut self, cycle_manager: &mut impl CycleManagerTrait) -> u16 {
@@ -144,7 +148,7 @@ impl Ch22CpuState {
         cycle_manager: &mut impl CycleManagerTrait,
     ) -> Option<u8> {
         let opcode = cycle_manager.read(self.pc, false, false);
-        self.pc += 1;
+        self.inc_pc();
 
         match opcode {
             0x8d => {
@@ -156,7 +160,7 @@ impl Ch22CpuState {
             0xa9 => {
                 // LDA imm
                 let val = cycle_manager.read(self.pc, false, false);
-                self.pc += 1;
+                self.inc_pc();
 
                 self.lda(val);
             }
