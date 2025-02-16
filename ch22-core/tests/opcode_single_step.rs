@@ -26,6 +26,11 @@ fn _8d_test() {
 }
 
 #[test]
+fn _a2_test() {
+    opcode_single_step_tests_from_file("a2");
+}
+
+#[test]
 fn _a9_test() {
     opcode_single_step_tests_from_file("a9");
 }
