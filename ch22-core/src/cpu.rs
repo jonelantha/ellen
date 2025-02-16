@@ -51,6 +51,7 @@ const P_NEGATIVE_FLAG: u8 = 0b10000000;
 pub struct Ch22CpuState {
     pub pc: u16,
     pub a: u8,
+    pub x: u8,
     pub p_carry: bool,
     pub p_zero: bool,
     pub p_interrupt_disable: bool,
@@ -67,6 +68,7 @@ impl Ch22CpuState {
         Ch22CpuState {
             pc: 0,
             a: 0,
+            x: 0,
             p_carry: false,
             p_zero: false,
             p_interrupt_disable: true,
@@ -143,6 +145,11 @@ impl Ch22CpuState {
         self.set_p_zero_negative(operand);
     }
 
+    fn ldx(&mut self, operand: u8) {
+        self.x = operand;
+        self.set_p_zero_negative(operand);
+    }
+
     pub fn handle_next_instruction(
         &mut self,
         cycle_manager: &mut impl CycleManagerTrait,
@@ -162,6 +169,13 @@ impl Ch22CpuState {
                 let address = self.abs_address(cycle_manager);
 
                 cycle_manager.write(address, self.a, true, true);
+            }
+            0xa2 => {
+                // LDX imm
+                let val = cycle_manager.read(self.pc, false, false);
+                self.inc_pc();
+
+                self.ldx(val);
             }
             0xa9 => {
                 // LDA imm
