@@ -170,6 +170,12 @@ impl Ch22CpuState {
 
                 self.lda(val);
             }
+            0xd8 => {
+                // CLD
+                cycle_manager.read(self.pc, false, false);
+
+                self.p_decimal_mode = false;
+            }
             _ => return Some(opcode),
         }
 
