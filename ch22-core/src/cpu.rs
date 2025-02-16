@@ -50,6 +50,7 @@ const P_NEGATIVE_FLAG: u8 = 0b10000000;
 #[wasm_bindgen]
 pub struct Ch22CpuState {
     pub pc: u16,
+    pub s: u8,
     pub a: u8,
     pub x: u8,
     pub p_carry: bool,
@@ -67,6 +68,7 @@ impl Ch22CpuState {
     pub fn new() -> Ch22CpuState {
         Ch22CpuState {
             pc: 0,
+            s: 0,
             a: 0,
             x: 0,
             p_carry: false,
@@ -169,6 +171,12 @@ impl Ch22CpuState {
                 let address = self.abs_address(cycle_manager);
 
                 cycle_manager.write(address, self.a, true, true);
+            }
+            0x9a => {
+                // TXS
+                cycle_manager.read(self.pc, false, false);
+
+                self.s = self.x;
             }
             0xa2 => {
                 // LDX imm
