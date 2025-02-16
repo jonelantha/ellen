@@ -151,6 +151,12 @@ impl Ch22CpuState {
         self.inc_pc();
 
         match opcode {
+            0x78 => {
+                // SEI
+                cycle_manager.read(self.pc, false, false);
+
+                self.p_interrupt_disable = true;
+            }
             0x8d => {
                 // STA abs
                 let address = self.abs_address(cycle_manager);
