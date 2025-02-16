@@ -26,6 +26,11 @@ fn _8d_test() {
 }
 
 #[test]
+fn _9a_test() {
+    opcode_single_step_tests_from_file("9a");
+}
+
+#[test]
 fn _a2_test() {
     opcode_single_step_tests_from_file("a2");
 }
@@ -73,6 +78,7 @@ fn opcode_single_step_test(
 ) {
     let mut cpu_state = Ch22CpuState::new();
     cpu_state.pc = initial_state.pc;
+    cpu_state.s = initial_state.s;
     cpu_state.a = initial_state.a;
     cpu_state.x = initial_state.x;
     cpu_state.set_p(initial_state.p);
@@ -84,6 +90,7 @@ fn opcode_single_step_test(
     assert_eq!(&cycle_manager_mock.cycles, expected_cycles);
 
     assert_eq!(cpu_state.pc, final_state.pc);
+    assert_eq!(cpu_state.s, final_state.s);
     assert_eq!(cpu_state.a, final_state.a);
     assert_eq!(cpu_state.x, final_state.x);
     assert_eq!(cpu_state.get_p(), final_state.p);
