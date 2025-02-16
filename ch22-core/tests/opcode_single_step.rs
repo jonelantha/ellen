@@ -81,6 +81,7 @@ fn opcode_single_step_test(
     cpu_state.s = initial_state.s;
     cpu_state.a = initial_state.a;
     cpu_state.x = initial_state.x;
+    cpu_state.y = initial_state.y;
     cpu_state.set_p(initial_state.p);
 
     let mut cycle_manager_mock = CycleManagerMock::new(&initial_state.ram);
@@ -93,5 +94,6 @@ fn opcode_single_step_test(
     assert_eq!(cpu_state.s, final_state.s);
     assert_eq!(cpu_state.a, final_state.a);
     assert_eq!(cpu_state.x, final_state.x);
+    assert_eq!(cpu_state.y, final_state.y);
     assert_eq!(cpu_state.get_p(), final_state.p);
 }

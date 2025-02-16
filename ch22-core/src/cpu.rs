@@ -53,6 +53,7 @@ pub struct Ch22CpuState {
     pub s: u8,
     pub a: u8,
     pub x: u8,
+    pub y: u8,
     pub p_carry: bool,
     pub p_zero: bool,
     pub p_interrupt_disable: bool,
@@ -68,9 +69,10 @@ impl Ch22CpuState {
     pub fn new() -> Ch22CpuState {
         Ch22CpuState {
             pc: 0,
-            s: 0,
+            s: 0xff,
             a: 0,
             x: 0,
+            y: 0,
             p_carry: false,
             p_zero: false,
             p_interrupt_disable: true,
