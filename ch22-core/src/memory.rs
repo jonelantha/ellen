@@ -47,8 +47,8 @@ impl Ch22Memory {
             ..0x8000 => self.whole_ram[address as usize],
             0x8000..0xc000 => self.js_read_fallback(address),
             0xc000..0xfc00 => self.whole_ram[address as usize],
+            0xfc00..0xff00 => self.js_read_fallback(address),
             0xff00.. => self.whole_ram[address as usize],
-            _ => panic!("not impl"),
         }
     }
 
