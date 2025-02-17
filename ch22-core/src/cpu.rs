@@ -144,6 +144,12 @@ impl Ch22CpuState {
         self.read_u16_from_pc(cycle_manager)
     }
 
+    fn abs_address_value(&mut self, cycle_manager: &mut impl CycleManagerTrait) -> u8 {
+        let address = self.abs_address(cycle_manager);
+
+        cycle_manager.read(address, true, true)
+    }
+
     fn lda(&mut self, operand: u8) {
         self.a = operand;
         self.set_p_zero_negative(operand);
@@ -186,6 +192,12 @@ impl Ch22CpuState {
                 self.inc_pc();
 
                 self.ldx(val);
+            }
+            0xad => {
+                // LDA abs
+                let value = self.abs_address_value(cycle_manager);
+
+                self.lda(value);
             }
             0xa9 => {
                 // LDA imm
