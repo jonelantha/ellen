@@ -168,6 +168,14 @@ impl Ch22CpuState {
         self.inc_pc();
 
         match opcode {
+            0x0a => {
+                // ASL A
+                cycle_manager.read(self.pc, false, false);
+
+                self.p_carry = (self.a & 0x80) != 0;
+                self.a <<= 1;
+                self.set_p_zero_negative(self.a);
+            }
             0x78 => {
                 // SEI
                 cycle_manager.read(self.pc, false, false);
