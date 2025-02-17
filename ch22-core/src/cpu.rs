@@ -140,6 +140,12 @@ impl Ch22CpuState {
         self.pc = self.pc.wrapping_add(1);
     }
 
+    fn push(&mut self, cycle_manager: &mut impl CycleManagerTrait, val: u8) {
+        cycle_manager.write(0x100 + (self.s as u16), val, false, false);
+
+        self.s = self.s.wrapping_sub(1);
+    }
+
     fn abs_address(&mut self, cycle_manager: &mut impl CycleManagerTrait) -> u16 {
         self.read_u16_from_pc(cycle_manager)
     }
@@ -175,6 +181,12 @@ impl Ch22CpuState {
                 self.p_carry = (self.a & 0x80) != 0;
                 self.a <<= 1;
                 self.set_p_zero_negative(self.a);
+            }
+            0x48 => {
+                // PHA
+                cycle_manager.read(self.pc, false, false);
+
+                self.push(cycle_manager, self.a);
             }
             0x78 => {
                 // SEI
