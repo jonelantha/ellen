@@ -163,6 +163,20 @@ impl Ch22CpuState {
         zero_page_address as u16
     }
 
+    fn ind_y_address(&mut self, cycle_manager: &mut impl CycleManagerTrait) -> u16 {
+        let zpg_address = self.zpg_address(cycle_manager);
+
+        let low_address = cycle_manager.read(zpg_address, false, false) as u16 + self.y as u16;
+
+        let high_address = cycle_manager.read((zpg_address + 1) & 0xff, false, false) as u16;
+
+        let address_without_carry = (high_address << 8) + (low_address & 0xff);
+
+        cycle_manager.read(address_without_carry, false, false);
+
+        address_without_carry.wrapping_add(low_address & 0x100)
+    }
+
     fn branch(&mut self, cycle_manager: &mut impl CycleManagerTrait, condition: bool) {
         if !condition {
             cycle_manager.read(self.pc, false, false);
@@ -245,6 +259,12 @@ impl Ch22CpuState {
             0x8d => {
                 // STA abs
                 let address = self.abs_address(cycle_manager);
+
+                cycle_manager.write(address, self.a, true, true);
+            }
+            0x91 => {
+                // STA (zp),Y
+                let address = self.ind_y_address(cycle_manager);
 
                 cycle_manager.write(address, self.a, true, true);
             }
