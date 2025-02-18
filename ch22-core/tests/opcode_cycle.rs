@@ -37,7 +37,10 @@ fn opcode_cycle_tests_from_file() {
 fn opcode_cycle_test(_name: &str, initial_state: &CPUTestState, cycle_syncs: &Vec<String>) {
     let mut cpu_state = Ch22CpuState::new();
     cpu_state.pc = initial_state.pc;
+    cpu_state.s = initial_state.s;
     cpu_state.a = initial_state.a;
+    cpu_state.x = initial_state.x;
+    cpu_state.y = initial_state.y;
     cpu_state.set_p(initial_state.p);
 
     let mut cycle_manager_mock = CycleManagerMock::new(&initial_state.ram);
