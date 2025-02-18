@@ -31,6 +31,11 @@ fn _78_test() {
 }
 
 #[test]
+fn _86_test() {
+    opcode_single_step_tests_from_file("86");
+}
+
+#[test]
 fn _8d_test() {
     opcode_single_step_tests_from_file("8d");
 }

@@ -156,6 +156,13 @@ impl Ch22CpuState {
         cycle_manager.read(address, true, true)
     }
 
+    fn zpg_address(&mut self, cycle_manager: &mut impl CycleManagerTrait) -> u16 {
+        let zero_page_address = cycle_manager.read(self.pc, false, false);
+        self.inc_pc();
+
+        zero_page_address as u16
+    }
+
     fn branch(&mut self, cycle_manager: &mut impl CycleManagerTrait, condition: bool) {
         if !condition {
             cycle_manager.read(self.pc, false, false);
@@ -222,6 +229,12 @@ impl Ch22CpuState {
                 cycle_manager.read(self.pc, false, false);
 
                 self.p_interrupt_disable = true;
+            }
+            0x86 => {
+                // STX zp
+                let address = self.zpg_address(cycle_manager);
+
+                cycle_manager.write(address, self.x, true, true);
             }
             0x8d => {
                 // STA abs
