@@ -230,6 +230,12 @@ impl Ch22CpuState {
 
                 self.p_interrupt_disable = true;
             }
+            0x85 => {
+                // STA zp
+                let address = self.zpg_address(cycle_manager);
+
+                cycle_manager.write(address, self.a, true, true);
+            }
             0x86 => {
                 // STX zp
                 let address = self.zpg_address(cycle_manager);
