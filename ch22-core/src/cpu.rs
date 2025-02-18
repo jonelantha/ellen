@@ -261,11 +261,13 @@ impl Ch22CpuState {
 
                 self.ldx(val);
             }
-            0xad => {
-                // LDA abs
-                let value = self.abs_address_value(cycle_manager);
+            0xa8 => {
+                // TAY
+                cycle_manager.read(self.pc, false, false);
 
-                self.lda(value);
+                self.y = self.a;
+
+                self.set_p_zero_negative(self.a);
             }
             0xa9 => {
                 // LDA imm
@@ -273,6 +275,12 @@ impl Ch22CpuState {
                 self.inc_pc();
 
                 self.lda(val);
+            }
+            0xad => {
+                // LDA abs
+                let value = self.abs_address_value(cycle_manager);
+
+                self.lda(value);
             }
             0xd8 => {
                 // CLD
