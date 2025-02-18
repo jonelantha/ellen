@@ -250,6 +250,13 @@ impl Ch22CpuState {
 
                 self.cmp(value);
             }
+            0xc8 => {
+                // INY
+                cycle_manager.read(self.pc, false, false);
+
+                self.y = self.y.wrapping_add(1);
+                self.set_p_zero_negative(self.y);
+            }
             0x48 => {
                 // PHA
                 cycle_manager.read(self.pc, false, false);
