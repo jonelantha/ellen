@@ -163,6 +163,12 @@ impl Ch22CpuState {
         zero_page_address as u16
     }
 
+    fn zpg_address_value(&mut self, cycle_manager: &mut impl CycleManagerTrait) -> u8 {
+        let address = self.zpg_address(cycle_manager);
+
+        cycle_manager.read(address, true, true)
+    }
+
     fn ind_y_address(&mut self, cycle_manager: &mut impl CycleManagerTrait) -> u16 {
         let zpg_address = self.zpg_address(cycle_manager);
 
@@ -206,6 +212,12 @@ impl Ch22CpuState {
         }
     }
 
+    fn cmp(&mut self, value: u8) {
+        self.p_carry = self.a >= value;
+        self.p_zero = self.a == value;
+        self.p_negative = self.a.wrapping_sub(value) & 0x80 > 0;
+    }
+
     fn lda(&mut self, operand: u8) {
         self.a = operand;
         self.set_p_zero_negative(operand);
@@ -231,6 +243,12 @@ impl Ch22CpuState {
                 self.p_carry = (self.a & 0x80) != 0;
                 self.a <<= 1;
                 self.set_p_zero_negative(self.a);
+            }
+            0xc5 => {
+                // CMP zp
+                let value = self.zpg_address_value(cycle_manager);
+
+                self.cmp(value);
             }
             0x48 => {
                 // PHA
