@@ -156,6 +156,35 @@ impl Ch22CpuState {
         cycle_manager.read(address, true, true)
     }
 
+    fn branch(&mut self, cycle_manager: &mut impl CycleManagerTrait, condition: bool) {
+        if !condition {
+            cycle_manager.read(self.pc, false, false);
+
+            self.inc_pc();
+
+            return;
+        }
+
+        let rel_address = cycle_manager.read(self.pc, false, false);
+
+        self.inc_pc();
+
+        cycle_manager.read(self.pc, false, false);
+
+        let new_pc_low = (self.pc & 0x00ff) + rel_address as u16;
+
+        self.pc = self.pc & 0xff00 | new_pc_low & 0xff;
+
+        let pc_high_adjustment =
+            (new_pc_low & 0x100).wrapping_sub((rel_address as u16 & 0x80) << 1);
+
+        if pc_high_adjustment != 0 {
+            cycle_manager.read(self.pc, false, false);
+
+            self.pc = self.pc.wrapping_add(pc_high_adjustment);
+        }
+    }
+
     fn lda(&mut self, operand: u8) {
         self.a = operand;
         self.set_p_zero_negative(operand);
@@ -231,6 +260,10 @@ impl Ch22CpuState {
                 cycle_manager.read(self.pc, false, false);
 
                 self.p_decimal_mode = false;
+            }
+            0xf0 => {
+                // BEQ rel
+                self.branch(cycle_manager, self.p_zero);
             }
             _ => return Some(opcode),
         }
