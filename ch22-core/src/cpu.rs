@@ -244,6 +244,10 @@ impl Ch22CpuState {
                 self.a <<= 1;
                 self.set_p_zero_negative(self.a);
             }
+            0x10 => {
+                // BPL rel
+                self.branch(cycle_manager, !self.p_negative);
+            }
             0xc5 => {
                 // CMP zp
                 let value = self.zpg_address_value(cycle_manager);

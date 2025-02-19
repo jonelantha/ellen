@@ -21,6 +21,11 @@ fn _0a_test() {
 }
 
 #[test]
+fn _10_test() {
+    opcode_single_step_tests_from_file("10");
+}
+
+#[test]
 fn _48_test() {
     opcode_single_step_tests_from_file("48");
 }
