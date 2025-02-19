@@ -71,6 +71,11 @@ fn _66_test() {
 }
 
 #[test]
+fn _68_test() {
+    opcode_single_step_tests_from_file("68");
+}
+
+#[test]
 fn _78_test() {
     opcode_single_step_tests_from_file("78");
 }
