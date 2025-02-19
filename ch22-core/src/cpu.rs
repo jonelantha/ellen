@@ -244,6 +244,11 @@ impl Ch22CpuState {
         self.set_p_zero_negative(operand);
     }
 
+    fn ldy(&mut self, operand: u8) {
+        self.y = operand;
+        self.set_p_zero_negative(operand);
+    }
+
     pub fn handle_next_instruction(
         &mut self,
         cycle_manager: &mut impl CycleManagerTrait,
@@ -331,6 +336,13 @@ impl Ch22CpuState {
                 cycle_manager.read(self.pc, false, false);
 
                 self.s = self.x;
+            }
+            0xa0 => {
+                // LDY imm
+                let val = cycle_manager.read(self.pc, false, false);
+                self.inc_pc();
+
+                self.ldy(val);
             }
             0xa2 => {
                 // LDX imm
