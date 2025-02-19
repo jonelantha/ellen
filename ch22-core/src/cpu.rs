@@ -330,6 +330,10 @@ impl Ch22CpuState {
 
                 self.lda(value);
             }
+            0xb0 => {
+                // BCS rel
+                self.branch(cycle_manager, self.p_carry);
+            }
             0xca => {
                 // DEX
                 cycle_manager.read(self.pc, false, false);
