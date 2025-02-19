@@ -313,6 +313,12 @@ impl Ch22CpuState {
                 self.a = self.x;
                 self.set_p_zero_negative(self.a);
             }
+            0x8c => {
+                // STY abs
+                let address = self.abs_address(cycle_manager);
+
+                cycle_manager.write(address, self.y, true, true);
+            }
             0x8d => {
                 // STA abs
                 let address = self.abs_address(cycle_manager);
