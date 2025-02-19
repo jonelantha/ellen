@@ -218,6 +218,12 @@ impl Ch22CpuState {
         self.p_negative = self.a.wrapping_sub(value) & 0x80 > 0;
     }
 
+    fn cpx(&mut self, value: u8) {
+        self.p_carry = self.x >= value;
+        self.p_zero = self.x == value;
+        self.p_negative = self.x.wrapping_sub(value) & 0x80 > 0;
+    }
+
     fn lda(&mut self, operand: u8) {
         self.a = operand;
         self.set_p_zero_negative(operand);
@@ -353,6 +359,13 @@ impl Ch22CpuState {
                 cycle_manager.read(self.pc, false, false);
 
                 self.p_decimal_mode = false;
+            }
+            0xe0 => {
+                // CPX imm
+                let val = cycle_manager.read(self.pc, false, false);
+                self.inc_pc();
+
+                self.cpx(val);
             }
             0xe6 => {
                 // INC zp
