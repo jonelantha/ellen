@@ -86,6 +86,11 @@ fn _c8_test() {
 }
 
 #[test]
+fn _e8_test() {
+    opcode_single_step_tests_from_file("e8");
+}
+
+#[test]
 fn _d0_test() {
     opcode_single_step_tests_from_file("d0");
 }
