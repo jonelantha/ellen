@@ -391,6 +391,15 @@ impl Ch22CpuState {
 
                 self.ror(cycle_manager, address);
             }
+            0x68 => {
+                // PLA
+                cycle_manager.read(self.pc, false, false);
+
+                self.stack_read(cycle_manager);
+
+                self.a = self.pop(cycle_manager);
+                self.set_p_zero_negative(self.a);
+            }
             0x78 => {
                 // SEI
                 cycle_manager.read(self.pc, false, false);
