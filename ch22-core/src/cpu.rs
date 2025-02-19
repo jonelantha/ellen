@@ -324,6 +324,13 @@ impl Ch22CpuState {
 
                 self.lda(value);
             }
+            0xca => {
+                // DEX
+                cycle_manager.read(self.pc, false, false);
+
+                self.x = self.x.wrapping_sub(1);
+                self.set_p_zero_negative(self.x);
+            }
             0xc5 => {
                 // CMP zp
                 let value = self.zpg_address_value(cycle_manager);
