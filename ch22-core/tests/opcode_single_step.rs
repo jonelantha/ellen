@@ -51,6 +51,11 @@ fn _8d_test() {
 }
 
 #[test]
+fn _8e_test() {
+    opcode_single_step_tests_from_file("8e");
+}
+
+#[test]
 fn _91_test() {
     opcode_single_step_tests_from_file("91");
 }
