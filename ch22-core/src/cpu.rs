@@ -296,6 +296,12 @@ impl Ch22CpuState {
         self.inc_pc();
 
         match opcode {
+            0x08 => {
+                // PHP
+                cycle_manager.read(self.pc, false, false);
+
+                self.push(cycle_manager, self.get_p() | 0x10 | 0x20);
+            }
             0x0a => {
                 // ASL A
                 cycle_manager.read(self.pc, false, false);
