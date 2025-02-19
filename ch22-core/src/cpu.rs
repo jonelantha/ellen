@@ -146,14 +146,26 @@ impl Ch22CpuState {
         self.s = self.s.wrapping_sub(1);
     }
 
+    fn pop(&mut self, cycle_manager: &mut impl CycleManagerTrait) -> u8 {
+        self.s = self.s.wrapping_add(1);
+
+        cycle_manager.read(0x100 + (self.s as u16), false, false)
+    }
+
     fn stack_read(&mut self, cycle_manager: &mut impl CycleManagerTrait) {
         cycle_manager.read(0x100 + (self.s as u16), false, false);
     }
 
     fn push_16(&mut self, cycle_manager: &mut impl CycleManagerTrait, val: u16) {
-        //cycle_manager.read(0x100 + (self.s as u16), false, false);
         self.push(cycle_manager, (val >> 8) as u8);
         self.push(cycle_manager, (val & 0xff) as u8);
+    }
+
+    fn pop_16(&mut self, cycle_manager: &mut impl CycleManagerTrait) -> u16 {
+        let low = self.pop(cycle_manager);
+        let high = self.pop(cycle_manager);
+
+        ((high as u16) << 8) | (low as u16)
     }
 
     fn abs_address(&mut self, cycle_manager: &mut impl CycleManagerTrait) -> u16 {
@@ -287,6 +299,18 @@ impl Ch22CpuState {
                 cycle_manager.read(self.pc, false, false);
 
                 self.push(cycle_manager, self.a);
+            }
+            0x60 => {
+                // RTS
+                cycle_manager.read(self.pc, false, false);
+
+                self.stack_read(cycle_manager);
+
+                self.pc = self.pop_16(cycle_manager);
+
+                cycle_manager.read(self.pc, false, false);
+
+                self.pc = self.pc.wrapping_add(1);
             }
             0x78 => {
                 // SEI
