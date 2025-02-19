@@ -111,6 +111,11 @@ fn _a9_test() {
 }
 
 #[test]
+fn _aa_test() {
+    opcode_single_step_tests_from_file("aa");
+}
+
+#[test]
 fn _ad_test() {
     opcode_single_step_tests_from_file("ad");
 }

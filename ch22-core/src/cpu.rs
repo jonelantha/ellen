@@ -416,6 +416,13 @@ impl Ch22CpuState {
 
                 self.lda(val);
             }
+            0xaa => {
+                // TXA
+                cycle_manager.read(self.pc, false, false);
+
+                self.x = self.a;
+                self.set_p_zero_negative(self.a);
+            }
             0xad => {
                 // LDA abs
                 let value = self.abs_address_value(cycle_manager);
