@@ -183,12 +183,15 @@ fn opcode_single_step_test(
 
     cpu_state.handle_next_instruction(&mut cycle_manager_mock);
 
-    assert_eq!(&cycle_manager_mock.cycles, expected_cycles);
+    assert_eq!(
+        &cycle_manager_mock.cycles, expected_cycles,
+        "cycles mismatch"
+    );
 
-    assert_eq!(cpu_state.pc, final_state.pc);
-    assert_eq!(cpu_state.s, final_state.s);
-    assert_eq!(cpu_state.a, final_state.a);
-    assert_eq!(cpu_state.x, final_state.x);
-    assert_eq!(cpu_state.y, final_state.y);
-    assert_eq!(cpu_state.get_p(), final_state.p);
+    assert_eq!(cpu_state.pc, final_state.pc, "pc mismatch");
+    assert_eq!(cpu_state.s, final_state.s, "s mismatch");
+    assert_eq!(cpu_state.a, final_state.a, "a mismatch");
+    assert_eq!(cpu_state.x, final_state.x, "x mismatch");
+    assert_eq!(cpu_state.y, final_state.y, "y mismatch");
+    assert_eq!(cpu_state.get_p(), final_state.p, "p mismatch");
 }
