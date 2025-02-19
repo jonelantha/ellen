@@ -288,6 +288,11 @@ impl Ch22CpuState {
         self.set_p_zero_negative(operand);
     }
 
+    fn and(&mut self, operand: u8) {
+        self.a &= operand;
+        self.set_p_zero_negative(self.a);
+    }
+
     pub fn handle_next_instruction(
         &mut self,
         cycle_manager: &mut impl CycleManagerTrait,
@@ -329,10 +334,16 @@ impl Ch22CpuState {
             }
             0x26 => {
                 // ROL zp
-
                 let address = self.zpg_address(cycle_manager);
 
                 self.rol(cycle_manager, address);
+            }
+            0x29 => {
+                // AND imm
+                let val = cycle_manager.read(self.pc, false, false);
+                self.inc_pc();
+
+                self.and(val);
             }
             0x48 => {
                 // PHA
