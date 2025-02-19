@@ -293,6 +293,11 @@ impl Ch22CpuState {
         self.set_p_zero_negative(self.a);
     }
 
+    fn or(&mut self, operand: u8) {
+        self.a |= operand;
+        self.set_p_zero_negative(self.a);
+    }
+
     pub fn handle_next_instruction(
         &mut self,
         cycle_manager: &mut impl CycleManagerTrait,
@@ -306,6 +311,13 @@ impl Ch22CpuState {
                 cycle_manager.read(self.pc, false, false);
 
                 self.push(cycle_manager, self.get_p() | 0x10 | 0x20);
+            }
+            0x09 => {
+                // ORA imm
+                let val = cycle_manager.read(self.pc, false, false);
+                self.inc_pc();
+
+                self.or(val);
             }
             0x0a => {
                 // ASL A
