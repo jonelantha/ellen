@@ -340,6 +340,16 @@ impl Ch22CpuState {
 
                 self.push(cycle_manager, self.a);
             }
+            0x4a => {
+                // LSR A
+                cycle_manager.read(self.pc, false, false);
+
+                self.p_carry = (self.a & 0x01) > 0;
+
+                self.a = self.a >> 1;
+                self.p_zero = self.a == 0;
+                self.p_negative = false;
+            }
             0x60 => {
                 // RTS
                 cycle_manager.read(self.pc, false, false);
