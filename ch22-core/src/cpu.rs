@@ -378,6 +378,12 @@ impl Ch22CpuState {
 
                 self.lda(value);
             }
+            0xae => {
+                // LDX abs
+                let value = self.abs_address_value(cycle_manager);
+
+                self.ldx(value);
+            }
             0xb0 => {
                 // BCS rel
                 self.branch(cycle_manager, self.p_carry);

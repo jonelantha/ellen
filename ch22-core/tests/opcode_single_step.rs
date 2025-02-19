@@ -106,6 +106,11 @@ fn _ad_test() {
 }
 
 #[test]
+fn _ae_test() {
+    opcode_single_step_tests_from_file("ae");
+}
+
+#[test]
 fn _b0_test() {
     opcode_single_step_tests_from_file("b0");
 }
