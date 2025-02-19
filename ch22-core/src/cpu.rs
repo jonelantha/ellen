@@ -337,6 +337,13 @@ impl Ch22CpuState {
 
                 self.p_decimal_mode = false;
             }
+            0xe8 => {
+                // INX
+                cycle_manager.read(self.pc, false, false);
+
+                self.x = self.x.wrapping_add(1);
+                self.set_p_zero_negative(self.x);
+            }
             0xf0 => {
                 // BEQ rel
                 self.branch(cycle_manager, self.p_zero);
