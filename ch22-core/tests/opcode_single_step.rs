@@ -101,6 +101,11 @@ fn _ca_test() {
 }
 
 #[test]
+fn _e0_test() {
+    opcode_single_step_tests_from_file("e0");
+}
+
+#[test]
 fn _e6_test() {
     opcode_single_step_tests_from_file("e6");
 }
