@@ -146,6 +146,16 @@ impl Ch22CpuState {
         self.s = self.s.wrapping_sub(1);
     }
 
+    fn stack_read(&mut self, cycle_manager: &mut impl CycleManagerTrait) {
+        cycle_manager.read(0x100 + (self.s as u16), false, false);
+    }
+
+    fn push_16(&mut self, cycle_manager: &mut impl CycleManagerTrait, val: u16) {
+        //cycle_manager.read(0x100 + (self.s as u16), false, false);
+        self.push(cycle_manager, (val >> 8) as u8);
+        self.push(cycle_manager, (val & 0xff) as u8);
+    }
+
     fn abs_address(&mut self, cycle_manager: &mut impl CycleManagerTrait) -> u16 {
         self.read_u16_from_pc(cycle_manager)
     }
@@ -253,6 +263,19 @@ impl Ch22CpuState {
             0x10 => {
                 // BPL rel
                 self.branch(cycle_manager, !self.p_negative);
+            }
+            0x20 => {
+                // JSR abs
+                let pc_low = cycle_manager.read(self.pc, false, false);
+                self.inc_pc();
+
+                self.stack_read(cycle_manager);
+
+                self.push_16(cycle_manager, self.pc);
+
+                let pc_high = cycle_manager.read(self.pc, false, false);
+
+                self.pc = (pc_high as u16) << 8 | pc_low as u16;
             }
             0x48 => {
                 // PHA
