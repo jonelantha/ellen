@@ -248,23 +248,6 @@ impl Ch22CpuState {
                 // BPL rel
                 self.branch(cycle_manager, !self.p_negative);
             }
-            0xc5 => {
-                // CMP zp
-                let value = self.zpg_address_value(cycle_manager);
-
-                self.cmp(value);
-            }
-            0xc8 => {
-                // INY
-                cycle_manager.read(self.pc, false, false);
-
-                self.y = self.y.wrapping_add(1);
-                self.set_p_zero_negative(self.y);
-            }
-            0xd0 => {
-                // BNE rel
-                self.branch(cycle_manager, !self.p_zero);
-            }
             0x48 => {
                 // PHA
                 cycle_manager.read(self.pc, false, false);
@@ -334,6 +317,23 @@ impl Ch22CpuState {
                 let value = self.abs_address_value(cycle_manager);
 
                 self.lda(value);
+            }
+            0xc5 => {
+                // CMP zp
+                let value = self.zpg_address_value(cycle_manager);
+
+                self.cmp(value);
+            }
+            0xc8 => {
+                // INY
+                cycle_manager.read(self.pc, false, false);
+
+                self.y = self.y.wrapping_add(1);
+                self.set_p_zero_negative(self.y);
+            }
+            0xd0 => {
+                // BNE rel
+                self.branch(cycle_manager, !self.p_zero);
             }
             0xd8 => {
                 // CLD
