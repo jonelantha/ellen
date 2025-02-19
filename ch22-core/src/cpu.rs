@@ -400,6 +400,18 @@ impl Ch22CpuState {
                 self.a = self.pop(cycle_manager);
                 self.set_p_zero_negative(self.a);
             }
+            0x6a => {
+                // ROR A
+                cycle_manager.read(self.pc, false, false);
+
+                let old_val = self.a;
+
+                self.a = (old_val >> 1) + (self.p_carry as u8) * 0x80;
+
+                self.set_p_zero_negative(self.a);
+
+                self.p_carry = (old_val & 0x01) != 0;
+            }
             0x78 => {
                 // SEI
                 cycle_manager.read(self.pc, false, false);
