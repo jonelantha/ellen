@@ -337,6 +337,20 @@ impl Ch22CpuState {
 
                 self.p_decimal_mode = false;
             }
+            0xe6 => {
+                // INC zp
+                let address = self.zpg_address(cycle_manager);
+
+                let mut value = cycle_manager.read(address, true, false);
+
+                cycle_manager.write(address, value, true, false);
+
+                value = value.wrapping_add(1);
+
+                cycle_manager.write(address, value, true, false);
+
+                self.set_p_zero_negative(value);
+            }
             0xe8 => {
                 // INX
                 cycle_manager.read(self.pc, false, false);
