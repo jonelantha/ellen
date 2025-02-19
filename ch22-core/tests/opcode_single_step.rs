@@ -41,6 +41,11 @@ fn _26_test() {
 }
 
 #[test]
+fn _29_test() {
+    opcode_single_step_tests_from_file("29");
+}
+
+#[test]
 fn _48_test() {
     opcode_single_step_tests_from_file("48");
 }
