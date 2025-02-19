@@ -240,6 +240,20 @@ impl Ch22CpuState {
         self.p_negative = self.a.wrapping_sub(value) & 0x80 > 0;
     }
 
+    fn ror(&mut self, cycle_manager: &mut impl CycleManagerTrait, address: u16) {
+        let old_val = cycle_manager.read(address, true, false);
+
+        cycle_manager.write(address, old_val, true, false);
+
+        let new_val = (old_val >> 1) + (self.p_carry as u8) * 0x80;
+
+        cycle_manager.write(address, new_val, true, false);
+
+        self.set_p_zero_negative(new_val);
+
+        self.p_carry = (old_val & 0x01) != 0;
+    }
+
     fn cpx(&mut self, value: u8) {
         self.p_carry = self.x >= value;
         self.p_zero = self.x == value;
@@ -311,6 +325,12 @@ impl Ch22CpuState {
                 cycle_manager.read(self.pc, false, false);
 
                 self.pc = self.pc.wrapping_add(1);
+            }
+            0x66 => {
+                // ROR zp
+                let address = self.zpg_address(cycle_manager);
+
+                self.ror(cycle_manager, address);
             }
             0x78 => {
                 // SEI
