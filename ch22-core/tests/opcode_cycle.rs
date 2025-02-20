@@ -1,6 +1,7 @@
 mod util;
 
-use ch22_core::cpu::*;
+use ch22_core::cpu::executor::*;
+use ch22_core::cpu::registers::*;
 use serde::Deserialize;
 use std::fs;
 use util::{CPUTestState, CycleManagerMock};
@@ -35,17 +36,17 @@ fn opcode_cycle_tests_from_file() {
 }
 
 fn opcode_cycle_test(_name: &str, initial_state: &CPUTestState, cycle_syncs: &Vec<String>) {
-    let mut cpu_state = Ch22CpuState::new();
-    cpu_state.pc = initial_state.pc;
-    cpu_state.s = initial_state.s;
-    cpu_state.a = initial_state.a;
-    cpu_state.x = initial_state.x;
-    cpu_state.y = initial_state.y;
-    cpu_state.set_p(initial_state.p);
+    let mut registers = Registers::new();
+    registers.pc = initial_state.pc;
+    registers.s = initial_state.s;
+    registers.a = initial_state.a;
+    registers.x = initial_state.x;
+    registers.y = initial_state.y;
+    registers.set_p(initial_state.p);
 
     let mut cycle_manager_mock = CycleManagerMock::new(&initial_state.ram);
 
-    let mut executor = Executor::new(&mut cycle_manager_mock, &mut cpu_state);
+    let mut executor = Executor::new(&mut cycle_manager_mock, &mut registers);
 
     executor.execute();
 

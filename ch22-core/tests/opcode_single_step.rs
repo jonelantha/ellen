@@ -1,6 +1,7 @@
 mod util;
 
-use ch22_core::cpu::*;
+use ch22_core::cpu::executor::*;
+use ch22_core::cpu::registers::*;
 use serde::Deserialize;
 use std::fs;
 use util::{CPUTestState, CycleManagerMock};
@@ -241,17 +242,17 @@ fn opcode_single_step_test(
     final_state: &CPUTestState,
     expected_cycles: &CPUCycles,
 ) {
-    let mut cpu_state = Ch22CpuState::new();
-    cpu_state.pc = initial_state.pc;
-    cpu_state.s = initial_state.s;
-    cpu_state.a = initial_state.a;
-    cpu_state.x = initial_state.x;
-    cpu_state.y = initial_state.y;
-    cpu_state.set_p(initial_state.p);
+    let mut registers = Registers::new();
+    registers.pc = initial_state.pc;
+    registers.s = initial_state.s;
+    registers.a = initial_state.a;
+    registers.x = initial_state.x;
+    registers.y = initial_state.y;
+    registers.set_p(initial_state.p);
 
     let mut cycle_manager_mock = CycleManagerMock::new(&initial_state.ram);
 
-    let mut executor = Executor::new(&mut cycle_manager_mock, &mut cpu_state);
+    let mut executor = Executor::new(&mut cycle_manager_mock, &mut registers);
 
     executor.execute();
 
@@ -260,10 +261,10 @@ fn opcode_single_step_test(
         "cycles mismatch"
     );
 
-    assert_eq!(cpu_state.pc, final_state.pc, "pc mismatch");
-    assert_eq!(cpu_state.s, final_state.s, "s mismatch");
-    assert_eq!(cpu_state.a, final_state.a, "a mismatch");
-    assert_eq!(cpu_state.x, final_state.x, "x mismatch");
-    assert_eq!(cpu_state.y, final_state.y, "y mismatch");
-    assert_eq!(cpu_state.get_p(), final_state.p, "p mismatch");
+    assert_eq!(registers.pc, final_state.pc, "pc mismatch");
+    assert_eq!(registers.s, final_state.s, "s mismatch");
+    assert_eq!(registers.a, final_state.a, "a mismatch");
+    assert_eq!(registers.x, final_state.x, "x mismatch");
+    assert_eq!(registers.y, final_state.y, "y mismatch");
+    assert_eq!(registers.get_p(), final_state.p, "p mismatch");
 }
