@@ -1,4 +1,4 @@
-use ch22_core::cpu::*;
+use ch22_core::cycle_manager::*;
 use serde::Deserialize;
 
 use std::collections::HashMap;
@@ -38,7 +38,11 @@ impl CycleManagerMock {
 }
 
 impl CycleManagerTrait for CycleManagerMock {
-    fn read(&mut self, address: u16, sync: bool, check_interrupt: bool) -> u8 {
+    fn phantom_read(&mut self, address: u16) {
+        self.read(address, CycleOp::None);
+    }
+
+    fn read(&mut self, address: u16, op: CycleOp) -> u8 {
         let value = *self
             .memory
             .get(&address)
@@ -46,30 +50,27 @@ impl CycleManagerTrait for CycleManagerMock {
 
         self.cycles.push((address, value, "read".to_owned()));
 
-        self.cycle_syncs
-            .push(get_sync_status_text(sync, check_interrupt));
+        self.cycle_syncs.push(get_sync_status_text(op));
 
         value
     }
 
-    fn write(&mut self, address: u16, value: u8, sync: bool, check_interrupt: bool) {
+    fn write(&mut self, address: u16, value: u8, op: CycleOp) {
         self.memory.insert(address, value);
 
         self.cycles.push((address, value, "write".to_owned()));
 
-        self.cycle_syncs
-            .push(get_sync_status_text(sync, check_interrupt));
+        self.cycle_syncs.push(get_sync_status_text(op));
     }
 
     fn complete(&self) {}
 }
 
-fn get_sync_status_text(sync: bool, check_interrupt: bool) -> String {
-    match (sync, check_interrupt) {
-        (true, true) => "sync+check_interrupt",
-        (true, false) => "sync",
-        (false, true) => "check_interrupt",
-        (false, false) => "",
+fn get_sync_status_text(op: CycleOp) -> String {
+    match op {
+        CycleOp::CheckInterrupt => "sync+check_interrupt",
+        CycleOp::Sync => "sync",
+        CycleOp::None => "",
     }
     .to_string()
 }
