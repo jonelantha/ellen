@@ -22,26 +22,24 @@ where
     }
 
     pub fn execute(&mut self) -> Option<u8> {
-        let opcode = self.read(self.registers.pc, CycleOp::None);
-        self.inc_pc();
+        let opcode = self.imm();
 
         match opcode {
             0x08 => {
                 // PHP
-                self.phantom_read(self.registers.pc);
+                self.phantom_pc_read();
 
                 self.push(self.registers.get_p() | P_BIT_5_FLAG | P_BREAK_FLAG);
             }
             0x09 => {
                 // ORA imm
-                let val = self.read(self.registers.pc, CycleOp::None);
-                self.inc_pc();
+                let val = self.imm();
 
                 self.or(val);
             }
             0x0a => {
                 // ASL A
-                self.phantom_read(self.registers.pc);
+                self.phantom_pc_read();
 
                 self.registers.p_carry = (self.registers.a & 0x80) != 0;
                 self.registers.a <<= 1;
@@ -53,14 +51,13 @@ where
             }
             0x20 => {
                 // JSR abs
-                let pc_low = self.read(self.registers.pc, CycleOp::None);
-                self.inc_pc();
+                let pc_low = self.imm();
 
                 self.stack_read();
 
                 self.push_16(self.registers.pc);
 
-                let pc_high = self.read(self.registers.pc, CycleOp::None);
+                let pc_high = self.imm_peek();
 
                 self.registers.pc = (pc_high as u16) << 8 | pc_low as u16;
             }
@@ -72,36 +69,35 @@ where
             }
             0x29 => {
                 // AND imm
-                let val = self.read(self.registers.pc, CycleOp::None);
-                self.inc_pc();
+                let val = self.imm();
 
                 self.and(val);
             }
             0x48 => {
                 // PHA
-                self.phantom_read(self.registers.pc);
+                self.phantom_pc_read();
 
                 self.push(self.registers.a);
             }
             0x4a => {
                 // LSR A
-                self.phantom_read(self.registers.pc);
+                self.phantom_pc_read();
 
                 self.registers.p_carry = (self.registers.a & 0x01) > 0;
 
-                self.registers.a = self.registers.a >> 1;
+                self.registers.a >>= 1;
                 self.registers.p_zero = self.registers.a == 0;
                 self.registers.p_negative = false;
             }
             0x60 => {
                 // RTS
-                self.phantom_read(self.registers.pc);
+                self.phantom_pc_read();
 
                 self.stack_read();
 
                 self.registers.pc = self.pop_16();
 
-                self.phantom_read(self.registers.pc);
+                self.phantom_pc_read();
 
                 self.registers.pc = self.registers.pc.wrapping_add(1);
             }
@@ -113,7 +109,7 @@ where
             }
             0x68 => {
                 // PLA
-                self.phantom_read(self.registers.pc);
+                self.phantom_pc_read();
 
                 self.stack_read();
 
@@ -122,7 +118,7 @@ where
             }
             0x6a => {
                 // ROR A
-                self.phantom_read(self.registers.pc);
+                self.phantom_pc_read();
 
                 let old_val = self.registers.a;
 
@@ -134,7 +130,7 @@ where
             }
             0x78 => {
                 // SEI
-                self.phantom_read(self.registers.pc);
+                self.phantom_pc_read();
 
                 self.registers.p_interrupt_disable = true;
             }
@@ -152,7 +148,7 @@ where
             }
             0x8a => {
                 // TXA
-                self.phantom_read(self.registers.pc);
+                self.phantom_pc_read();
 
                 self.registers.a = self.registers.x;
                 self.set_p_zero_negative(self.registers.a);
@@ -183,27 +179,25 @@ where
             }
             0x9a => {
                 // TXS
-                self.phantom_read(self.registers.pc);
+                self.phantom_pc_read();
 
                 self.registers.s = self.registers.x;
             }
             0xa0 => {
                 // LDY imm
-                let val = self.read(self.registers.pc, CycleOp::None);
-                self.inc_pc();
+                let val = self.imm();
 
                 self.ldy(val);
             }
             0xa2 => {
                 // LDX imm
-                let val = self.read(self.registers.pc, CycleOp::None);
-                self.inc_pc();
+                let val = self.imm();
 
                 self.ldx(val);
             }
             0xa8 => {
                 // TAY
-                self.phantom_read(self.registers.pc);
+                self.phantom_pc_read();
 
                 self.registers.y = self.registers.a;
 
@@ -211,14 +205,13 @@ where
             }
             0xa9 => {
                 // LDA imm
-                let val = self.read(self.registers.pc, CycleOp::None);
-                self.inc_pc();
+                let val = self.imm();
 
                 self.lda(val);
             }
             0xaa => {
                 // TXA
-                self.phantom_read(self.registers.pc);
+                self.phantom_pc_read();
 
                 self.registers.x = self.registers.a;
                 self.set_p_zero_negative(self.registers.a);
@@ -241,7 +234,7 @@ where
             }
             0xca => {
                 // DEX
-                self.phantom_read(self.registers.pc);
+                self.phantom_pc_read();
 
                 self.registers.x = self.registers.x.wrapping_sub(1);
                 self.set_p_zero_negative(self.registers.x);
@@ -254,7 +247,7 @@ where
             }
             0xc8 => {
                 // INY
-                self.phantom_read(self.registers.pc);
+                self.phantom_pc_read();
 
                 self.registers.y = self.registers.y.wrapping_add(1);
                 self.set_p_zero_negative(self.registers.y);
@@ -265,14 +258,13 @@ where
             }
             0xd8 => {
                 // CLD
-                self.phantom_read(self.registers.pc);
+                self.phantom_pc_read();
 
                 self.registers.p_decimal_mode = false;
             }
             0xe0 => {
                 // CPX imm
-                let val = self.read(self.registers.pc, CycleOp::None);
-                self.inc_pc();
+                let val = self.imm();
 
                 self.cpx(val);
             }
@@ -292,7 +284,7 @@ where
             }
             0xe8 => {
                 // INX
-                self.phantom_read(self.registers.pc);
+                self.phantom_pc_read();
 
                 self.registers.x = self.registers.x.wrapping_add(1);
                 self.set_p_zero_negative(self.registers.x);
@@ -313,6 +305,10 @@ where
         self.cycle_manager.phantom_read(address);
     }
 
+    fn phantom_pc_read(&mut self) {
+        self.phantom_read(self.registers.pc);
+    }
+
     fn read(&mut self, address: u16, op: CycleOp) -> u8 {
         self.cycle_manager.read(address, op)
     }
@@ -325,11 +321,20 @@ where
         self.registers.set_p_zero_negative(in_operand);
     }
 
-    fn read_u16_from_pc(&mut self) -> u16 {
-        let low = self.read(self.registers.pc, CycleOp::None);
+    fn imm_peek(&mut self) -> u8 {
+        self.read(self.registers.pc, CycleOp::None)
+    }
+
+    fn imm(&mut self) -> u8 {
+        let val = self.read(self.registers.pc, CycleOp::None);
         self.inc_pc();
-        let high = self.read(self.registers.pc, CycleOp::None);
-        self.inc_pc();
+
+        val
+    }
+
+    fn imm_16(&mut self) -> u16 {
+        let low = self.imm();
+        let high = self.imm();
 
         ((high as u16) << 8) | (low as u16)
     }
@@ -367,7 +372,7 @@ where
     }
 
     fn abs_address(&mut self) -> u16 {
-        self.read_u16_from_pc()
+        self.imm_16()
     }
 
     fn abs_address_value(&mut self) -> u8 {
@@ -405,7 +410,7 @@ where
 
     fn branch(&mut self, condition: bool) {
         if !condition {
-            self.phantom_read(self.registers.pc);
+            self.phantom_pc_read();
 
             self.inc_pc();
 
@@ -416,7 +421,7 @@ where
 
         self.inc_pc();
 
-        self.phantom_read(self.registers.pc);
+        self.phantom_pc_read();
 
         let new_pc_low = (self.registers.pc & 0x00ff) + rel_address as u16;
 
@@ -426,7 +431,7 @@ where
             (new_pc_low & 0x100).wrapping_sub((rel_address as u16 & 0x80) << 1);
 
         if pc_high_adjustment != 0 {
-            self.phantom_read(self.registers.pc);
+            self.phantom_pc_read();
 
             self.registers.pc = self.registers.pc.wrapping_add(pc_high_adjustment);
         }
