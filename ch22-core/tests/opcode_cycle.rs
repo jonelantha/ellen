@@ -45,7 +45,9 @@ fn opcode_cycle_test(_name: &str, initial_state: &CPUTestState, cycle_syncs: &Ve
 
     let mut cycle_manager_mock = CycleManagerMock::new(&initial_state.ram);
 
-    cpu_state.handle_next_instruction(&mut cycle_manager_mock);
+    let mut executor = Executor::new(&mut cycle_manager_mock, &mut cpu_state);
+
+    executor.execute();
 
     assert_eq!(&cycle_manager_mock.cycle_syncs, cycle_syncs);
 }

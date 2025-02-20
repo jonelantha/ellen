@@ -251,7 +251,9 @@ fn opcode_single_step_test(
 
     let mut cycle_manager_mock = CycleManagerMock::new(&initial_state.ram);
 
-    cpu_state.handle_next_instruction(&mut cycle_manager_mock);
+    let mut executor = Executor::new(&mut cycle_manager_mock, &mut cpu_state);
+
+    executor.execute();
 
     assert_eq!(
         &cycle_manager_mock.cycles, expected_cycles,

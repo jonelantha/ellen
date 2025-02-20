@@ -2,6 +2,7 @@ use js_sys::Function;
 use wasm_bindgen::prelude::*;
 //use web_sys::console;
 
+use crate::cycle_manager::*;
 use crate::memory::*;
 use crate::utils;
 
@@ -34,7 +35,9 @@ impl Ch22Cpu {
             Box::new(|cycles, check_interrupt| self.handle_advance_cycles(cycles, check_interrupt)),
         );
 
-        cpu_state.handle_next_instruction(&mut cycle_manager)
+        let mut executor = Executor::new(&mut cycle_manager, cpu_state);
+
+        executor.execute()
     }
 }
 
@@ -126,524 +129,497 @@ impl Default for Ch22CpuState {
     }
 }
 
-impl Ch22CpuState {
-    fn read_u16_from_pc(&mut self, cycle_manager: &mut impl CycleManagerTrait) -> u16 {
-        let low = cycle_manager.read(self.pc, false, false);
+pub struct Executor<'a, T>
+where
+    T: CycleManagerTrait + 'a,
+{
+    cycle_manager: &'a mut T,
+    cpu_state: &'a mut Ch22CpuState,
+}
+
+impl<'a, T> Executor<'a, T>
+where
+    T: CycleManagerTrait + 'a,
+{
+    pub fn new(cycle_manager: &'a mut T, cpu_state: &'a mut Ch22CpuState) -> Self {
+        Executor {
+            cycle_manager,
+            cpu_state,
+        }
+    }
+
+    fn phantom_read(&mut self, address: u16) {
+        self.cycle_manager.phantom_read(address);
+    }
+
+    fn read(&mut self, address: u16, op: CycleOp) -> u8 {
+        self.cycle_manager.read(address, op)
+    }
+
+    fn write(&mut self, address: u16, value: u8, op: CycleOp) {
+        self.cycle_manager.write(address, value, op);
+    }
+
+    fn set_p_zero_negative(&mut self, in_operand: u8) {
+        self.cpu_state.set_p_zero_negative(in_operand);
+    }
+
+    fn read_u16_from_pc(&mut self) -> u16 {
+        let low = self.read(self.cpu_state.pc, CycleOp::None);
         self.inc_pc();
-        let high = cycle_manager.read(self.pc, false, false);
+        let high = self.read(self.cpu_state.pc, CycleOp::None);
         self.inc_pc();
 
         ((high as u16) << 8) | (low as u16)
     }
 
     fn inc_pc(&mut self) {
-        self.pc = self.pc.wrapping_add(1);
+        self.cpu_state.pc = self.cpu_state.pc.wrapping_add(1);
     }
 
-    fn push(&mut self, cycle_manager: &mut impl CycleManagerTrait, val: u8) {
-        cycle_manager.write(0x100 + (self.s as u16), val, false, false);
+    fn push(&mut self, val: u8) {
+        self.write(0x100 + (self.cpu_state.s as u16), val, CycleOp::None);
 
-        self.s = self.s.wrapping_sub(1);
+        self.cpu_state.s = self.cpu_state.s.wrapping_sub(1);
     }
 
-    fn pop(&mut self, cycle_manager: &mut impl CycleManagerTrait) -> u8 {
-        self.s = self.s.wrapping_add(1);
+    fn pop(&mut self) -> u8 {
+        self.cpu_state.s = self.cpu_state.s.wrapping_add(1);
 
-        cycle_manager.read(0x100 + (self.s as u16), false, false)
+        self.read(0x100 + (self.cpu_state.s as u16), CycleOp::None)
     }
 
-    fn stack_read(&mut self, cycle_manager: &mut impl CycleManagerTrait) {
-        cycle_manager.read(0x100 + (self.s as u16), false, false);
+    fn stack_read(&mut self) {
+        self.read(0x100 + (self.cpu_state.s as u16), CycleOp::None);
     }
 
-    fn push_16(&mut self, cycle_manager: &mut impl CycleManagerTrait, val: u16) {
-        self.push(cycle_manager, (val >> 8) as u8);
-        self.push(cycle_manager, (val & 0xff) as u8);
+    fn push_16(&mut self, val: u16) {
+        self.push((val >> 8) as u8);
+        self.push((val & 0xff) as u8);
     }
 
-    fn pop_16(&mut self, cycle_manager: &mut impl CycleManagerTrait) -> u16 {
-        let low = self.pop(cycle_manager);
-        let high = self.pop(cycle_manager);
+    fn pop_16(&mut self) -> u16 {
+        let low = self.pop();
+        let high = self.pop();
 
         ((high as u16) << 8) | (low as u16)
     }
 
-    fn abs_address(&mut self, cycle_manager: &mut impl CycleManagerTrait) -> u16 {
-        self.read_u16_from_pc(cycle_manager)
+    fn abs_address(&mut self) -> u16 {
+        self.read_u16_from_pc()
     }
 
-    fn abs_address_value(&mut self, cycle_manager: &mut impl CycleManagerTrait) -> u8 {
-        let address = self.abs_address(cycle_manager);
+    fn abs_address_value(&mut self) -> u8 {
+        let address = self.abs_address();
 
-        cycle_manager.read(address, true, true)
+        self.read(address, CycleOp::CheckInterrupt)
     }
 
-    fn zpg_address(&mut self, cycle_manager: &mut impl CycleManagerTrait) -> u16 {
-        let zero_page_address = cycle_manager.read(self.pc, false, false);
+    fn zpg_address(&mut self) -> u16 {
+        let zero_page_address = self.read(self.cpu_state.pc, CycleOp::None);
         self.inc_pc();
 
         zero_page_address as u16
     }
 
-    fn zpg_address_value(&mut self, cycle_manager: &mut impl CycleManagerTrait) -> u8 {
-        let address = self.zpg_address(cycle_manager);
+    fn zpg_address_value(&mut self) -> u8 {
+        let address = self.zpg_address();
 
-        cycle_manager.read(address, true, true)
+        self.read(address, CycleOp::CheckInterrupt)
     }
 
-    fn ind_y_address(&mut self, cycle_manager: &mut impl CycleManagerTrait) -> u16 {
-        let zpg_address = self.zpg_address(cycle_manager);
+    fn ind_y_address(&mut self) -> u16 {
+        let zpg_address = self.zpg_address();
 
-        let low_address = cycle_manager.read(zpg_address, false, false) as u16 + self.y as u16;
+        let low_address = self.read(zpg_address, CycleOp::None) as u16 + self.cpu_state.y as u16;
 
-        let high_address = cycle_manager.read((zpg_address + 1) & 0xff, false, false) as u16;
+        let high_address = self.read((zpg_address + 1) & 0xff, CycleOp::None) as u16;
 
         let address_without_carry = (high_address << 8) + (low_address & 0xff);
 
-        cycle_manager.read(address_without_carry, false, false);
+        self.phantom_read(address_without_carry);
 
         address_without_carry.wrapping_add(low_address & 0x100)
     }
 
-    fn branch(&mut self, cycle_manager: &mut impl CycleManagerTrait, condition: bool) {
+    fn branch(&mut self, condition: bool) {
         if !condition {
-            cycle_manager.read(self.pc, false, false);
+            self.phantom_read(self.cpu_state.pc);
 
             self.inc_pc();
 
             return;
         }
 
-        let rel_address = cycle_manager.read(self.pc, false, false);
+        let rel_address = self.read(self.cpu_state.pc, CycleOp::None);
 
         self.inc_pc();
 
-        cycle_manager.read(self.pc, false, false);
+        self.phantom_read(self.cpu_state.pc);
 
-        let new_pc_low = (self.pc & 0x00ff) + rel_address as u16;
+        let new_pc_low = (self.cpu_state.pc & 0x00ff) + rel_address as u16;
 
-        self.pc = self.pc & 0xff00 | new_pc_low & 0xff;
+        self.cpu_state.pc = self.cpu_state.pc & 0xff00 | new_pc_low & 0xff;
 
         let pc_high_adjustment =
             (new_pc_low & 0x100).wrapping_sub((rel_address as u16 & 0x80) << 1);
 
         if pc_high_adjustment != 0 {
-            cycle_manager.read(self.pc, false, false);
+            self.phantom_read(self.cpu_state.pc);
 
-            self.pc = self.pc.wrapping_add(pc_high_adjustment);
+            self.cpu_state.pc = self.cpu_state.pc.wrapping_add(pc_high_adjustment);
         }
     }
 
     fn cmp(&mut self, value: u8) {
-        self.p_carry = self.a >= value;
-        self.p_zero = self.a == value;
-        self.p_negative = self.a.wrapping_sub(value) & 0x80 > 0;
+        self.cpu_state.p_carry = self.cpu_state.a >= value;
+        self.cpu_state.p_zero = self.cpu_state.a == value;
+        self.cpu_state.p_negative = self.cpu_state.a.wrapping_sub(value) & 0x80 > 0;
     }
 
-    fn rol(&mut self, cycle_manager: &mut impl CycleManagerTrait, address: u16) {
-        let old_val = cycle_manager.read(address, true, false);
+    fn rol(&mut self, address: u16) {
+        let old_val = self.read(address, CycleOp::Sync);
 
-        cycle_manager.write(address, old_val, true, false);
+        self.write(address, old_val, CycleOp::Sync);
 
-        let new_val = (old_val << 1) + self.p_carry as u8;
+        let new_val = (old_val << 1) + self.cpu_state.p_carry as u8;
 
-        cycle_manager.write(address, new_val, true, false);
+        self.write(address, new_val, CycleOp::Sync);
 
-        self.p_carry = (old_val & 0x80) > 0;
+        self.cpu_state.p_carry = (old_val & 0x80) > 0;
         self.set_p_zero_negative(new_val);
     }
 
-    fn ror(&mut self, cycle_manager: &mut impl CycleManagerTrait, address: u16) {
-        let old_val = cycle_manager.read(address, true, false);
+    fn ror(&mut self, address: u16) {
+        let old_val = self.read(address, CycleOp::Sync);
 
-        cycle_manager.write(address, old_val, true, false);
+        self.write(address, old_val, CycleOp::Sync);
 
-        let new_val = (old_val >> 1) + (self.p_carry as u8) * 0x80;
+        let new_val = (old_val >> 1) + (self.cpu_state.p_carry as u8) * 0x80;
 
-        cycle_manager.write(address, new_val, true, false);
+        self.write(address, new_val, CycleOp::Sync);
 
         self.set_p_zero_negative(new_val);
 
-        self.p_carry = (old_val & 0x01) != 0;
+        self.cpu_state.p_carry = (old_val & 0x01) != 0;
     }
 
     fn cpx(&mut self, value: u8) {
-        self.p_carry = self.x >= value;
-        self.p_zero = self.x == value;
-        self.p_negative = self.x.wrapping_sub(value) & 0x80 > 0;
+        self.cpu_state.p_carry = self.cpu_state.x >= value;
+        self.cpu_state.p_zero = self.cpu_state.x == value;
+        self.cpu_state.p_negative = self.cpu_state.x.wrapping_sub(value) & 0x80 > 0;
     }
 
     fn lda(&mut self, operand: u8) {
-        self.a = operand;
+        self.cpu_state.a = operand;
         self.set_p_zero_negative(operand);
     }
 
     fn ldx(&mut self, operand: u8) {
-        self.x = operand;
+        self.cpu_state.x = operand;
         self.set_p_zero_negative(operand);
     }
 
     fn ldy(&mut self, operand: u8) {
-        self.y = operand;
+        self.cpu_state.y = operand;
         self.set_p_zero_negative(operand);
     }
 
     fn and(&mut self, operand: u8) {
-        self.a &= operand;
-        self.set_p_zero_negative(self.a);
+        self.cpu_state.a &= operand;
+        self.set_p_zero_negative(self.cpu_state.a);
     }
 
     fn or(&mut self, operand: u8) {
-        self.a |= operand;
-        self.set_p_zero_negative(self.a);
+        self.cpu_state.a |= operand;
+        self.set_p_zero_negative(self.cpu_state.a);
     }
 
-    pub fn handle_next_instruction(
-        &mut self,
-        cycle_manager: &mut impl CycleManagerTrait,
-    ) -> Option<u8> {
-        let opcode = cycle_manager.read(self.pc, false, false);
+    pub fn execute(&mut self) -> Option<u8> {
+        let opcode = self.read(self.cpu_state.pc, CycleOp::None);
         self.inc_pc();
 
         match opcode {
             0x08 => {
                 // PHP
-                cycle_manager.read(self.pc, false, false);
+                self.phantom_read(self.cpu_state.pc);
 
-                self.push(cycle_manager, self.get_p() | 0x10 | 0x20);
+                self.push(self.cpu_state.get_p() | P_BIT_5_FLAG | P_BREAK_FLAG);
             }
             0x09 => {
                 // ORA imm
-                let val = cycle_manager.read(self.pc, false, false);
+                let val = self.read(self.cpu_state.pc, CycleOp::None);
                 self.inc_pc();
 
                 self.or(val);
             }
             0x0a => {
                 // ASL A
-                cycle_manager.read(self.pc, false, false);
+                self.phantom_read(self.cpu_state.pc);
 
-                self.p_carry = (self.a & 0x80) != 0;
-                self.a <<= 1;
-                self.set_p_zero_negative(self.a);
+                self.cpu_state.p_carry = (self.cpu_state.a & 0x80) != 0;
+                self.cpu_state.a <<= 1;
+                self.set_p_zero_negative(self.cpu_state.a);
             }
             0x10 => {
                 // BPL rel
-                self.branch(cycle_manager, !self.p_negative);
+                self.branch(!self.cpu_state.p_negative);
             }
             0x20 => {
                 // JSR abs
-                let pc_low = cycle_manager.read(self.pc, false, false);
+                let pc_low = self.read(self.cpu_state.pc, CycleOp::None);
                 self.inc_pc();
 
-                self.stack_read(cycle_manager);
+                self.stack_read();
 
-                self.push_16(cycle_manager, self.pc);
+                self.push_16(self.cpu_state.pc);
 
-                let pc_high = cycle_manager.read(self.pc, false, false);
+                let pc_high = self.read(self.cpu_state.pc, CycleOp::None);
 
-                self.pc = (pc_high as u16) << 8 | pc_low as u16;
+                self.cpu_state.pc = (pc_high as u16) << 8 | pc_low as u16;
             }
             0x26 => {
                 // ROL zp
-                let address = self.zpg_address(cycle_manager);
+                let address = self.zpg_address();
 
-                self.rol(cycle_manager, address);
+                self.rol(address);
             }
             0x29 => {
                 // AND imm
-                let val = cycle_manager.read(self.pc, false, false);
+                let val = self.read(self.cpu_state.pc, CycleOp::None);
                 self.inc_pc();
 
                 self.and(val);
             }
             0x48 => {
                 // PHA
-                cycle_manager.read(self.pc, false, false);
+                self.phantom_read(self.cpu_state.pc);
 
-                self.push(cycle_manager, self.a);
+                self.push(self.cpu_state.a);
             }
             0x4a => {
                 // LSR A
-                cycle_manager.read(self.pc, false, false);
+                self.phantom_read(self.cpu_state.pc);
 
-                self.p_carry = (self.a & 0x01) > 0;
+                self.cpu_state.p_carry = (self.cpu_state.a & 0x01) > 0;
 
-                self.a = self.a >> 1;
-                self.p_zero = self.a == 0;
-                self.p_negative = false;
+                self.cpu_state.a = self.cpu_state.a >> 1;
+                self.cpu_state.p_zero = self.cpu_state.a == 0;
+                self.cpu_state.p_negative = false;
             }
             0x60 => {
                 // RTS
-                cycle_manager.read(self.pc, false, false);
+                self.phantom_read(self.cpu_state.pc);
 
-                self.stack_read(cycle_manager);
+                self.stack_read();
 
-                self.pc = self.pop_16(cycle_manager);
+                self.cpu_state.pc = self.pop_16();
 
-                cycle_manager.read(self.pc, false, false);
+                self.phantom_read(self.cpu_state.pc);
 
-                self.pc = self.pc.wrapping_add(1);
+                self.cpu_state.pc = self.cpu_state.pc.wrapping_add(1);
             }
             0x66 => {
                 // ROR zp
-                let address = self.zpg_address(cycle_manager);
+                let address = self.zpg_address();
 
-                self.ror(cycle_manager, address);
+                self.ror(address);
             }
             0x68 => {
                 // PLA
-                cycle_manager.read(self.pc, false, false);
+                self.phantom_read(self.cpu_state.pc);
 
-                self.stack_read(cycle_manager);
+                self.stack_read();
 
-                self.a = self.pop(cycle_manager);
-                self.set_p_zero_negative(self.a);
+                self.cpu_state.a = self.pop();
+                self.set_p_zero_negative(self.cpu_state.a);
             }
             0x6a => {
                 // ROR A
-                cycle_manager.read(self.pc, false, false);
+                self.phantom_read(self.cpu_state.pc);
 
-                let old_val = self.a;
+                let old_val = self.cpu_state.a;
 
-                self.a = (old_val >> 1) + (self.p_carry as u8) * 0x80;
+                self.cpu_state.a = (old_val >> 1) + (self.cpu_state.p_carry as u8) * 0x80;
 
-                self.set_p_zero_negative(self.a);
+                self.set_p_zero_negative(self.cpu_state.a);
 
-                self.p_carry = (old_val & 0x01) != 0;
+                self.cpu_state.p_carry = (old_val & 0x01) != 0;
             }
             0x78 => {
                 // SEI
-                cycle_manager.read(self.pc, false, false);
+                self.phantom_read(self.cpu_state.pc);
 
-                self.p_interrupt_disable = true;
+                self.cpu_state.p_interrupt_disable = true;
             }
             0x85 => {
                 // STA zp
-                let address = self.zpg_address(cycle_manager);
+                let address = self.zpg_address();
 
-                cycle_manager.write(address, self.a, true, true);
+                self.write(address, self.cpu_state.a, CycleOp::CheckInterrupt);
             }
             0x86 => {
                 // STX zp
-                let address = self.zpg_address(cycle_manager);
+                let address = self.zpg_address();
 
-                cycle_manager.write(address, self.x, true, true);
+                self.write(address, self.cpu_state.x, CycleOp::CheckInterrupt);
             }
             0x8a => {
                 // TXA
-                cycle_manager.read(self.pc, false, false);
+                self.phantom_read(self.cpu_state.pc);
 
-                self.a = self.x;
-                self.set_p_zero_negative(self.a);
+                self.cpu_state.a = self.cpu_state.x;
+                self.set_p_zero_negative(self.cpu_state.a);
             }
             0x8c => {
                 // STY abs
-                let address = self.abs_address(cycle_manager);
+                let address = self.abs_address();
 
-                cycle_manager.write(address, self.y, true, true);
+                self.write(address, self.cpu_state.y, CycleOp::CheckInterrupt);
             }
             0x8d => {
                 // STA abs
-                let address = self.abs_address(cycle_manager);
+                let address = self.abs_address();
 
-                cycle_manager.write(address, self.a, true, true);
+                self.write(address, self.cpu_state.a, CycleOp::CheckInterrupt);
             }
             0x8e => {
                 // STX abs
-                let address = self.abs_address(cycle_manager);
+                let address = self.abs_address();
 
-                cycle_manager.write(address, self.x, true, true);
+                self.write(address, self.cpu_state.x, CycleOp::CheckInterrupt);
             }
             0x91 => {
                 // STA (zp),Y
-                let address = self.ind_y_address(cycle_manager);
+                let address = self.ind_y_address();
 
-                cycle_manager.write(address, self.a, true, true);
+                self.write(address, self.cpu_state.a, CycleOp::CheckInterrupt);
             }
             0x9a => {
                 // TXS
-                cycle_manager.read(self.pc, false, false);
+                self.phantom_read(self.cpu_state.pc);
 
-                self.s = self.x;
+                self.cpu_state.s = self.cpu_state.x;
             }
             0xa0 => {
                 // LDY imm
-                let val = cycle_manager.read(self.pc, false, false);
+                let val = self.read(self.cpu_state.pc, CycleOp::None);
                 self.inc_pc();
 
                 self.ldy(val);
             }
             0xa2 => {
                 // LDX imm
-                let val = cycle_manager.read(self.pc, false, false);
+                let val = self.read(self.cpu_state.pc, CycleOp::None);
                 self.inc_pc();
 
                 self.ldx(val);
             }
             0xa8 => {
                 // TAY
-                cycle_manager.read(self.pc, false, false);
+                self.phantom_read(self.cpu_state.pc);
 
-                self.y = self.a;
+                self.cpu_state.y = self.cpu_state.a;
 
-                self.set_p_zero_negative(self.a);
+                self.set_p_zero_negative(self.cpu_state.a);
             }
             0xa9 => {
                 // LDA imm
-                let val = cycle_manager.read(self.pc, false, false);
+                let val = self.read(self.cpu_state.pc, CycleOp::None);
                 self.inc_pc();
 
                 self.lda(val);
             }
             0xaa => {
                 // TXA
-                cycle_manager.read(self.pc, false, false);
+                self.phantom_read(self.cpu_state.pc);
 
-                self.x = self.a;
-                self.set_p_zero_negative(self.a);
+                self.cpu_state.x = self.cpu_state.a;
+                self.set_p_zero_negative(self.cpu_state.a);
             }
             0xad => {
                 // LDA abs
-                let value = self.abs_address_value(cycle_manager);
+                let value = self.abs_address_value();
 
                 self.lda(value);
             }
             0xae => {
                 // LDX abs
-                let value = self.abs_address_value(cycle_manager);
+                let value = self.abs_address_value();
 
                 self.ldx(value);
             }
             0xb0 => {
                 // BCS rel
-                self.branch(cycle_manager, self.p_carry);
+                self.branch(self.cpu_state.p_carry);
             }
             0xca => {
                 // DEX
-                cycle_manager.read(self.pc, false, false);
+                self.phantom_read(self.cpu_state.pc);
 
-                self.x = self.x.wrapping_sub(1);
-                self.set_p_zero_negative(self.x);
+                self.cpu_state.x = self.cpu_state.x.wrapping_sub(1);
+                self.set_p_zero_negative(self.cpu_state.x);
             }
             0xc5 => {
                 // CMP zp
-                let value = self.zpg_address_value(cycle_manager);
+                let value = self.zpg_address_value();
 
                 self.cmp(value);
             }
             0xc8 => {
                 // INY
-                cycle_manager.read(self.pc, false, false);
+                self.phantom_read(self.cpu_state.pc);
 
-                self.y = self.y.wrapping_add(1);
-                self.set_p_zero_negative(self.y);
+                self.cpu_state.y = self.cpu_state.y.wrapping_add(1);
+                self.set_p_zero_negative(self.cpu_state.y);
             }
             0xd0 => {
                 // BNE rel
-                self.branch(cycle_manager, !self.p_zero);
+                self.branch(!self.cpu_state.p_zero);
             }
             0xd8 => {
                 // CLD
-                cycle_manager.read(self.pc, false, false);
+                self.phantom_read(self.cpu_state.pc);
 
-                self.p_decimal_mode = false;
+                self.cpu_state.p_decimal_mode = false;
             }
             0xe0 => {
                 // CPX imm
-                let val = cycle_manager.read(self.pc, false, false);
+                let val = self.read(self.cpu_state.pc, CycleOp::None);
                 self.inc_pc();
 
                 self.cpx(val);
             }
             0xe6 => {
                 // INC zp
-                let address = self.zpg_address(cycle_manager);
+                let address = self.zpg_address();
 
-                let mut value = cycle_manager.read(address, true, false);
+                let mut value = self.read(address, CycleOp::Sync);
 
-                cycle_manager.write(address, value, true, false);
+                self.write(address, value, CycleOp::Sync);
 
                 value = value.wrapping_add(1);
 
-                cycle_manager.write(address, value, true, false);
+                self.write(address, value, CycleOp::Sync);
 
                 self.set_p_zero_negative(value);
             }
             0xe8 => {
                 // INX
-                cycle_manager.read(self.pc, false, false);
+                self.phantom_read(self.cpu_state.pc);
 
-                self.x = self.x.wrapping_add(1);
-                self.set_p_zero_negative(self.x);
+                self.cpu_state.x = self.cpu_state.x.wrapping_add(1);
+                self.set_p_zero_negative(self.cpu_state.x);
             }
             0xf0 => {
                 // BEQ rel
-                self.branch(cycle_manager, self.p_zero);
+                self.branch(self.cpu_state.p_zero);
             }
             _ => return Some(opcode),
         }
 
-        cycle_manager.complete();
+        self.cycle_manager.complete();
 
         None
-    }
-}
-
-pub trait CycleManagerTrait {
-    fn read(&mut self, address: u16, sync: bool, check_interrupt: bool) -> u8;
-    fn write(&mut self, address: u16, value: u8, sync: bool, check_interrupt: bool);
-    fn complete(&self);
-}
-
-struct CycleManager<'a> {
-    cycles: u8,
-    memory: &'a mut Ch22Memory,
-    advance_cycles_handler: Box<dyn Fn(u8, bool) + 'a>,
-}
-
-impl<'a> CycleManager<'a> {
-    fn new(memory: &'a mut Ch22Memory, advance_cycles_handler: Box<dyn Fn(u8, bool) + 'a>) -> Self {
-        CycleManager {
-            cycles: 0,
-            memory,
-            advance_cycles_handler,
-        }
-    }
-}
-
-impl CycleManagerTrait for CycleManager<'_> {
-    fn read(&mut self, address: u16, sync: bool, check_interrupt: bool) -> u8 {
-        if sync {
-            (self.advance_cycles_handler)(self.cycles, check_interrupt);
-
-            self.cycles = 0;
-        }
-
-        let value = self.memory.read(address);
-
-        self.cycles += 1;
-
-        //console::log_1(&format!("read {:x} {:x}", address, value).into());
-
-        value
-    }
-
-    fn write(&mut self, address: u16, value: u8, sync: bool, check_interrupt: bool) {
-        if sync {
-            (self.advance_cycles_handler)(self.cycles, check_interrupt);
-
-            self.cycles = 0;
-        }
-        //console::log_1(&format!("write {:x} {:x}", address, value).into());
-
-        self.memory.write(address, value);
-
-        self.cycles += 1;
-    }
-
-    fn complete(&self) {
-        (self.advance_cycles_handler)(self.cycles, false);
-        //console::log_1(&format!("complete {:x}", self.cycles).into());
     }
 }
