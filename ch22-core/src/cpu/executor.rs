@@ -65,7 +65,13 @@ where
                 // ROL zp
                 let address = self.zpg_address();
 
-                self.rol(address);
+                let old_val = self.read(address, CycleOp::Sync);
+
+                self.write(address, old_val, CycleOp::Sync);
+
+                let new_val = self.rol(old_val);
+
+                self.write(address, new_val, CycleOp::Sync);
             }
             0x29 => {
                 // AND imm
@@ -105,7 +111,13 @@ where
                 // ROR zp
                 let address = self.zpg_address();
 
-                self.ror(address);
+                let old_val = self.read(address, CycleOp::Sync);
+
+                self.write(address, old_val, CycleOp::Sync);
+
+                let new_val = self.ror(old_val);
+
+                self.write(address, new_val, CycleOp::Sync);
             }
             0x68 => {
                 // PLA
@@ -120,13 +132,7 @@ where
                 // ROR A
                 self.phantom_pc_read();
 
-                let old_val = self.registers.a;
-
-                self.registers.a = (old_val >> 1) + (self.registers.p_carry as u8) * 0x80;
-
-                self.set_p_zero_negative(self.registers.a);
-
-                self.registers.p_carry = (old_val & 0x01) != 0;
+                self.registers.a = self.ror(self.registers.a);
             }
             0x78 => {
                 // SEI
@@ -443,31 +449,23 @@ where
         self.registers.p_negative = self.registers.a.wrapping_sub(value) & 0x80 > 0;
     }
 
-    fn rol(&mut self, address: u16) {
-        let old_val = self.read(address, CycleOp::Sync);
-
-        self.write(address, old_val, CycleOp::Sync);
-
+    fn rol(&mut self, old_val: u8) -> u8 {
         let new_val = (old_val << 1) + self.registers.p_carry as u8;
-
-        self.write(address, new_val, CycleOp::Sync);
 
         self.registers.p_carry = (old_val & 0x80) > 0;
         self.set_p_zero_negative(new_val);
+
+        new_val
     }
 
-    fn ror(&mut self, address: u16) {
-        let old_val = self.read(address, CycleOp::Sync);
-
-        self.write(address, old_val, CycleOp::Sync);
-
+    fn ror(&mut self, old_val: u8) -> u8 {
         let new_val = (old_val >> 1) + (self.registers.p_carry as u8) * 0x80;
-
-        self.write(address, new_val, CycleOp::Sync);
 
         self.set_p_zero_negative(new_val);
 
         self.registers.p_carry = (old_val & 0x01) != 0;
+
+        new_val
     }
 
     fn cpx(&mut self, value: u8) {
