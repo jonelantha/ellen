@@ -83,6 +83,12 @@ where
 
                 self.push(self.registers.a);
             }
+            0x49 => {
+                // EOR imm
+                let value = self.imm();
+
+                self.xor(value);
+            }
             0x4a => {
                 // LSR A
                 self.phantom_pc_read();
