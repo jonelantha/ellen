@@ -137,6 +137,11 @@ fn _a2_test() {
 }
 
 #[test]
+fn _a5_test() {
+    opcode_single_step_tests_from_file("a5");
+}
+
+#[test]
 fn _a8_test() {
     opcode_single_step_tests_from_file("a8");
 }
