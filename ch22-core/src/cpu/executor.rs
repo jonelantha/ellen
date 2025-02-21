@@ -171,6 +171,18 @@ where
 
                 self.write(address, self.registers.x, CycleOp::CheckInterrupt);
             }
+            0xee => {
+                // INC abs
+                let address = self.abs_address();
+
+                let old_value = self.read(address, CycleOp::Sync);
+
+                self.write(address, old_value, CycleOp::Sync);
+
+                let new_value = self.inc(old_value);
+
+                self.write(address, new_value, CycleOp::Sync);
+            }
             0x91 => {
                 // STA (zp),Y
                 let address = self.ind_y_address();
