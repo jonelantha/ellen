@@ -189,6 +189,10 @@ where
 
                 self.write(address, new_value, CycleOp::Sync);
             }
+            0x90 => {
+                // BCC rel
+                self.branch(!self.registers.p_carry);
+            }
             0x91 => {
                 // STA (zp),Y
                 let address = self.ind_y_address();
@@ -545,6 +549,12 @@ where
 
     fn or(&mut self, operand: u8) {
         self.registers.a |= operand;
+
+        self.set_p_zero_negative(self.registers.a);
+    }
+
+    fn xor(&mut self, operand: u8) {
+        self.registers.a ^= operand;
 
         self.set_p_zero_negative(self.registers.a);
     }
