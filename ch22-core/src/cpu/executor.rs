@@ -205,6 +205,12 @@ where
 
                 self.registers.s = self.registers.x;
             }
+            0x9d => {
+                // STA abs,X
+                let address = self.abs_x_address();
+
+                self.write(address, self.registers.a, CycleOp::CheckInterrupt);
+            }
             0xa0 => {
                 // LDY imm
                 let value = self.imm();
@@ -401,6 +407,20 @@ where
         self.read(address, CycleOp::CheckInterrupt)
     }
 
+    fn abs_x_address(&mut self) -> u16 {
+        let base_address_low = self.imm();
+
+        let base_address_high = self.imm();
+
+        let (address_low, carry) = base_address_low.overflowing_add(self.registers.x);
+
+        let address_high = base_address_high.wrapping_add(carry as u8);
+
+        self.phantom_read(u16_from_u8s(base_address_high, address_low));
+
+        u16_from_u8s(address_high, address_low)
+    }
+
     fn zpg_address(&mut self) -> u16 {
         let zero_page_address = self.imm();
 
@@ -558,4 +578,8 @@ where
 
         self.set_p_zero_negative(self.registers.a);
     }
+}
+
+fn u16_from_u8s(high: u8, low: u8) -> u16 {
+    (high as u16) << 8 | low as u16
 }

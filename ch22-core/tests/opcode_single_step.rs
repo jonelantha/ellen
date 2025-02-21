@@ -137,6 +137,11 @@ fn _9a_test() {
 }
 
 #[test]
+fn _9d_test() {
+    opcode_single_step_tests_from_file("9d");
+}
+
+#[test]
 fn _a0_test() {
     opcode_single_step_tests_from_file("a0");
 }
