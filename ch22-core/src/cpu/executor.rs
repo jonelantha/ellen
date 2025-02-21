@@ -33,17 +33,15 @@ where
             }
             0x09 => {
                 // ORA imm
-                let val = self.imm();
+                let value = self.imm();
 
-                self.or(val);
+                self.or(value);
             }
             0x0a => {
                 // ASL A
                 self.phantom_pc_read();
 
-                self.registers.p_carry = (self.registers.a & 0x80) != 0;
-                self.registers.a <<= 1;
-                self.set_p_zero_negative(self.registers.a);
+                self.registers.a = self.asl(self.registers.a);
             }
             0x10 => {
                 // BPL rel
@@ -53,7 +51,7 @@ where
                 // JSR abs
                 let pc_low = self.imm();
 
-                self.stack_read();
+                self.phantom_stack_read();
 
                 self.push_16(self.registers.pc);
 
@@ -65,19 +63,19 @@ where
                 // ROL zp
                 let address = self.zpg_address();
 
-                let old_val = self.read(address, CycleOp::Sync);
+                let old_value = self.read(address, CycleOp::Sync);
 
-                self.write(address, old_val, CycleOp::Sync);
+                self.write(address, old_value, CycleOp::Sync);
 
-                let new_val = self.rol(old_val);
+                let new_value = self.rol(old_value);
 
-                self.write(address, new_val, CycleOp::Sync);
+                self.write(address, new_value, CycleOp::Sync);
             }
             0x29 => {
                 // AND imm
-                let val = self.imm();
+                let value = self.imm();
 
-                self.and(val);
+                self.and(value);
             }
             0x48 => {
                 // PHA
@@ -89,17 +87,13 @@ where
                 // LSR A
                 self.phantom_pc_read();
 
-                self.registers.p_carry = (self.registers.a & 0x01) > 0;
-
-                self.registers.a >>= 1;
-                self.registers.p_zero = self.registers.a == 0;
-                self.registers.p_negative = false;
+                self.registers.a = self.lsr(self.registers.a);
             }
             0x60 => {
                 // RTS
                 self.phantom_pc_read();
 
-                self.stack_read();
+                self.phantom_stack_read();
 
                 self.registers.pc = self.pop_16();
 
@@ -111,22 +105,23 @@ where
                 // ROR zp
                 let address = self.zpg_address();
 
-                let old_val = self.read(address, CycleOp::Sync);
+                let old_value = self.read(address, CycleOp::Sync);
 
-                self.write(address, old_val, CycleOp::Sync);
+                self.write(address, old_value, CycleOp::Sync);
 
-                let new_val = self.ror(old_val);
+                let new_value = self.ror(old_value);
 
-                self.write(address, new_val, CycleOp::Sync);
+                self.write(address, new_value, CycleOp::Sync);
             }
             0x68 => {
                 // PLA
                 self.phantom_pc_read();
 
-                self.stack_read();
+                self.phantom_stack_read();
 
-                self.registers.a = self.pop();
-                self.set_p_zero_negative(self.registers.a);
+                let value = self.pop();
+
+                self.lda(value);
             }
             0x6a => {
                 // ROR A
@@ -156,8 +151,7 @@ where
                 // TXA
                 self.phantom_pc_read();
 
-                self.registers.a = self.registers.x;
-                self.set_p_zero_negative(self.registers.a);
+                self.lda(self.registers.x);
             }
             0x8c => {
                 // STY abs
@@ -191,36 +185,33 @@ where
             }
             0xa0 => {
                 // LDY imm
-                let val = self.imm();
+                let value = self.imm();
 
-                self.ldy(val);
+                self.ldy(value);
             }
             0xa2 => {
                 // LDX imm
-                let val = self.imm();
+                let value = self.imm();
 
-                self.ldx(val);
+                self.ldx(value);
             }
             0xa8 => {
                 // TAY
                 self.phantom_pc_read();
 
-                self.registers.y = self.registers.a;
-
-                self.set_p_zero_negative(self.registers.a);
+                self.ldy(self.registers.a);
             }
             0xa9 => {
                 // LDA imm
-                let val = self.imm();
+                let value = self.imm();
 
-                self.lda(val);
+                self.lda(value);
             }
             0xaa => {
                 // TXA
                 self.phantom_pc_read();
 
-                self.registers.x = self.registers.a;
-                self.set_p_zero_negative(self.registers.a);
+                self.ldx(self.registers.a);
             }
             0xad => {
                 // LDA abs
@@ -242,8 +233,7 @@ where
                 // DEX
                 self.phantom_pc_read();
 
-                self.registers.x = self.registers.x.wrapping_sub(1);
-                self.set_p_zero_negative(self.registers.x);
+                self.registers.x = self.dec(self.registers.x);
             }
             0xc5 => {
                 // CMP zp
@@ -255,8 +245,7 @@ where
                 // INY
                 self.phantom_pc_read();
 
-                self.registers.y = self.registers.y.wrapping_add(1);
-                self.set_p_zero_negative(self.registers.y);
+                self.registers.y = self.inc(self.registers.y);
             }
             0xd0 => {
                 // BNE rel
@@ -270,30 +259,27 @@ where
             }
             0xe0 => {
                 // CPX imm
-                let val = self.imm();
+                let value = self.imm();
 
-                self.cpx(val);
+                self.cpx(value);
             }
             0xe6 => {
                 // INC zp
                 let address = self.zpg_address();
 
-                let mut value = self.read(address, CycleOp::Sync);
+                let old_value = self.read(address, CycleOp::Sync);
 
-                self.write(address, value, CycleOp::Sync);
+                self.write(address, old_value, CycleOp::Sync);
 
-                value = value.wrapping_add(1);
+                let new_value = self.inc(old_value);
 
-                self.write(address, value, CycleOp::Sync);
-
-                self.set_p_zero_negative(value);
+                self.write(address, new_value, CycleOp::Sync);
             }
             0xe8 => {
                 // INX
                 self.phantom_pc_read();
 
-                self.registers.x = self.registers.x.wrapping_add(1);
-                self.set_p_zero_negative(self.registers.x);
+                self.registers.x = self.inc(self.registers.x);
             }
             0xf0 => {
                 // BEQ rel
@@ -332,10 +318,10 @@ where
     }
 
     fn imm(&mut self) -> u8 {
-        let val = self.read(self.registers.pc, CycleOp::None);
+        let value = self.read(self.registers.pc, CycleOp::None);
         self.inc_pc();
 
-        val
+        value
     }
 
     fn imm_16(&mut self) -> u16 {
@@ -361,13 +347,13 @@ where
         self.read(0x100 + (self.registers.s as u16), CycleOp::None)
     }
 
-    fn stack_read(&mut self) {
-        self.read(0x100 + (self.registers.s as u16), CycleOp::None);
+    fn phantom_stack_read(&mut self) {
+        self.phantom_read(0x100 + (self.registers.s as u16));
     }
 
-    fn push_16(&mut self, val: u16) {
-        self.push((val >> 8) as u8);
-        self.push((val & 0xff) as u8);
+    fn push_16(&mut self, value: u16) {
+        self.push((value >> 8) as u8);
+        self.push((value & 0xff) as u8);
     }
 
     fn pop_16(&mut self) -> u16 {
@@ -388,8 +374,7 @@ where
     }
 
     fn zpg_address(&mut self) -> u16 {
-        let zero_page_address = self.read(self.registers.pc, CycleOp::None);
-        self.inc_pc();
+        let zero_page_address = self.imm();
 
         zero_page_address as u16
     }
@@ -423,9 +408,7 @@ where
             return;
         }
 
-        let rel_address = self.read(self.registers.pc, CycleOp::None);
-
-        self.inc_pc();
+        let rel_address = self.imm();
 
         self.phantom_pc_read();
 
@@ -446,56 +429,99 @@ where
     fn cmp(&mut self, value: u8) {
         self.registers.p_carry = self.registers.a >= value;
         self.registers.p_zero = self.registers.a == value;
-        self.registers.p_negative = self.registers.a.wrapping_sub(value) & 0x80 > 0;
-    }
-
-    fn rol(&mut self, old_val: u8) -> u8 {
-        let new_val = (old_val << 1) + self.registers.p_carry as u8;
-
-        self.registers.p_carry = (old_val & 0x80) > 0;
-        self.set_p_zero_negative(new_val);
-
-        new_val
-    }
-
-    fn ror(&mut self, old_val: u8) -> u8 {
-        let new_val = (old_val >> 1) + (self.registers.p_carry as u8) * 0x80;
-
-        self.set_p_zero_negative(new_val);
-
-        self.registers.p_carry = (old_val & 0x01) != 0;
-
-        new_val
+        self.registers.p_negative = self.registers.a.wrapping_sub(value) & 0x80 != 0;
     }
 
     fn cpx(&mut self, value: u8) {
         self.registers.p_carry = self.registers.x >= value;
         self.registers.p_zero = self.registers.x == value;
-        self.registers.p_negative = self.registers.x.wrapping_sub(value) & 0x80 > 0;
+        self.registers.p_negative = self.registers.x.wrapping_sub(value) & 0x80 != 0;
+    }
+
+    fn asl(&mut self, old_value: u8) -> u8 {
+        let new_value = old_value << 1;
+
+        self.registers.p_carry = (old_value & 0x80) != 0;
+
+        self.set_p_zero_negative(new_value);
+
+        new_value
+    }
+
+    fn lsr(&mut self, old_value: u8) -> u8 {
+        let new_value = old_value >> 1;
+
+        self.registers.p_carry = (old_value & 0x01) != 0;
+
+        self.registers.p_zero = new_value == 0;
+        self.registers.p_negative = false;
+
+        new_value
+    }
+
+    fn rol(&mut self, old_value: u8) -> u8 {
+        let new_value = (old_value << 1) + self.registers.p_carry as u8;
+
+        self.registers.p_carry = (old_value & 0x80) != 0;
+
+        self.set_p_zero_negative(new_value);
+
+        new_value
+    }
+
+    fn ror(&mut self, old_value: u8) -> u8 {
+        let new_value = (old_value >> 1) + (self.registers.p_carry as u8) * 0x80;
+
+        self.set_p_zero_negative(new_value);
+
+        self.registers.p_carry = (old_value & 0x01) != 0;
+
+        new_value
+    }
+
+    fn inc(&mut self, old_val: u8) -> u8 {
+        let new_value = old_val.wrapping_add(1);
+
+        self.set_p_zero_negative(new_value);
+
+        new_value
+    }
+
+    fn dec(&mut self, old_val: u8) -> u8 {
+        let new_value = old_val.wrapping_sub(1);
+
+        self.set_p_zero_negative(new_value);
+
+        new_value
     }
 
     fn lda(&mut self, operand: u8) {
         self.registers.a = operand;
+
         self.set_p_zero_negative(operand);
     }
 
     fn ldx(&mut self, operand: u8) {
         self.registers.x = operand;
+
         self.set_p_zero_negative(operand);
     }
 
     fn ldy(&mut self, operand: u8) {
         self.registers.y = operand;
+
         self.set_p_zero_negative(operand);
     }
 
     fn and(&mut self, operand: u8) {
         self.registers.a &= operand;
+
         self.set_p_zero_negative(self.registers.a);
     }
 
     fn or(&mut self, operand: u8) {
         self.registers.a |= operand;
+
         self.set_p_zero_negative(self.registers.a);
     }
 }
