@@ -207,6 +207,12 @@ where
 
                 self.ldx(value);
             }
+            0xa5 => {
+                // LDA zp
+                let value = self.zpg_address_value();
+
+                self.lda(value);
+            }
             0xa8 => {
                 // TAY
                 self.phantom_pc_read();
