@@ -122,6 +122,11 @@ fn _8e_test() {
 }
 
 #[test]
+fn _90_test() {
+    opcode_single_step_tests_from_file("90");
+}
+
+#[test]
 fn _91_test() {
     opcode_single_step_tests_from_file("91");
 }
