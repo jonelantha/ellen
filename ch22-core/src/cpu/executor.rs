@@ -199,6 +199,12 @@ where
 
                 self.write(address, self.registers.a, CycleOp::CheckInterrupt);
             }
+            0x95 => {
+                // STA zp,X
+                let address = self.zpg_x_address();
+
+                self.write(address, self.registers.a, CycleOp::CheckInterrupt);
+            }
             0x9a => {
                 // TXS
                 self.phantom_pc_read();
@@ -422,15 +428,23 @@ where
     }
 
     fn zpg_address(&mut self) -> u16 {
-        let zero_page_address = self.imm();
+        let address = self.imm();
 
-        zero_page_address as u16
+        address as u16
     }
 
     fn zpg_address_value(&mut self) -> u8 {
         let address = self.zpg_address();
 
         self.read(address, CycleOp::CheckInterrupt)
+    }
+
+    fn zpg_x_address(&mut self) -> u16 {
+        let base_address = self.imm();
+
+        self.phantom_read(base_address as u16);
+
+        base_address.wrapping_add(self.registers.x) as u16
     }
 
     fn ind_y_address(&mut self) -> u16 {
