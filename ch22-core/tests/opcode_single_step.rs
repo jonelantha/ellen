@@ -182,6 +182,16 @@ fn _ca_test() {
 }
 
 #[test]
+fn _d0_test() {
+    opcode_single_step_tests_from_file("d0");
+}
+
+#[test]
+fn _d8_test() {
+    opcode_single_step_tests_from_file("d8");
+}
+
+#[test]
 fn _e0_test() {
     opcode_single_step_tests_from_file("e0");
 }
@@ -197,13 +207,8 @@ fn _e8_test() {
 }
 
 #[test]
-fn _d0_test() {
-    opcode_single_step_tests_from_file("d0");
-}
-
-#[test]
-fn _d8_test() {
-    opcode_single_step_tests_from_file("d8");
+fn _ee_test() {
+    opcode_single_step_tests_from_file("ee");
 }
 
 #[test]
