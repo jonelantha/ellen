@@ -67,6 +67,11 @@ fn _4a_test() {
 }
 
 #[test]
+fn _4c_test() {
+    opcode_single_step_tests_from_file("4c");
+}
+
+#[test]
 fn _60_test() {
     opcode_single_step_tests_from_file("60");
 }
