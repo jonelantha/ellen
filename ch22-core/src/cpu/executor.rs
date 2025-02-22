@@ -201,7 +201,7 @@ where
             }
             0x9d => {
                 // STA abs,X
-                let address = self.abs_x_address();
+                let address = self.abs_offset_address(self.registers.x);
 
                 self.write(address, self.registers.a, CycleOp::CheckInterrupt);
             }
@@ -256,6 +256,12 @@ where
             0xb0 => {
                 // BCS rel
                 self.branch(self.registers.p_carry);
+            }
+            0xb9 => {
+                // LDA abs,Y
+                let value = self.abs_offset_address_value(self.registers.y);
+
+                self.lda(value);
             }
             0xca => {
                 // DEX
@@ -364,13 +370,6 @@ where
         value
     }
 
-    fn imm_16(&mut self) -> u16 {
-        let low = self.imm();
-        let high = self.imm();
-
-        ((high as u16) << 8) | (low as u16)
-    }
-
     fn inc_pc(&mut self) {
         self.registers.pc = self.registers.pc.wrapping_add(1);
     }
@@ -404,7 +403,10 @@ where
     }
 
     fn abs_address(&mut self) -> u16 {
-        self.imm_16()
+        let low = self.imm();
+        let high = self.imm();
+
+        ((high as u16) << 8) | (low as u16)
     }
 
     fn abs_address_value(&mut self) -> u8 {
@@ -413,18 +415,26 @@ where
         self.read(address, CycleOp::CheckInterrupt)
     }
 
-    fn abs_x_address(&mut self) -> u16 {
-        let base_address_low = self.imm();
+    fn abs_offset_address(&mut self, offset: u8) -> u16 {
+        let (address, carry_result) = address_offset(self.abs_address(), offset);
 
-        let base_address_high = self.imm();
+        if let CarryResult::Carried { intermediate } = carry_result {
+            self.phantom_read(intermediate);
+        } else {
+            self.phantom_read(address);
+        }
 
-        let (address_low, carry) = base_address_low.overflowing_add(self.registers.x);
+        address
+    }
 
-        let address_high = base_address_high.wrapping_add(carry as u8);
+    fn abs_offset_address_value(&mut self, offset: u8) -> u8 {
+        let (address, carry_result) = address_offset(self.abs_address(), offset);
 
-        self.phantom_read(u16_from_u8s(base_address_high, address_low));
+        if let CarryResult::Carried { intermediate } = carry_result {
+            self.phantom_read(intermediate);
+        }
 
-        u16_from_u8s(address_high, address_low)
+        self.read(address, CycleOp::Sync)
     }
 
     fn zpg_address(&mut self) -> u16 {
@@ -594,6 +604,20 @@ where
     }
 }
 
-fn u16_from_u8s(high: u8, low: u8) -> u16 {
-    (high as u16) << 8 | low as u16
+fn address_offset(base_address: u16, offset: u8) -> (u16, CarryResult) {
+    let address = base_address.wrapping_add(offset as u16);
+
+    let carried = address & 0xff00 != base_address & 0xff00;
+
+    if carried {
+        let intermediate = (base_address & 0xff00) | (address & 0x00ff);
+        (address, CarryResult::Carried { intermediate })
+    } else {
+        (address, CarryResult::NoCarry)
+    }
+}
+
+enum CarryResult {
+    Carried { intermediate: u16 },
+    NoCarry,
 }

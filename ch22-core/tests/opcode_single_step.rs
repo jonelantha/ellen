@@ -192,6 +192,11 @@ fn _b0_test() {
 }
 
 #[test]
+fn _b9_test() {
+    opcode_single_step_tests_from_file("b9");
+}
+
+#[test]
 fn _c5_test() {
     opcode_single_step_tests_from_file("c5");
 }
