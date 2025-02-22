@@ -283,6 +283,12 @@ where
 
                 self.ldx(self.registers.a);
             }
+            0xac => {
+                // LDY abs
+                let value = self.abs_address_value();
+
+                self.ldy(value);
+            }
             0xad => {
                 // LDA abs
                 let value = self.abs_address_value();
