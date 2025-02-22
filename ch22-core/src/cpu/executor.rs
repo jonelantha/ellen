@@ -109,6 +109,12 @@ where
                 // JMP abs
                 self.registers.pc = self.abs_address();
             }
+            0x58 => {
+                // CLI
+                self.phantom_pc_read();
+
+                self.registers.p_interrupt_disable = false;
+            }
             0x60 => {
                 // RTS
                 self.phantom_pc_read();
