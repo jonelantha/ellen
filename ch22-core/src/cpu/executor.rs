@@ -93,6 +93,12 @@ where
 
                 self.and(value);
             }
+            0x38 => {
+                // SEC
+                self.phantom_pc_read();
+
+                self.registers.p_carry = true;
+            }
             0x48 => {
                 // PHA
                 self.phantom_pc_read();
