@@ -57,7 +57,7 @@ where
 
                 let pc_high = self.imm_peek();
 
-                self.registers.pc = (pc_high as u16) << 8 | pc_low as u16;
+                self.registers.pc = u16::from_le_bytes([pc_low, pc_high]);
             }
             0x26 => {
                 // ROL zp
@@ -391,22 +391,17 @@ where
     }
 
     fn push_16(&mut self, value: u16) {
-        self.push((value >> 8) as u8);
-        self.push((value & 0xff) as u8);
+        let [high, low] = value.to_le_bytes();
+        self.push(low);
+        self.push(high);
     }
 
     fn pop_16(&mut self) -> u16 {
-        let low = self.pop();
-        let high = self.pop();
-
-        ((high as u16) << 8) | (low as u16)
+        u16::from_le_bytes([self.pop(), self.pop()])
     }
 
     fn abs_address(&mut self) -> u16 {
-        let low = self.imm();
-        let high = self.imm();
-
-        ((high as u16) << 8) | (low as u16)
+        u16::from_le_bytes([self.imm(), self.imm()])
     }
 
     fn abs_address_value(&mut self) -> u8 {
@@ -416,7 +411,7 @@ where
     }
 
     fn abs_offset_address(&mut self, offset: u8) -> u16 {
-        let (address, carry_result) = address_offset(self.abs_address(), offset);
+        let (address, carry_result) = address_offset_unsigned(self.abs_address(), offset);
 
         if let CarryResult::Carried { intermediate } = carry_result {
             self.phantom_read(intermediate);
@@ -428,7 +423,7 @@ where
     }
 
     fn abs_offset_address_value(&mut self, offset: u8) -> u8 {
-        let (address, carry_result) = address_offset(self.abs_address(), offset);
+        let (address, carry_result) = address_offset_unsigned(self.abs_address(), offset);
 
         if let CarryResult::Carried { intermediate } = carry_result {
             self.phantom_read(intermediate);
@@ -449,6 +444,15 @@ where
         self.read(address, CycleOp::CheckInterrupt)
     }
 
+    fn zpg_address_value_16(&mut self) -> u16 {
+        let zpg_address = self.zpg_address();
+
+        u16::from_le_bytes([
+            self.read(zpg_address, CycleOp::None),
+            self.read((zpg_address + 1) & 0xff, CycleOp::None),
+        ])
+    }
+
     fn zpg_x_address(&mut self) -> u16 {
         let base_address = self.imm();
 
@@ -458,17 +462,16 @@ where
     }
 
     fn ind_y_address(&mut self) -> u16 {
-        let zpg_address = self.zpg_address();
+        let (address, carry_result) =
+            address_offset_unsigned(self.zpg_address_value_16(), self.registers.y);
 
-        let low_address = self.read(zpg_address, CycleOp::None) as u16 + self.registers.y as u16;
+        if let CarryResult::Carried { intermediate } = carry_result {
+            self.phantom_read(intermediate);
+        } else {
+            self.phantom_read(address);
+        }
 
-        let high_address = self.read((zpg_address + 1) & 0xff, CycleOp::None) as u16;
-
-        let address_without_carry = (high_address << 8) + (low_address & 0xff);
-
-        self.phantom_read(address_without_carry);
-
-        address_without_carry.wrapping_add(low_address & 0x100)
+        address
     }
 
     fn branch(&mut self, condition: bool) {
@@ -480,22 +483,17 @@ where
             return;
         }
 
-        let rel_address = self.imm();
+        let rel_address = self.imm() as i8;
 
         self.phantom_pc_read();
 
-        let new_pc_low = (self.registers.pc & 0x00ff) + rel_address as u16;
+        let (address, carry_result) = address_offset_signed(self.registers.pc, rel_address);
 
-        self.registers.pc = self.registers.pc & 0xff00 | new_pc_low & 0xff;
-
-        let pc_high_adjustment =
-            (new_pc_low & 0x100).wrapping_sub((rel_address as u16 & 0x80) << 1);
-
-        if pc_high_adjustment != 0 {
-            self.phantom_pc_read();
-
-            self.registers.pc = self.registers.pc.wrapping_add(pc_high_adjustment);
+        if let CarryResult::Carried { intermediate } = carry_result {
+            self.phantom_read(intermediate);
         }
+
+        self.registers.pc = address;
     }
 
     fn cmp(&mut self, value: u8) {
@@ -604,7 +602,7 @@ where
     }
 }
 
-fn address_offset(base_address: u16, offset: u8) -> (u16, CarryResult) {
+fn address_offset(base_address: u16, offset: i16) -> (u16, CarryResult) {
     let address = base_address.wrapping_add(offset as u16);
 
     let carried = address & 0xff00 != base_address & 0xff00;
@@ -615,6 +613,14 @@ fn address_offset(base_address: u16, offset: u8) -> (u16, CarryResult) {
     } else {
         (address, CarryResult::NoCarry)
     }
+}
+
+fn address_offset_unsigned(base_address: u16, offset: u8) -> (u16, CarryResult) {
+    address_offset(base_address, offset as i16)
+}
+
+fn address_offset_signed(base_address: u16, offset: i8) -> (u16, CarryResult) {
+    address_offset(base_address, offset as i16)
 }
 
 enum CarryResult {
