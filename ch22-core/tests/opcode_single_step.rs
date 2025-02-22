@@ -247,6 +247,11 @@ fn _ca_test() {
 }
 
 #[test]
+fn _cd_test() {
+    opcode_single_step_tests_from_file("cd");
+}
+
+#[test]
 fn _d0_test() {
     opcode_single_step_tests_from_file("d0");
 }

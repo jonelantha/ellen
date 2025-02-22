@@ -305,12 +305,6 @@ where
 
                 self.lda(value);
             }
-            0xca => {
-                // DEX
-                self.phantom_pc_read();
-
-                self.registers.x = self.dec(self.registers.x);
-            }
             0xc5 => {
                 // CMP zp
                 let value = self.zpg_address_value();
@@ -322,6 +316,18 @@ where
                 self.phantom_pc_read();
 
                 self.registers.y = self.inc(self.registers.y);
+            }
+            0xca => {
+                // DEX
+                self.phantom_pc_read();
+
+                self.registers.x = self.dec(self.registers.x);
+            }
+            0xcd => {
+                // CMP abs
+                let value = self.abs_address_value();
+
+                self.cmp(value);
             }
             0xd0 => {
                 // BNE rel
