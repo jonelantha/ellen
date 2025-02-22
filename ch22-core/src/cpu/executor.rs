@@ -205,6 +205,12 @@ where
 
                 self.write(address, self.registers.a, CycleOp::CheckInterrupt);
             }
+            0x99 => {
+                // STA abs,Y
+                let address = self.abs_offset_address(self.registers.y);
+
+                self.write(address, self.registers.a, CycleOp::CheckInterrupt);
+            }
             0xa0 => {
                 // LDY imm
                 let value = self.imm();
