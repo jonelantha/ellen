@@ -95,6 +95,10 @@ where
 
                 self.registers.a = self.lsr(self.registers.a);
             }
+            0x4c => {
+                // JMP abs
+                self.registers.pc = self.abs_address();
+            }
             0x60 => {
                 // RTS
                 self.phantom_pc_read();
