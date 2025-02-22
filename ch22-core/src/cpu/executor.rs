@@ -59,6 +59,12 @@ where
 
                 self.registers.pc = u16::from_le_bytes([pc_low, pc_high]);
             }
+            0x24 => {
+                // BIT zp
+                let value = self.zpg_address_value();
+
+                self.bit(value);
+            }
             0x26 => {
                 // ROL zp
                 let address = self.zpg_address();
@@ -631,6 +637,12 @@ where
         self.registers.a ^= operand;
 
         self.set_p_zero_negative(self.registers.a);
+    }
+
+    fn bit(&mut self, operand: u8) {
+        self.registers.p_zero = self.registers.a & operand == 0;
+        self.registers.p_overflow = operand & 0x40 != 0;
+        self.registers.p_negative = operand & 0x80 != 0;
     }
 }
 
