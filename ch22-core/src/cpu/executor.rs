@@ -177,18 +177,6 @@ where
 
                 self.write(address, self.registers.x, CycleOp::CheckInterrupt);
             }
-            0xee => {
-                // INC abs
-                let address = self.abs_address();
-
-                let old_value = self.read(address, CycleOp::Sync);
-
-                self.write(address, old_value, CycleOp::Sync);
-
-                let new_value = self.inc(old_value);
-
-                self.write(address, new_value, CycleOp::Sync);
-            }
             0x90 => {
                 // BCC rel
                 self.branch(!self.registers.p_carry);
@@ -320,6 +308,18 @@ where
                 self.phantom_pc_read();
 
                 self.registers.x = self.inc(self.registers.x);
+            }
+            0xee => {
+                // INC abs
+                let address = self.abs_address();
+
+                let old_value = self.read(address, CycleOp::Sync);
+
+                self.write(address, old_value, CycleOp::Sync);
+
+                let new_value = self.inc(old_value);
+
+                self.write(address, new_value, CycleOp::Sync);
             }
             0xf0 => {
                 // BEQ rel
