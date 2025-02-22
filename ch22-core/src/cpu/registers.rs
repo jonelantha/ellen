@@ -11,8 +11,6 @@ pub struct Registers {
     pub p_zero: bool,
     pub p_interrupt_disable: bool,
     pub p_decimal_mode: bool,
-    pub p_break: bool,
-    pub p_bit_5: bool,
     pub p_overflow: bool,
     pub p_negative: bool,
 }
@@ -30,8 +28,6 @@ impl Registers {
             p_zero: false,
             p_interrupt_disable: true,
             p_decimal_mode: false,
-            p_break: false,
-            p_bit_5: false,
             p_overflow: false,
             p_negative: false,
         }
@@ -50,8 +46,7 @@ impl Registers {
             } else {
                 0
             })
-            | (if self.p_break { P_BREAK_FLAG } else { 0 })
-            | (if self.p_bit_5 { P_BIT_5_FLAG } else { 0 })
+            | P_BIT_5_FLAG
             | (if self.p_overflow { P_OVERFLOW_FLAG } else { 0 })
             | (if self.p_negative { P_NEGATIVE_FLAG } else { 0 })
     }
@@ -61,8 +56,6 @@ impl Registers {
         self.p_zero = p & P_ZERO_FLAG != 0;
         self.p_interrupt_disable = p & P_I_INTERRUPT_DISABLE_FLAG != 0;
         self.p_decimal_mode = p & P_DECIMAL_MODE_FLAG != 0;
-        self.p_break = p & P_BREAK_FLAG != 0;
-        self.p_bit_5 = p & P_BIT_5_FLAG != 0;
         self.p_overflow = p & P_OVERFLOW_FLAG != 0;
         self.p_negative = p & P_NEGATIVE_FLAG != 0;
     }

@@ -29,7 +29,7 @@ where
                 // PHP
                 self.phantom_pc_read();
 
-                self.push(self.registers.get_p() | P_BIT_5_FLAG | P_BREAK_FLAG);
+                self.push(self.registers.get_p() | P_BREAK_FLAG);
             }
             0x09 => {
                 // ORA imm
@@ -70,6 +70,16 @@ where
                 let new_value = self.rol(old_value);
 
                 self.write(address, new_value, CycleOp::Sync);
+            }
+            0x28 => {
+                // PLP
+                self.phantom_pc_read();
+
+                self.phantom_stack_read();
+
+                let value = self.pop();
+
+                self.registers.set_p(value);
             }
             0x29 => {
                 // AND imm
