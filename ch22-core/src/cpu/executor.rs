@@ -529,7 +529,7 @@ where
             self.phantom_read(intermediate);
         }
 
-        self.read(address, CycleOp::Sync)
+        self.read(address, CycleOp::CheckInterrupt)
     }
 
     fn zpg_address(&mut self) -> u16 {
