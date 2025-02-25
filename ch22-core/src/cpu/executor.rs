@@ -51,6 +51,12 @@ where
                 // BPL rel
                 self.branch(!self.registers.p_negative);
             }
+            0x18 => {
+                // CLC
+                self.phantom_pc_read();
+
+                self.registers.p_carry = false;
+            }
             0x1d => {
                 // ORA abs,X
                 let value = self.abs_offset_address_value(self.registers.x);
