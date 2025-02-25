@@ -232,6 +232,11 @@ fn _a2_test() {
 }
 
 #[test]
+fn _a4_test() {
+    opcode_single_step_tests_from_file("a4");
+}
+
+#[test]
 fn _a5_test() {
     opcode_single_step_tests_from_file("a5");
 }
