@@ -401,6 +401,12 @@ where
                 // BNE rel
                 self.branch(!self.registers.p_zero);
             }
+            0xdd => {
+                // CMP abs,X
+                let value = self.abs_offset_address_value(self.registers.x);
+
+                self.cmp(value);
+            }
             0xd8 => {
                 // CLD
                 self.phantom_pc_read();
