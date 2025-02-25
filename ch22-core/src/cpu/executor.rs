@@ -569,15 +569,17 @@ where
     }
 
     fn cmp(&mut self, value: u8) {
-        self.registers.p_carry = self.registers.a >= value;
-        self.registers.p_zero = self.registers.a == value;
-        self.registers.p_negative = self.registers.a.wrapping_sub(value) & 0x80 != 0;
+        self.compare(value, self.registers.a);
     }
 
     fn cpx(&mut self, value: u8) {
-        self.registers.p_carry = self.registers.x >= value;
-        self.registers.p_zero = self.registers.x == value;
-        self.registers.p_negative = self.registers.x.wrapping_sub(value) & 0x80 != 0;
+        self.compare(value, self.registers.x);
+    }
+
+    fn compare(&mut self, value: u8, register: u8) {
+        self.registers.p_carry = register >= value;
+        self.registers.p_zero = register == value;
+        self.set_p_negative(register.wrapping_sub(value));
     }
 
     fn asl(&mut self, old_value: u8) -> u8 {
