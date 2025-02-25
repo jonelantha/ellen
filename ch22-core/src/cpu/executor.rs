@@ -257,6 +257,12 @@ where
 
                 self.write(address, self.registers.a, CycleOp::CheckInterrupt);
             }
+            0x98 => {
+                // TYA
+                self.phantom_pc_read();
+
+                self.lda(self.registers.y);
+            }
             0x9a => {
                 // TXS
                 self.phantom_pc_read();

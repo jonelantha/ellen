@@ -182,6 +182,11 @@ fn _95_test() {
 }
 
 #[test]
+fn _98_test() {
+    opcode_single_step_tests_from_file("98");
+}
+
+#[test]
 fn _99_test() {
     opcode_single_step_tests_from_file("99");
 }
