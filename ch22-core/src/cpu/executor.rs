@@ -109,6 +109,10 @@ where
 
                 self.and(value);
             }
+            0x30 => {
+                // BMI rel
+                self.branch(self.registers.p_negative);
+            }
             0x38 => {
                 // SEC
                 self.phantom_pc_read();
