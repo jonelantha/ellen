@@ -112,6 +112,11 @@ fn _68_test() {
 }
 
 #[test]
+fn _69_test() {
+    opcode_single_step_tests_from_file("69");
+}
+
+#[test]
 fn _6a_test() {
     opcode_single_step_tests_from_file("6a");
 }
@@ -287,6 +292,11 @@ fn _e8_test() {
 }
 
 #[test]
+fn _e9_test() {
+    opcode_single_step_tests_from_file("e9");
+}
+
+#[test]
 fn _ee_test() {
     opcode_single_step_tests_from_file("ee");
 }
@@ -339,7 +349,7 @@ fn opcode_single_step_test(
 
     let mut executor = Executor::new(&mut cycle_manager_mock, &mut registers);
 
-    executor.execute();
+    executor.execute(false);
 
     assert_eq!(
         &cycle_manager_mock.cycles, expected_cycles,
