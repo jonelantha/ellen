@@ -203,6 +203,12 @@ where
 
                 self.registers.p_interrupt_disable = true;
             }
+            0x7d => {
+                // ADC abs,X
+                let value = self.abs_offset_address_value(self.registers.x);
+
+                self.adc(value);
+            }
             0x85 => {
                 // STA zp
                 let address = self.zpg_address();

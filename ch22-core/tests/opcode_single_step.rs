@@ -142,6 +142,11 @@ fn _78_test() {
 }
 
 #[test]
+fn _7d_test() {
+    opcode_single_step_tests_from_file("7d");
+}
+
+#[test]
 fn _85_test() {
     opcode_single_step_tests_from_file("85");
 }
