@@ -351,6 +351,12 @@ where
 
                 self.registers.y = self.inc(self.registers.y);
             }
+            0xc9 => {
+                // CMP abs
+                let value = self.imm();
+
+                self.cmp(value);
+            }
             0xca => {
                 // DEX
                 self.phantom_pc_read();

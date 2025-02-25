@@ -267,6 +267,11 @@ fn _c8_test() {
 }
 
 #[test]
+fn _c9_test() {
+    opcode_single_step_tests_from_file("c9");
+}
+
+#[test]
 fn _ca_test() {
     opcode_single_step_tests_from_file("ca");
 }
