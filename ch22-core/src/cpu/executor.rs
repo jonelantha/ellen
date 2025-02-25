@@ -245,6 +245,12 @@ where
 
                 self.write(address, self.registers.a, CycleOp::CheckInterrupt);
             }
+            0x99 => {
+                // STA abs,Y
+                let address = self.abs_offset_address(self.registers.y);
+
+                self.write(address, self.registers.a, CycleOp::CheckInterrupt);
+            }
             0x9a => {
                 // TXS
                 self.phantom_pc_read();
@@ -254,12 +260,6 @@ where
             0x9d => {
                 // STA abs,X
                 let address = self.abs_offset_address(self.registers.x);
-
-                self.write(address, self.registers.a, CycleOp::CheckInterrupt);
-            }
-            0x99 => {
-                // STA abs,Y
-                let address = self.abs_offset_address(self.registers.y);
 
                 self.write(address, self.registers.a, CycleOp::CheckInterrupt);
             }
