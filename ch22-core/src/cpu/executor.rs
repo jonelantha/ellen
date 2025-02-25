@@ -141,6 +141,18 @@ where
                 // JMP abs
                 self.registers.pc = self.abs_address();
             }
+            0x4e => {
+                // LSR abs
+                let address = self.abs_address();
+
+                let old_value = self.read(address, CycleOp::Sync);
+
+                self.write(address, old_value, CycleOp::Sync);
+
+                let new_value = self.lsr(old_value);
+
+                self.write(address, new_value, CycleOp::Sync);
+            }
             0x50 => {
                 // BVC rel
                 self.branch(!self.registers.p_overflow)
