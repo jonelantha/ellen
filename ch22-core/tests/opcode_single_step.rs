@@ -37,6 +37,11 @@ fn _10_test() {
 }
 
 #[test]
+fn _1d_test() {
+    opcode_single_step_tests_from_file("1d");
+}
+
+#[test]
 fn _20_test() {
     opcode_single_step_tests_from_file("20");
 }

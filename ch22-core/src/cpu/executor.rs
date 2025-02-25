@@ -51,6 +51,12 @@ where
                 // BPL rel
                 self.branch(!self.registers.p_negative);
             }
+            0x1d => {
+                // ORA abs,X
+                let value = self.abs_offset_address_value(self.registers.x);
+
+                self.or(value);
+            }
             0x20 => {
                 // JSR abs
                 let pc_low = self.imm();
