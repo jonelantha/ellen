@@ -21,8 +21,12 @@ where
         }
     }
 
-    pub fn execute(&mut self) -> Option<u8> {
+    pub fn execute(&mut self, ignore_69: bool) -> Option<u8> {
         let opcode = self.imm();
+
+        if opcode == 0x69 && ignore_69 {
+            return Some(opcode);
+        }
 
         match opcode {
             0x08 => {
@@ -170,6 +174,12 @@ where
                 self.phantom_pc_read();
 
                 self.registers.a = self.ror(self.registers.a);
+            }
+            0x69 => {
+                // ADC imm
+                let value = self.imm();
+
+                self.adc(value);
             }
             0x78 => {
                 // SEI
@@ -387,6 +397,12 @@ where
 
                 self.write(address, new_value, CycleOp::Sync);
             }
+            0xe9 => {
+                // SBC imm
+                let value = self.imm();
+
+                self.sbc(value)
+            }
             0xf0 => {
                 // BEQ rel
                 self.branch(self.registers.p_zero);
@@ -413,10 +429,6 @@ where
 
     fn write(&mut self, address: u16, value: u8, op: CycleOp) {
         self.cycle_manager.write(address, value, op);
-    }
-
-    fn set_p_zero_negative(&mut self, in_operand: u8) {
-        self.registers.set_p_zero_negative(in_operand);
     }
 
     fn imm_peek(&mut self) -> u8 {
@@ -583,7 +595,7 @@ where
 
         self.registers.p_carry = (old_value & 0x01) != 0;
 
-        self.registers.p_zero = new_value == 0;
+        self.set_p_zero(new_value);
         self.registers.p_negative = false;
 
         new_value
@@ -662,10 +674,129 @@ where
     }
 
     fn bit(&mut self, operand: u8) {
-        self.registers.p_zero = self.registers.a & operand == 0;
+        self.set_p_zero(self.registers.a & operand);
         self.registers.p_overflow = operand & 0x40 != 0;
-        self.registers.p_negative = operand & 0x80 != 0;
+        self.set_p_negative(operand);
     }
+
+    fn adc(&mut self, operand: u8) {
+        if self.registers.p_decimal_mode {
+            self.adc_bcd(operand);
+        } else {
+            self.adc_bin(operand);
+        }
+    }
+
+    fn adc_bin(&mut self, operand: u8) {
+        let carry = self.registers.p_carry as u8;
+
+        let (result, operand_overflow) = self.registers.a.overflowing_add(operand);
+        let (result, carry_overflow) = result.overflowing_add(carry);
+
+        self.registers.p_carry = operand_overflow || carry_overflow;
+
+        self.set_p_zero_negative(result);
+        self.set_overflow_adc(result, operand);
+
+        self.registers.a = result;
+    }
+
+    fn adc_bcd(&mut self, operand: u8) {
+        let carry_in = self.registers.p_carry as u8;
+
+        // calculate normally for zero flag
+
+        let result = self.registers.a.wrapping_add(operand);
+        let result = result.wrapping_add(carry_in);
+
+        self.set_p_zero(result);
+
+        // bcd calculation
+
+        let low_nibble = to_low_nibble(self.registers.a) + to_low_nibble(operand) + carry_in;
+
+        let (low_nibble, low_carry_out) = wrap_nibble_up(low_nibble);
+
+        let high_nibble =
+            to_high_nibble(self.registers.a) + to_high_nibble(operand) + low_carry_out;
+
+        // N and V are determined before high nibble is adjusted
+        let result_so_far = from_nibbles(high_nibble, low_nibble);
+        self.set_overflow_adc(result_so_far, operand);
+        self.set_p_negative(result_so_far);
+
+        let (high_nibble, high_carry_out) = wrap_nibble_up(high_nibble);
+
+        self.registers.p_carry = high_carry_out == 1;
+
+        self.registers.a = from_nibbles(high_nibble, low_nibble);
+    }
+
+    fn sbc(&mut self, operand: u8) {
+        if self.registers.p_decimal_mode {
+            self.sbc_bcd(operand);
+        } else {
+            self.adc_bin(!operand);
+        }
+    }
+
+    fn sbc_bcd(&mut self, operand: u8) {
+        let borrow_in = 1 - self.registers.p_carry as u8;
+
+        // calculate normally for flags
+
+        let result = self.registers.a.wrapping_sub(operand);
+        let result = result.wrapping_sub(borrow_in);
+
+        self.set_p_zero_negative(result);
+        self.set_overflow_sbc(result, operand);
+
+        // then calculate for BCD
+
+        let low_nibble = to_low_nibble(self.registers.a)
+            .wrapping_sub(to_low_nibble(operand))
+            .wrapping_sub(borrow_in);
+
+        let (low_nibble, low_borrow_out) = wrap_nibble_down(low_nibble);
+
+        let high_nibble = to_high_nibble(self.registers.a)
+            .wrapping_sub(to_high_nibble(operand))
+            .wrapping_sub(low_borrow_out);
+
+        let (high_nibble, high_borrow_out) = wrap_nibble_down(high_nibble);
+
+        self.registers.p_carry = high_borrow_out == 0;
+
+        self.registers.a = from_nibbles(high_nibble, low_nibble);
+    }
+
+    // flag helpers
+
+    fn set_overflow_adc(&mut self, result: u8, operand: u8) {
+        self.registers.p_overflow =
+            is_negative((self.registers.a ^ result) & (self.registers.a ^ !operand));
+    }
+
+    fn set_overflow_sbc(&mut self, result: u8, operand: u8) {
+        self.set_overflow_adc(result, !operand);
+    }
+
+    fn set_p_negative(&mut self, value: u8) {
+        self.registers.p_negative = is_negative(value);
+    }
+
+    fn set_p_zero(&mut self, value: u8) {
+        self.registers.p_zero = value == 0;
+    }
+
+    fn set_p_zero_negative(&mut self, value: u8) {
+        self.set_p_zero(value);
+        self.set_p_negative(value);
+    }
+}
+
+fn is_negative(value: u8) -> bool {
+    value & 0x80 != 0
 }
 
 fn address_offset(base_address: u16, offset: i16) -> (u16, CarryResult) {
@@ -692,4 +823,34 @@ fn address_offset_signed(base_address: u16, offset: i8) -> (u16, CarryResult) {
 enum CarryResult {
     Carried { intermediate: u16 },
     NoCarry,
+}
+
+// nibble helpers
+
+fn wrap_nibble_up(nibble: u8) -> (u8, u8) {
+    if nibble > 0x09 {
+        (nibble + 0x06, 1)
+    } else {
+        (nibble, 0)
+    }
+}
+
+fn wrap_nibble_down(nibble: u8) -> (u8, u8) {
+    if nibble & 0x10 != 0 {
+        (nibble - 0x06, 1)
+    } else {
+        (nibble, 0)
+    }
+}
+
+fn from_nibbles(high: u8, low: u8) -> u8 {
+    (high << 4) | (low & 0x0f)
+}
+
+fn to_high_nibble(value: u8) -> u8 {
+    value >> 4
+}
+
+fn to_low_nibble(value: u8) -> u8 {
+    value & 0x0f
 }
