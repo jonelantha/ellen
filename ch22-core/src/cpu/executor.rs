@@ -373,6 +373,12 @@ where
                 // BCS rel
                 self.branch(self.registers.p_carry);
             }
+            0xb1 => {
+                // LDA (zp),Y
+                let value = self.ind_y_address_value();
+
+                self.lda(value);
+            }
             0xb9 => {
                 // LDA abs,Y
                 let value = self.abs_offset_address_value(self.registers.y);
@@ -614,6 +620,17 @@ where
         }
 
         address
+    }
+
+    fn ind_y_address_value(&mut self) -> u8 {
+        let (address, carry_result) =
+            address_offset_unsigned(self.zpg_address_value_16(), self.registers.y);
+
+        if let CarryResult::Carried { intermediate } = carry_result {
+            self.phantom_read(intermediate);
+        }
+
+        self.read(address, CycleOp::CheckInterrupt)
     }
 
     fn branch(&mut self, condition: bool) {
