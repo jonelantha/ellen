@@ -379,6 +379,12 @@ where
 
                 self.lda(value);
             }
+            0xc0 => {
+                // CPY imm
+                let value = self.imm();
+
+                self.cpy(value);
+            }
             0xc5 => {
                 // CMP zp
                 let value = self.zpg_address_value();
@@ -638,6 +644,10 @@ where
 
     fn cpx(&mut self, value: u8) {
         self.compare(value, self.registers.x);
+    }
+
+    fn cpy(&mut self, value: u8) {
+        self.compare(value, self.registers.y);
     }
 
     fn compare(&mut self, value: u8, register: u8) {
