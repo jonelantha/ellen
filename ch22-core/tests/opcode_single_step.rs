@@ -17,6 +17,11 @@ struct SingleStepTestParams {
 }
 
 #[test]
+fn _05_test() {
+    opcode_single_step_tests_from_file("05");
+}
+
+#[test]
 fn _08_test() {
     opcode_single_step_tests_from_file("08");
 }
