@@ -461,6 +461,12 @@ where
 
                 self.registers.x = self.inc(self.registers.x);
             }
+            0xe9 => {
+                // SBC imm
+                let value = self.imm();
+
+                self.sbc(value)
+            }
             0xee => {
                 // INC abs
                 let address = self.abs_address();
@@ -472,12 +478,6 @@ where
                 let new_value = self.inc(old_value);
 
                 self.write(address, new_value, CycleOp::Sync);
-            }
-            0xe9 => {
-                // SBC imm
-                let value = self.imm();
-
-                self.sbc(value)
             }
             0xf0 => {
                 // BEQ rel
