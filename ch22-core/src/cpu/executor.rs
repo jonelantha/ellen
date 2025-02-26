@@ -616,6 +616,12 @@ where
 
                 self.registers.p_decimal_mode = false;
             }
+            0xd9 => {
+                // CMP abs,Y
+                let value = self.abs_offset_address_value(self.registers.y);
+
+                self.cmp(value);
+            }
             0xdd => {
                 // CMP abs,X
                 let value = self.abs_offset_address_value(self.registers.x);
