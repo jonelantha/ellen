@@ -542,6 +542,11 @@ fn _f0_test() {
 }
 
 #[test]
+fn _f9_test() {
+    opcode_single_step_tests_from_file("f9");
+}
+
+#[test]
 fn _fd_test() {
     opcode_single_step_tests_from_file("fd");
 }
