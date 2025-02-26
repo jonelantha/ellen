@@ -425,17 +425,17 @@ where
                 // BNE rel
                 self.branch(!self.registers.p_zero);
             }
-            0xdd => {
-                // CMP abs,X
-                let value = self.abs_offset_address_value(self.registers.x);
-
-                self.cmp(value);
-            }
             0xd8 => {
                 // CLD
                 self.phantom_pc_read();
 
                 self.registers.p_decimal_mode = false;
+            }
+            0xdd => {
+                // CMP abs,X
+                let value = self.abs_offset_address_value(self.registers.x);
+
+                self.cmp(value);
             }
             0xe0 => {
                 // CPX imm
