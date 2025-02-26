@@ -211,6 +211,12 @@ where
 
                 self.registers.a = self.ror(self.registers.a);
             }
+            0x6d => {
+                // ADC abs
+                let value = self.abs_address_value();
+
+                self.adc(value);
+            }
             0x69 => {
                 // ADC imm
                 let value = self.imm();
