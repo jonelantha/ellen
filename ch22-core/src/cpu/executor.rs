@@ -295,6 +295,12 @@ where
 
                 self.lda(value);
             }
+            0x69 => {
+                // ADC imm
+                let value = self.imm();
+
+                self.adc(value);
+            }
             0x6a => {
                 // ROR A
                 self.phantom_pc_read();
@@ -313,12 +319,6 @@ where
             0x6d => {
                 // ADC abs
                 let value = self.abs_address_value();
-
-                self.adc(value);
-            }
-            0x69 => {
-                // ADC imm
-                let value = self.imm();
 
                 self.adc(value);
             }
