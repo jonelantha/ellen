@@ -391,6 +391,12 @@ where
 
                 self.lda(value);
             }
+            0xbd => {
+                // LDA abs,X
+                let value = self.abs_offset_address_value(self.registers.x);
+
+                self.lda(value);
+            }
             0xc0 => {
                 // CPY imm
                 let value = self.imm();
