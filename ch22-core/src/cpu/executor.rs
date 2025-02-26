@@ -686,6 +686,12 @@ where
 
                 self.cpx(value);
             }
+            0xe5 => {
+                // SBC zp
+                let value = self.zpg_address_value();
+
+                self.sbc(value);
+            }
             0xe6 => {
                 // INC zp
                 let address = self.zpg_address();
