@@ -261,6 +261,12 @@ where
 
                 self.registers.p_interrupt_disable = false;
             }
+            0x59 => {
+                // EOR abs,Y
+                let value = self.abs_offset_address_value(self.registers.y);
+
+                self.xor(value);
+            }
             0x60 => {
                 // RTS
                 self.phantom_pc_read();
