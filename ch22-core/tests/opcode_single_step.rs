@@ -417,6 +417,11 @@ fn _dd_test() {
 }
 
 #[test]
+fn _de_test() {
+    opcode_single_step_tests_from_file("de");
+}
+
+#[test]
 fn _e0_test() {
     opcode_single_step_tests_from_file("e0");
 }
