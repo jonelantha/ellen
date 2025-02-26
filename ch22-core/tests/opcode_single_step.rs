@@ -467,6 +467,11 @@ fn _ca_test() {
 }
 
 #[test]
+fn _cc_test() {
+    opcode_single_step_tests_from_file("cc");
+}
+
+#[test]
 fn _ce_test() {
     opcode_single_step_tests_from_file("ce");
 }
