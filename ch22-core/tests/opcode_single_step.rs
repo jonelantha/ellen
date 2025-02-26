@@ -127,6 +127,11 @@ fn _4c_test() {
 }
 
 #[test]
+fn _4d_test() {
+    opcode_single_step_tests_from_file("4d");
+}
+
+#[test]
 fn _4e_test() {
     opcode_single_step_tests_from_file("4e");
 }

@@ -173,6 +173,12 @@ where
                 // JMP abs
                 self.registers.pc = self.abs_address();
             }
+            0x4d => {
+                // EOR abs
+                let value = self.abs_address_value();
+
+                self.xor(value);
+            }
             0x4e => {
                 // LSR abs
                 let address = self.abs_address();
