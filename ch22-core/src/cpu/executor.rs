@@ -405,6 +405,12 @@ where
 
                 self.lda(value);
             }
+            0xbe => {
+                // LDX abs,Y
+                let value = self.abs_offset_address_value(self.registers.y);
+
+                self.ldx(value);
+            }
             0xc0 => {
                 // CPY imm
                 let value = self.imm();
