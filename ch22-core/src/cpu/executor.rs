@@ -21,12 +21,8 @@ where
         }
     }
 
-    pub fn execute(&mut self, ignore_69: bool) -> Option<u8> {
+    pub fn execute(&mut self) -> Option<u8> {
         let opcode = self.imm();
-
-        if opcode == 0x69 && ignore_69 {
-            return Some(opcode);
-        }
 
         match opcode {
             0x08 => {

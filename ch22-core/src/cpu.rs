@@ -42,6 +42,6 @@ impl Ch22Cpu {
 
         let mut executor = Executor::new(&mut cycle_manager, registers);
 
-        executor.execute(true)
+        executor.execute()
     }
 }
