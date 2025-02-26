@@ -112,6 +112,11 @@ fn _3e_test() {
 }
 
 #[test]
+fn _45_test() {
+    opcode_single_step_tests_from_file("45");
+}
+
+#[test]
 fn _46_test() {
     opcode_single_step_tests_from_file("46");
 }

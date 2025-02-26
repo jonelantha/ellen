@@ -163,6 +163,12 @@ where
 
                 self.write(address, new_value, CycleOp::Sync);
             }
+            0x45 => {
+                // EOR zp
+                let value = self.zpg_address_value();
+
+                self.xor(value);
+            }
             0x46 => {
                 // LSR zp
                 let address = self.zpg_address();
