@@ -212,6 +212,11 @@ fn _6d_test() {
 }
 
 #[test]
+fn _70_test() {
+    opcode_single_step_tests_from_file("70");
+}
+
+#[test]
 fn _78_test() {
     opcode_single_step_tests_from_file("78");
 }
