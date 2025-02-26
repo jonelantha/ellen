@@ -25,6 +25,12 @@ where
         let opcode = self.imm();
 
         match opcode {
+            0x05 => {
+                // ORA zp
+                let value = self.zpg_address_value();
+
+                self.or(value);
+            }
             0x08 => {
                 // PHP
                 self.phantom_pc_read();
