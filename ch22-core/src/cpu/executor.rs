@@ -133,6 +133,18 @@ where
 
                 self.registers.p_carry = true;
             }
+            0x46 => {
+                // LSR zp
+                let address = self.zpg_address();
+
+                let old_value = self.read(address, CycleOp::Sync);
+
+                self.write(address, old_value, CycleOp::Sync);
+
+                let new_value = self.lsr(old_value);
+
+                self.write(address, new_value, CycleOp::Sync);
+            }
             0x48 => {
                 // PHA
                 self.phantom_pc_read();
