@@ -456,6 +456,12 @@ where
 
                 self.lda(value);
             }
+            0xba => {
+                // TSX
+                self.phantom_pc_read();
+
+                self.ldx(self.registers.s);
+            }
             0xbc => {
                 // LDY abs,X
                 let value = self.abs_offset_address_value(self.registers.x);
