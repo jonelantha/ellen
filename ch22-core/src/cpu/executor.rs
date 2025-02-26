@@ -292,6 +292,12 @@ where
 
                 self.write(address, new_value, CycleOp::Sync);
             }
+            0x84 => {
+                // STY zp
+                let address = self.zpg_address();
+
+                self.write(address, self.registers.y, CycleOp::CheckInterrupt);
+            }
             0x85 => {
                 // STA zp
                 let address = self.zpg_address();
