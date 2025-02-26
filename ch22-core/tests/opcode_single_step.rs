@@ -502,6 +502,11 @@ fn _ec_test() {
 }
 
 #[test]
+fn _ed_test() {
+    opcode_single_step_tests_from_file("ed");
+}
+
+#[test]
 fn _ee_test() {
     opcode_single_step_tests_from_file("ee");
 }
