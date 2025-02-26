@@ -434,7 +434,7 @@ fn opcode_single_step_test(
 
     let mut executor = Executor::new(&mut cycle_manager_mock, &mut registers);
 
-    executor.execute(false);
+    executor.execute();
 
     assert_eq!(
         &cycle_manager_mock.cycles, expected_cycles,
