@@ -556,6 +556,18 @@ where
 
                 self.cmp(value);
             }
+            0xde => {
+                // DEC abs,X
+                let address = self.abs_offset_address(self.registers.x);
+
+                let old_value = self.read(address, CycleOp::Sync);
+
+                self.write(address, old_value, CycleOp::Sync);
+
+                let new_value = self.dec(old_value);
+
+                self.write(address, new_value, CycleOp::Sync);
+            }
             0xe0 => {
                 // CPX imm
                 let value = self.imm();
