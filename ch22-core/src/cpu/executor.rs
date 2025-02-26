@@ -247,6 +247,18 @@ where
 
                 self.adc(value);
             }
+            0x7e => {
+                // ROR abs,X
+                let address = self.abs_offset_address(self.registers.x);
+
+                let old_value = self.read(address, CycleOp::Sync);
+
+                self.write(address, old_value, CycleOp::Sync);
+
+                let new_value = self.ror(old_value);
+
+                self.write(address, new_value, CycleOp::Sync);
+            }
             0x85 => {
                 // STA zp
                 let address = self.zpg_address();
