@@ -614,6 +614,18 @@ where
 
                 self.sbc(value);
             }
+            0xfe => {
+                // INC abs,X
+                let address = self.abs_offset_address(self.registers.x);
+
+                let old_value = self.read(address, CycleOp::Sync);
+
+                self.write(address, old_value, CycleOp::Sync);
+
+                let new_value = self.inc(old_value);
+
+                self.write(address, new_value, CycleOp::Sync);
+            }
             _ => return Some(opcode),
         }
 

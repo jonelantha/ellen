@@ -456,6 +456,11 @@ fn _fd_test() {
     opcode_single_step_tests_from_file("fd");
 }
 
+#[test]
+fn _fe_test() {
+    opcode_single_step_tests_from_file("fe");
+}
+
 fn opcode_single_step_tests_from_file(opcode: &str) {
     let data = fs::read_to_string(format!(
         "./tests/single_step_tests_65x02/6502/v1/{opcode}.json"
