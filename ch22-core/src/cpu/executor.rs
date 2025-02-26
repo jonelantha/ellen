@@ -255,6 +255,12 @@ where
 
                 self.registers.pc = self.registers.pc.wrapping_add(1);
             }
+            0x65 => {
+                // ADC zp
+                let value = self.zpg_address_value();
+
+                self.adc(value);
+            }
             0x66 => {
                 // ROR zp
                 let address = self.zpg_address();
