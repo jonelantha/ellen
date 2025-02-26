@@ -634,6 +634,12 @@ where
 
                 self.registers.x = self.dec(self.registers.x);
             }
+            0xcc => {
+                // CPY abs
+                let value = self.abs_address_value();
+
+                self.cpy(value);
+            }
             0xcd => {
                 // CMP abs
                 let value = self.abs_address_value();
