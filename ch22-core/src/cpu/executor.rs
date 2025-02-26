@@ -109,6 +109,12 @@ where
 
                 self.and(value);
             }
+            0x2c => {
+                // BIT abs
+                let value = self.abs_address_value();
+
+                self.bit(value);
+            }
             0x30 => {
                 // BMI rel
                 self.branch(self.registers.p_negative);
