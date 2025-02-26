@@ -492,6 +492,12 @@ where
 
                 self.lda(value);
             }
+            0xb8 => {
+                // CLV
+                self.phantom_pc_read();
+
+                self.registers.p_overflow = false;
+            }
             0xb9 => {
                 // LDA abs,Y
                 let value = self.abs_offset_address_value(self.registers.y);
