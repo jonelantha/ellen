@@ -327,6 +327,11 @@ fn _d0_test() {
 }
 
 #[test]
+fn _d1_test() {
+    opcode_single_step_tests_from_file("d1");
+}
+
+#[test]
 fn _d8_test() {
     opcode_single_step_tests_from_file("d8");
 }
