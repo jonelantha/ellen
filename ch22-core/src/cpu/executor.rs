@@ -151,6 +151,12 @@ where
                 // BMI rel
                 self.branch(self.registers.p_negative);
             }
+            0x31 => {
+                // AND (zp),Y
+                let value = self.ind_y_address_value();
+
+                self.and(value);
+            }
             0x38 => {
                 // SEC
                 self.phantom_pc_read();
