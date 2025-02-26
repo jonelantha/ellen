@@ -129,6 +129,12 @@ where
 
                 self.and(value);
             }
+            0x2a => {
+                // ROL A
+                self.phantom_pc_read();
+
+                self.registers.a = self.rol(self.registers.a);
+            }
             0x2c => {
                 // BIT abs
                 let value = self.abs_address_value();
