@@ -551,6 +551,12 @@ where
                 // BEQ rel
                 self.branch(self.registers.p_zero);
             }
+            0xfd => {
+                // SBC abs,X
+                let value = self.abs_offset_address_value(self.registers.x);
+
+                self.sbc(value);
+            }
             _ => return Some(opcode),
         }
 
