@@ -312,6 +312,11 @@ fn _bd_test() {
 }
 
 #[test]
+fn _be_test() {
+    opcode_single_step_tests_from_file("be");
+}
+
+#[test]
 fn _c0_test() {
     opcode_single_step_tests_from_file("c0");
 }
