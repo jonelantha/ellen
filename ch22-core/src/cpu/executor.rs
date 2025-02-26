@@ -235,6 +235,12 @@ where
 
                 self.registers.p_interrupt_disable = true;
             }
+            0x79 => {
+                // ADC abs,Y
+                let value = self.abs_offset_address_value(self.registers.y);
+
+                self.adc(value);
+            }
             0x7d => {
                 // ADC abs,X
                 let value = self.abs_offset_address_value(self.registers.x);
