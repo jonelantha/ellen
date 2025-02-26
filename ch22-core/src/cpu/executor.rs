@@ -391,6 +391,12 @@ where
 
                 self.lda(value);
             }
+            0xbc => {
+                // LDY abs,X
+                let value = self.abs_offset_address_value(self.registers.x);
+
+                self.ldy(value);
+            }
             0xbd => {
                 // LDA abs,X
                 let value = self.abs_offset_address_value(self.registers.x);
