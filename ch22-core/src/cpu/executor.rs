@@ -340,6 +340,12 @@ where
 
                 self.write(address, new_value, CycleOp::Sync);
             }
+            0x81 => {
+                // STA (zp,X)
+                let address = self.idx_x_address();
+
+                self.write(address, self.registers.a, CycleOp::CheckInterrupt);
+            }
             0x84 => {
                 // STY zp
                 let address = self.zpg_address();
@@ -834,6 +840,15 @@ where
         self.phantom_read(base_address as u16);
 
         base_address.wrapping_add(self.registers.x) as u16
+    }
+
+    fn idx_x_address(&mut self) -> u16 {
+        let address = self.zpg_x_address();
+
+        u16::from_le_bytes([
+            self.read(address, CycleOp::None),
+            self.read((address + 1) & 0xff, CycleOp::None),
+        ])
     }
 
     fn ind_y_address(&mut self) -> u16 {
