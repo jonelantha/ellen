@@ -162,6 +162,11 @@ fn _6a_test() {
 }
 
 #[test]
+fn _6c_test() {
+    opcode_single_step_tests_from_file("6c");
+}
+
+#[test]
 fn _6d_test() {
     opcode_single_step_tests_from_file("6d");
 }

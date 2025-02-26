@@ -229,6 +229,15 @@ where
 
                 self.registers.a = self.ror(self.registers.a);
             }
+            0x6c => {
+                // JMP (abs)
+                let address = self.abs_address();
+
+                self.registers.pc = u16::from_le_bytes([
+                    self.read(address, CycleOp::None),
+                    self.read(next_address_same_page(address), CycleOp::None),
+                ]);
+            }
             0x6d => {
                 // ADC abs
                 let value = self.abs_address_value();
@@ -1000,6 +1009,12 @@ where
 
 fn is_negative(value: u8) -> bool {
     value & 0x80 != 0
+}
+
+fn next_address_same_page(address: u16) -> u16 {
+    let [address_low, address_high] = address.to_le_bytes();
+
+    u16::from_le_bytes([address_low.wrapping_add(1), address_high])
 }
 
 fn address_offset(base_address: u16, offset: i16) -> (u16, CarryResult) {
