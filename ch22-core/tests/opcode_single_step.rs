@@ -297,6 +297,11 @@ fn _b9_test() {
 }
 
 #[test]
+fn _bc_test() {
+    opcode_single_step_tests_from_file("bc");
+}
+
+#[test]
 fn _bd_test() {
     opcode_single_step_tests_from_file("bd");
 }
