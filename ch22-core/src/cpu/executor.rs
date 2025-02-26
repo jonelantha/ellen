@@ -175,6 +175,18 @@ where
 
                 self.write(address, new_value, CycleOp::Sync);
             }
+            0x40 => {
+                // RTI
+                self.phantom_pc_read();
+
+                self.phantom_stack_read();
+
+                let p = self.pop();
+
+                self.registers.set_p(p);
+
+                self.registers.pc = self.pop_16();
+            }
             0x45 => {
                 // EOR zp
                 let value = self.zpg_address_value();
