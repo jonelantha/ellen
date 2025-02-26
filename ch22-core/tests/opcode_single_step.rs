@@ -87,6 +87,11 @@ fn _29_test() {
 }
 
 #[test]
+fn _2a_test() {
+    opcode_single_step_tests_from_file("2a");
+}
+
+#[test]
 fn _2c_test() {
     opcode_single_step_tests_from_file("2c");
 }
