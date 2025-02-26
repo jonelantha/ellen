@@ -77,6 +77,12 @@ where
 
                 self.bit(value);
             }
+            0x25 => {
+                // AND zp
+                let value = self.zpg_address_value();
+
+                self.and(value);
+            }
             0x26 => {
                 // ROL zp
                 let address = self.zpg_address();
