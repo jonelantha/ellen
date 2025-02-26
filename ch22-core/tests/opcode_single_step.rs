@@ -437,6 +437,11 @@ fn _c0_test() {
 }
 
 #[test]
+fn _c4_test() {
+    opcode_single_step_tests_from_file("c4");
+}
+
+#[test]
 fn _c5_test() {
     opcode_single_step_tests_from_file("c5");
 }
