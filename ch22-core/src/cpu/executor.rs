@@ -744,6 +744,12 @@ where
                 // BEQ rel
                 self.branch(self.registers.p_zero);
             }
+            0xf9 => {
+                // SBC abs,Y
+                let value = self.abs_offset_address_value(self.registers.y);
+
+                self.sbc(value);
+            }
             0xfd => {
                 // SBC abs,X
                 let value = self.abs_offset_address_value(self.registers.x);
