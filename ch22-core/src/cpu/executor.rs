@@ -453,6 +453,18 @@ where
 
                 self.cmp(value);
             }
+            0xce => {
+                // DEC abs
+                let address = self.abs_address();
+
+                let old_value = self.read(address, CycleOp::Sync);
+
+                self.write(address, old_value, CycleOp::Sync);
+
+                let new_value = self.dec(old_value);
+
+                self.write(address, new_value, CycleOp::Sync);
+            }
             0xd0 => {
                 // BNE rel
                 self.branch(!self.registers.p_zero);
