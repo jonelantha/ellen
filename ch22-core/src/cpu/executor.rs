@@ -65,6 +65,18 @@ where
 
                 self.or(value);
             }
+            0x1e => {
+                // ASL abs,X
+                let address = self.abs_offset_address(self.registers.x);
+
+                let old_value = self.read(address, CycleOp::Sync);
+
+                self.write(address, old_value, CycleOp::Sync);
+
+                let new_value = self.asl(old_value);
+
+                self.write(address, new_value, CycleOp::Sync);
+            }
             0x20 => {
                 // JSR abs
                 let pc_low = self.imm();
