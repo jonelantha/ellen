@@ -310,6 +310,10 @@ where
 
                 self.adc(value);
             }
+            0x70 => {
+                // BVS rel
+                self.branch(self.registers.p_overflow);
+            }
             0x78 => {
                 // SEI
                 self.phantom_pc_read();
