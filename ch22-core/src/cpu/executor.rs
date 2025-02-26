@@ -43,6 +43,12 @@ where
 
                 self.registers.a = self.asl(self.registers.a);
             }
+            0x0d => {
+                // ORA abs
+                let value = self.abs_address_value();
+
+                self.or(value);
+            }
             0x10 => {
                 // BPL rel
                 self.branch(!self.registers.p_negative);
