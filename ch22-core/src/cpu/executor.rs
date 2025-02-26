@@ -139,6 +139,18 @@ where
 
                 self.registers.p_carry = true;
             }
+            0x3e => {
+                // ROL abs,X
+                let address = self.abs_offset_address(self.registers.x);
+
+                let old_value = self.read(address, CycleOp::Sync);
+
+                self.write(address, old_value, CycleOp::Sync);
+
+                let new_value = self.rol(old_value);
+
+                self.write(address, new_value, CycleOp::Sync);
+            }
             0x46 => {
                 // LSR zp
                 let address = self.zpg_address();
