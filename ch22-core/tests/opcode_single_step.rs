@@ -367,6 +367,11 @@ fn _e9_test() {
 }
 
 #[test]
+fn _ec_test() {
+    opcode_single_step_tests_from_file("ec");
+}
+
+#[test]
 fn _ee_test() {
     opcode_single_step_tests_from_file("ee");
 }

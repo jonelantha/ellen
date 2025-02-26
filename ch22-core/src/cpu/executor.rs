@@ -479,6 +479,12 @@ where
 
                 self.sbc(value)
             }
+            0xec => {
+                // CPX abs
+                let value = self.abs_address_value();
+
+                self.cpx(value);
+            }
             0xee => {
                 // INC abs
                 let address = self.abs_address();
