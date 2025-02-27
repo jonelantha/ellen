@@ -110,6 +110,12 @@ where
 
                 self.write(address, new_value, CycleOp::Sync);
             }
+            0x19 => {
+                // ORA abs,Y
+                let value = self.abs_offset_address_value(self.registers.y);
+
+                self.or(value);
+            }
             0x20 => {
                 // JSR abs
                 let pc_low = self.imm();
