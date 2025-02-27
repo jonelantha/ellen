@@ -419,6 +419,12 @@ where
                 // BVS rel
                 self.branch(self.registers.p_overflow);
             }
+            0x71 => {
+                // ADC (zp),Y
+                let value = self.ind_y_address_value();
+
+                self.adc(value);
+            }
             0x78 => {
                 // SEI
                 self.phantom_pc_read();
