@@ -891,6 +891,18 @@ where
                 // BEQ rel
                 self.branch(self.registers.p_zero);
             }
+            0xf6 => {
+                // INC zp,X
+                let address = self.zpg_x_address();
+
+                let old_value = self.read(address, CycleOp::Sync);
+
+                self.write(address, old_value, CycleOp::Sync);
+
+                let new_value = self.inc(old_value);
+
+                self.write(address, new_value, CycleOp::Sync);
+            }
             0xf9 => {
                 // SBC abs,Y
                 let value = self.abs_offset_address_value(self.registers.y);
