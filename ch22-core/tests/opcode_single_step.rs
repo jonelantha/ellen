@@ -447,6 +447,11 @@ fn _b1_test() {
 }
 
 #[test]
+fn _b4_test() {
+    opcode_single_step_tests_from_file("b4");
+}
+
+#[test]
 fn _b5_test() {
     opcode_single_step_tests_from_file("b5");
 }
