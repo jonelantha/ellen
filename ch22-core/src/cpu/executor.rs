@@ -437,6 +437,18 @@ where
 
                 self.adc(value);
             }
+            0x76 => {
+                // ROR zp,X
+                let address = self.zpg_x_address();
+
+                let old_value = self.read(address, CycleOp::Sync);
+
+                self.write(address, old_value, CycleOp::Sync);
+
+                let new_value = self.ror(old_value);
+
+                self.write(address, new_value, CycleOp::Sync);
+            }
             0x78 => {
                 // SEI
                 self.phantom_pc_read();
