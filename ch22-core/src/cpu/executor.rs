@@ -555,6 +555,12 @@ where
 
                 self.ldy(value);
             }
+            0xa1 => {
+                // LDA (zp,X)
+                let value = self.idx_x_address_value();
+
+                self.lda(value);
+            }
             0xa2 => {
                 // LDX imm
                 let value = self.imm();
@@ -1012,6 +1018,12 @@ where
             self.read(address, CycleOp::None),
             self.read((address + 1) & 0xff, CycleOp::None),
         ])
+    }
+
+    fn idx_x_address_value(&mut self) -> u8 {
+        let address = self.idx_x_address();
+
+        self.read(address, CycleOp::CheckInterrupt)
     }
 
     fn ind_y_address(&mut self) -> u16 {

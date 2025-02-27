@@ -382,6 +382,11 @@ fn _a0_test() {
 }
 
 #[test]
+fn _a1_test() {
+    opcode_single_step_tests_from_file("a1");
+}
+
+#[test]
 fn _a2_test() {
     opcode_single_step_tests_from_file("a2");
 }
