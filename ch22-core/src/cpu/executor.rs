@@ -300,6 +300,12 @@ where
 
                 self.xor(value);
             }
+            0x5d => {
+                // EOR abs,X
+                let value = self.abs_offset_address_value(self.registers.x);
+
+                self.xor(value);
+            }
             0x60 => {
                 // RTS
                 self.phantom_pc_read();
