@@ -82,6 +82,18 @@ where
 
                 self.or(value);
             }
+            0x0e => {
+                // ASL abs
+                let address = self.abs_address();
+
+                let old_value = self.read(address, CycleOp::Sync);
+
+                self.write(address, old_value, CycleOp::Sync);
+
+                let new_value = self.asl(old_value);
+
+                self.write(address, new_value, CycleOp::Sync);
+            }
             0x10 => {
                 // BPL rel
                 self.branch(!self.registers.p_negative);
