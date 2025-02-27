@@ -198,6 +198,18 @@ where
 
                 self.and(value);
             }
+            0x2e => {
+                // ROL abs
+                let address = self.abs_address();
+
+                let old_value = self.read(address, CycleOp::Sync);
+
+                self.write(address, old_value, CycleOp::Sync);
+
+                let new_value = self.rol(old_value);
+
+                self.write(address, new_value, CycleOp::Sync);
+            }
             0x30 => {
                 // BMI rel
                 self.branch(self.registers.p_negative);
