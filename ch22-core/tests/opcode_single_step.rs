@@ -127,6 +127,11 @@ fn _2d_test() {
 }
 
 #[test]
+fn _2e_test() {
+    opcode_single_step_tests_from_file("2e");
+}
+
+#[test]
 fn _30_test() {
     opcode_single_step_tests_from_file("30");
 }
