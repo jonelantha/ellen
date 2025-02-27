@@ -226,6 +226,12 @@ where
 
                 self.registers.p_carry = true;
             }
+            0x3d => {
+                // AND abs,X
+                let value = self.abs_offset_address_value(self.registers.x);
+
+                self.and(value);
+            }
             0x3e => {
                 // ROL abs,X
                 let address = self.abs_offset_address(self.registers.x);

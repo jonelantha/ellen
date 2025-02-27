@@ -147,6 +147,11 @@ fn _38_test() {
 }
 
 #[test]
+fn _3d_test() {
+    opcode_single_step_tests_from_file("3d");
+}
+
+#[test]
 fn _3e_test() {
     opcode_single_step_tests_from_file("3e");
 }
