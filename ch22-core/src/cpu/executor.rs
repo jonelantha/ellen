@@ -25,6 +25,21 @@ where
         let opcode = self.imm();
 
         match opcode {
+            0x00 => {
+                // BRK
+                self.phantom_pc_read();
+
+                self.push_16(self.registers.pc.wrapping_add(1));
+
+                self.push(self.registers.get_p() | P_BREAK_FLAG);
+
+                self.registers.p_interrupt_disable = true;
+
+                self.registers.pc = u16::from_le_bytes([
+                    self.read(0xfffe, CycleOp::None),
+                    self.read(0xffff, CycleOp::None),
+                ]);
+            }
             0x05 => {
                 // ORA zp
                 let value = self.zpg_address_value();
