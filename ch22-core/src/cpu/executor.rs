@@ -543,6 +543,12 @@ where
 
                 self.write(address, self.registers.a, CycleOp::CheckInterrupt);
             }
+            0x94 => {
+                // STY zp,X
+                let address = self.zpg_x_address();
+
+                self.write(address, self.registers.y, CycleOp::CheckInterrupt);
+            }
             0x95 => {
                 // STA zp,X
                 let address = self.zpg_x_address();
