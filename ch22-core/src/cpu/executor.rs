@@ -631,6 +631,12 @@ where
 
                 self.lda(value);
             }
+            0xb4 => {
+                // LDY zp,X
+                let value = self.zpg_x_address_value();
+
+                self.ldy(value);
+            }
             0xb5 => {
                 // LDA zp,X
                 let value = self.zpg_x_address_value();
