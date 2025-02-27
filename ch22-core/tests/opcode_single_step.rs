@@ -52,6 +52,11 @@ fn _0d_test() {
 }
 
 #[test]
+fn _0e_test() {
+    opcode_single_step_tests_from_file("0e");
+}
+
+#[test]
 fn _10_test() {
     opcode_single_step_tests_from_file("10");
 }
