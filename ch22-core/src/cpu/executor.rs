@@ -619,6 +619,12 @@ where
 
                 self.lda(value);
             }
+            0xb5 => {
+                // LDA zp,X
+                let value = self.zpg_x_address_value();
+
+                self.lda(value);
+            }
             0xb8 => {
                 // CLV
                 self.phantom_pc_read();
@@ -985,6 +991,12 @@ where
         self.phantom_read(base_address as u16);
 
         base_address.wrapping_add(self.registers.x) as u16
+    }
+
+    fn zpg_x_address_value(&mut self) -> u8 {
+        let address = self.zpg_x_address();
+
+        self.read(address, CycleOp::CheckInterrupt)
     }
 
     fn idx_x_address(&mut self) -> u16 {
