@@ -625,12 +625,12 @@ where
 
                 self.cpy(value);
             }
-            // 0xc4 => {
-            //     // CPY zp
-            //     let value = self.zpg_address_value();
+            0xc4 => {
+                // CPY zp
+                let value = self.zpg_address_value();
 
-            //     self.cpy(value);
-            // }
+                self.cpy(value);
+            }
             0xc5 => {
                 // CMP zp
                 let value = self.zpg_address_value();
