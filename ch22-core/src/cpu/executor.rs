@@ -282,6 +282,12 @@ where
                 // BVC rel
                 self.branch(!self.registers.p_overflow)
             }
+            0x51 => {
+                // EOR (zp),Y
+                let value = self.ind_y_address_value();
+
+                self.xor(value);
+            }
             0x58 => {
                 // CLI
                 self.phantom_pc_read();
