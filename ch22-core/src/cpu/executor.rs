@@ -425,6 +425,12 @@ where
 
                 self.adc(value);
             }
+            0x75 => {
+                // ADC zp,X
+                let value = self.zpg_x_address_value();
+
+                self.adc(value);
+            }
             0x78 => {
                 // SEI
                 self.phantom_pc_read();
