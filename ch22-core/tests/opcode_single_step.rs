@@ -672,6 +672,11 @@ fn _f0_test() {
 }
 
 #[test]
+fn _f1_test() {
+    opcode_single_step_tests_from_file("f1");
+}
+
+#[test]
 fn _f6_test() {
     opcode_single_step_tests_from_file("f6");
 }
