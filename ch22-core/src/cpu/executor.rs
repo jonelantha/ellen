@@ -76,6 +76,12 @@ where
 
                 self.registers.a = self.asl(self.registers.a);
             }
+            0x0b => {
+                // ANC imm
+                let value = self.imm();
+
+                self.anc(value);
+            }
             0x0d => {
                 // ORA abs
                 let value = self.abs_address_value();
@@ -1257,6 +1263,12 @@ where
         self.registers.a &= operand;
 
         self.set_p_zero_negative(self.registers.a);
+    }
+
+    fn anc(&mut self, operand: u8) {
+        self.and(operand);
+
+        self.registers.p_carry = self.registers.p_negative;
     }
 
     fn or(&mut self, operand: u8) {
