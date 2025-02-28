@@ -162,6 +162,12 @@ where
 
                 self.registers.pc = u16::from_le_bytes([pc_low, pc_high]);
             }
+            0x21 => {
+                // AND (zp,X)
+                let value = self.idx_x_address_value();
+
+                self.and(value);
+            }
             0x24 => {
                 // BIT zp
                 let value = self.zpg_address_value();
