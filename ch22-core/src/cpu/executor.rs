@@ -797,6 +797,18 @@ where
 
                 self.cmp(value);
             }
+            0xd6 => {
+                // DEC zp,X
+                let address = self.zpg_x_address();
+
+                let old_value = self.read(address, CycleOp::Sync);
+
+                self.write(address, old_value, CycleOp::Sync);
+
+                let new_value = self.dec(old_value);
+
+                self.write(address, new_value, CycleOp::Sync);
+            }
             0xd8 => {
                 // CLD
                 self.phantom_pc_read();
