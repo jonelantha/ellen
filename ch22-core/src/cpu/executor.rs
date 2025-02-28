@@ -993,6 +993,12 @@ where
 
                 self.sbc(value);
             }
+            0xf5 => {
+                // SBC zp,X
+                let value = self.zpg_x_address_value();
+
+                self.sbc(value);
+            }
             0xf6 => {
                 // INC zp,X
                 let address = self.zpg_x_address();
