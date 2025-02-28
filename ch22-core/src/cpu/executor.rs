@@ -607,6 +607,28 @@ where
 
                 self.registers.s = self.registers.x;
             }
+            0x9c => {
+                // SHY abs,X
+                let (address, carry_result) =
+                    address_offset_unsigned(self.abs_address(), self.registers.x);
+
+                let [low, high] = address.to_le_bytes();
+
+                if let CarryResult::Carried { intermediate } = carry_result {
+                    self.phantom_read(intermediate);
+
+                    let value = self.registers.y & high;
+                    let address = u16::from_le_bytes([low, value]);
+
+                    self.write(address, value, CycleOp::CheckInterrupt);
+                } else {
+                    self.phantom_read(address);
+
+                    let value = self.registers.y & high.wrapping_add(1);
+
+                    self.write(address, value, CycleOp::CheckInterrupt);
+                }
+            }
             0x9d => {
                 // STA abs,X
                 let address = self.abs_offset_address(self.registers.x);
@@ -1057,9 +1079,9 @@ where
     }
 
     fn push_16(&mut self, value: u16) {
-        let [high, low] = value.to_le_bytes();
-        self.push(low);
+        let [low, high] = value.to_le_bytes();
         self.push(high);
+        self.push(low);
     }
 
     fn pop_16(&mut self) -> u16 {
