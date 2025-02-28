@@ -937,6 +937,12 @@ where
 
                 self.write(address, new_value, CycleOp::Sync);
             }
+            0xf8 => {
+                // SED
+                self.phantom_pc_read();
+
+                self.registers.p_decimal_mode = true;
+            }
             0xf9 => {
                 // SBC abs,Y
                 let value = self.abs_offset_address_value(self.registers.y);
