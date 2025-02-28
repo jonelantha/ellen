@@ -114,6 +114,12 @@ where
 
                 self.or(value);
             }
+            0x15 => {
+                // ORA zp,X
+                let value = self.zpg_x_address_value();
+
+                self.or(value);
+            }
             0x18 => {
                 // CLC
                 self.phantom_pc_read();
