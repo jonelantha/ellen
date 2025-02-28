@@ -226,6 +226,12 @@ where
 
                 self.registers.p_carry = true;
             }
+            0x39 => {
+                // AND abs,Y
+                let value = self.abs_offset_address_value(self.registers.y);
+
+                self.and(value);
+            }
             0x3d => {
                 // AND abs,X
                 let value = self.abs_offset_address_value(self.registers.x);
