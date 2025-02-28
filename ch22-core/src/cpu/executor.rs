@@ -745,6 +745,12 @@ where
 
                 self.cpy(value);
             }
+            0xc1 => {
+                // CMP (zp,X)
+                let value = self.idx_x_address_value();
+
+                self.cmp(value);
+            }
             0xc4 => {
                 // CPY zp
                 let value = self.zpg_address_value();
