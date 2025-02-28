@@ -667,6 +667,11 @@ fn _f6_test() {
 }
 
 #[test]
+fn _f8_test() {
+    opcode_single_step_tests_from_file("f8");
+}
+
+#[test]
 fn _f9_test() {
     opcode_single_step_tests_from_file("f9");
 }
