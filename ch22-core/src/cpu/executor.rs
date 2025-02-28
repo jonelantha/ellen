@@ -104,6 +104,12 @@ where
                 // BPL rel
                 self.branch(!self.registers.p_negative);
             }
+            0x11 => {
+                // ORA (zp),Y
+                let value = self.ind_y_address_value();
+
+                self.or(value);
+            }
             0x18 => {
                 // CLC
                 self.phantom_pc_read();
