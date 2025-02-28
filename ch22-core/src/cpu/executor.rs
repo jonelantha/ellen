@@ -595,6 +595,12 @@ where
 
                 self.write(address, self.registers.a, CycleOp::CheckInterrupt);
             }
+            0x96 => {
+                // STX zp,Y
+                let address = self.zpg_y_address();
+
+                self.write(address, self.registers.x, CycleOp::CheckInterrupt);
+            }
             0x99 => {
                 // STA abs,Y
                 let address = self.abs_offset_address(self.registers.y);
