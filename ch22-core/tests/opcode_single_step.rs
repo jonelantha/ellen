@@ -22,6 +22,11 @@ fn _00_test() {
 }
 
 #[test]
+fn _01_test() {
+    opcode_single_step_tests_from_file("01", false);
+}
+
+#[test]
 fn _04_test() {
     opcode_single_step_tests_from_file("04", false);
 }
