@@ -40,6 +40,10 @@ where
                     self.read(0xffff, CycleOp::None),
                 ]);
             }
+            0x04 => {
+                // DOP zp
+                self.zpg_address_value();
+            }
             0x05 => {
                 // ORA zp
                 let value = self.zpg_address_value();
