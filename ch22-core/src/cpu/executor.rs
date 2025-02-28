@@ -893,6 +893,10 @@ where
 
                 self.sbc(value)
             }
+            0xea => {
+                // NOP
+                self.phantom_pc_read();
+            }
             0xec => {
                 // CPX abs
                 let value = self.abs_address_value();
