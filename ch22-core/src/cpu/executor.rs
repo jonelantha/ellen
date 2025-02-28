@@ -937,6 +937,12 @@ where
                 // BEQ rel
                 self.branch(self.registers.p_zero);
             }
+            0xf1 => {
+                // SBC (zp),Y
+                let value = self.ind_y_address_value();
+
+                self.sbc(value);
+            }
             0xf6 => {
                 // INC zp,X
                 let address = self.zpg_x_address();
