@@ -324,6 +324,12 @@ where
 
                 self.xor(value);
             }
+            0x55 => {
+                // EOR zp,X
+                let value = self.zpg_x_address_value();
+
+                self.xor(value);
+            }
             0x58 => {
                 // CLI
                 self.phantom_pc_read();
