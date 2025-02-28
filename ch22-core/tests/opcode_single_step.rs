@@ -567,6 +567,11 @@ fn _d1_test() {
 }
 
 #[test]
+fn _d5_test() {
+    opcode_single_step_tests_from_file("d5");
+}
+
+#[test]
 fn _d8_test() {
     opcode_single_step_tests_from_file("d8");
 }

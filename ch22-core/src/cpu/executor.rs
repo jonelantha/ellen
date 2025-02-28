@@ -791,6 +791,12 @@ where
 
                 self.cmp(value);
             }
+            0xd5 => {
+                // CMP zp,X
+                let value = self.zpg_x_address_value();
+
+                self.cmp(value);
+            }
             0xd8 => {
                 // CLD
                 self.phantom_pc_read();
