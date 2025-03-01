@@ -30,11 +30,7 @@ impl Ch22Cpu {
             .expect("js_advance_cycles error");
     }
 
-    pub fn handle_next_instruction(
-        &mut self,
-        memory: &mut Ch22Memory,
-        registers: &mut Registers,
-    ) -> Option<u8> {
+    pub fn handle_next_instruction(&mut self, memory: &mut Ch22Memory, registers: &mut Registers) {
         let mut cycle_manager = CycleManager::new(
             memory,
             Box::new(|cycles, check_interrupt| self.handle_advance_cycles(cycles, check_interrupt)),
