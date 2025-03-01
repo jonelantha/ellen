@@ -24,7 +24,7 @@ where
     pub fn execute(&mut self, allow_untested_in_wild: bool) -> Option<u8> {
         let opcode = self.imm();
 
-        if [0x35, 0x36, 0x41].contains(&opcode) && !allow_untested_in_wild {
+        if [0x35, 0x36, 0x41, 0x56].contains(&opcode) && !allow_untested_in_wild {
             panic!("untested opcode: {:02x}", opcode);
         }
 
@@ -429,6 +429,18 @@ where
                 let value = self.zpg_x_address_value();
 
                 self.xor(value);
+            }
+            0x56 => {
+                // LSR zp,X
+                let address = self.zpg_x_address();
+
+                let old_value = self.read(address, CycleOp::Sync);
+
+                self.write(address, old_value, CycleOp::Sync);
+
+                let new_value = self.lsr(old_value);
+
+                self.write(address, new_value, CycleOp::Sync);
             }
             0x58 => {
                 // CLI
