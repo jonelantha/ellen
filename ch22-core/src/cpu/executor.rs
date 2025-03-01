@@ -68,6 +68,20 @@ where
 
                 self.write(address, new_value, CycleOp::Sync);
             }
+            0x07 => {
+                // SLO zp
+                let address = self.zpg_address();
+
+                let old_value = self.read(address, CycleOp::Sync);
+
+                self.write(address, old_value, CycleOp::Sync);
+
+                let new_value = self.asl(old_value);
+
+                self.write(address, new_value, CycleOp::Sync);
+
+                self.or(new_value);
+            }
             0x08 => {
                 // PHP
                 self.phantom_pc_read();
