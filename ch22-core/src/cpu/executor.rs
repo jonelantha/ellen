@@ -21,7 +21,7 @@ where
         }
     }
 
-    pub fn execute(&mut self, allow_untested_in_wild: bool) -> Option<u8> {
+    pub fn execute(&mut self, allow_untested_in_wild: bool) {
         let opcode = self.imm();
 
         if [0x35, 0x36, 0x41, 0x56, 0x5e, 0xe1].contains(&opcode) && !allow_untested_in_wild {
@@ -1163,12 +1163,12 @@ where
 
                 self.write(address, new_value, CycleOp::Sync);
             }
-            _ => return Some(opcode),
+            _ => {
+                panic!("Unimplemented opcode: {:#04x}", opcode);
+            }
         }
 
         self.cycle_manager.complete();
-
-        None
     }
 
     fn phantom_read(&mut self, address: u16) {
