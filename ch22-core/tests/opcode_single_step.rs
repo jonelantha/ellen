@@ -302,6 +302,11 @@ fn _5d_test() {
 }
 
 #[test]
+fn _5e_test() {
+    opcode_single_step_tests_from_file("5e", false);
+}
+
+#[test]
 fn _60_test() {
     opcode_single_step_tests_from_file("60", false);
 }

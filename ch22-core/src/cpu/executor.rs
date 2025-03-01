@@ -24,7 +24,7 @@ where
     pub fn execute(&mut self, allow_untested_in_wild: bool) -> Option<u8> {
         let opcode = self.imm();
 
-        if [0x35, 0x36, 0x41, 0x56].contains(&opcode) && !allow_untested_in_wild {
+        if [0x35, 0x36, 0x41, 0x56, 0x5e].contains(&opcode) && !allow_untested_in_wild {
             panic!("untested opcode: {:02x}", opcode);
         }
 
@@ -459,6 +459,18 @@ where
                 let value = self.abs_offset_address_value(self.registers.x);
 
                 self.xor(value);
+            }
+            0x5e => {
+                // LSR abs,X
+                let address = self.abs_offset_address(self.registers.x);
+
+                let old_value = self.read(address, CycleOp::Sync);
+
+                self.write(address, old_value, CycleOp::Sync);
+
+                let new_value = self.lsr(old_value);
+
+                self.write(address, new_value, CycleOp::Sync);
             }
             0x60 => {
                 // RTS
