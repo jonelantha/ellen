@@ -652,6 +652,11 @@ fn _d9_test() {
 }
 
 #[test]
+fn _dc_test() {
+    opcode_single_step_tests_from_file("dc", true);
+}
+
+#[test]
 fn _dd_test() {
     opcode_single_step_tests_from_file("dd", false);
 }
