@@ -126,6 +126,18 @@ where
 
                 self.or(value);
             }
+            0x16 => {
+                // ASL zp,X
+                let address = self.zpg_x_address();
+
+                let old_value = self.read(address, CycleOp::Sync);
+
+                self.write(address, old_value, CycleOp::Sync);
+
+                let new_value = self.asl(old_value);
+
+                self.write(address, new_value, CycleOp::Sync);
+            }
             0x18 => {
                 // CLC
                 self.phantom_pc_read();
