@@ -913,6 +913,10 @@ where
 
                 self.cmp(value);
             }
+            0xdc => {
+                // NOP abs,X
+                self.abs_offset_address_value(self.registers.x);
+            }
             0xdd => {
                 // CMP abs,X
                 let value = self.abs_offset_address_value(self.registers.x);
