@@ -227,6 +227,11 @@ fn _4a_test() {
 }
 
 #[test]
+fn _4b_test() {
+    opcode_single_step_tests_from_file("4b", false);
+}
+
+#[test]
 fn _4c_test() {
     opcode_single_step_tests_from_file("4c", false);
 }

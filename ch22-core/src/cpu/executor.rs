@@ -344,6 +344,12 @@ where
 
                 self.registers.a = self.lsr(self.registers.a);
             }
+            0x4b => {
+                // ALR imm
+                let value = self.imm();
+
+                self.registers.a = self.lsr(self.registers.a & value);
+            }
             0x4c => {
                 // JMP abs
                 self.registers.pc = self.abs_address();
