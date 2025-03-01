@@ -717,6 +717,11 @@ fn _e0_test() {
 }
 
 #[test]
+fn _e1_test() {
+    opcode_single_step_tests_from_file("e1", false);
+}
+
+#[test]
 fn _e4_test() {
     opcode_single_step_tests_from_file("e4", false);
 }
