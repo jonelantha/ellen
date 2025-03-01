@@ -24,7 +24,7 @@ where
     pub fn execute(&mut self, allow_untested_in_wild: bool) -> Option<u8> {
         let opcode = self.imm();
 
-        if [0x35, 0x36, 0x41, 0x56, 0x5e].contains(&opcode) && !allow_untested_in_wild {
+        if [0x35, 0x36, 0x41, 0x56, 0x5e, 0xe1].contains(&opcode) && !allow_untested_in_wild {
             panic!("untested opcode: {:02x}", opcode);
         }
 
@@ -1034,6 +1034,12 @@ where
                 let value = self.imm();
 
                 self.cpx(value);
+            }
+            0xe1 => {
+                // SBC (zp,X)
+                let value = self.idx_x_address_value();
+
+                self.sbc(value);
             }
             0xe4 => {
                 // CPX zp
