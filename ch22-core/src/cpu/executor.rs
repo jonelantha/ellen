@@ -21,6 +21,30 @@ where
         }
     }
 
+    pub fn interrupt(&mut self, nmi: bool) {
+        self.phantom_pc_read();
+        self.phantom_pc_read();
+
+        self.push_16(self.registers.pc);
+
+        self.push(self.registers.get_p());
+
+        self.registers.p_interrupt_disable = true;
+
+        let reset_vector = if nmi {
+            (0xfffa, 0xfffb)
+        } else {
+            (0xfffe, 0xffff)
+        };
+
+        self.registers.pc = u16::from_le_bytes([
+            self.cycle_manager.read(reset_vector.0, CycleOp::None),
+            self.cycle_manager.read(reset_vector.1, CycleOp::None),
+        ]);
+
+        self.cycle_manager.complete();
+    }
+
     pub fn execute(&mut self, allow_untested_in_wild: bool) {
         let opcode = self.imm();
 

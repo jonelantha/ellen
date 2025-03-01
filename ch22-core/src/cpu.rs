@@ -40,4 +40,15 @@ impl Ch22Cpu {
 
         executor.execute(false)
     }
+
+    pub fn interrupt(&mut self, memory: &mut Ch22Memory, registers: &mut Registers, nmi: bool) {
+        let mut cycle_manager = CycleManager::new(
+            memory,
+            Box::new(|cycles, check_interrupt| self.handle_advance_cycles(cycles, check_interrupt)),
+        );
+
+        let mut executor = Executor::new(&mut cycle_manager, registers);
+
+        executor.interrupt(nmi)
+    }
 }
