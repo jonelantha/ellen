@@ -21,8 +21,12 @@ where
         }
     }
 
-    pub fn execute(&mut self) -> Option<u8> {
+    pub fn execute(&mut self, allow_untested_in_wild: bool) -> Option<u8> {
         let opcode = self.imm();
+
+        if [0x35].contains(&opcode) && !allow_untested_in_wild {
+            panic!("untested opcode: {:02x}", opcode);
+        }
 
         match opcode {
             0x00 => {
@@ -277,6 +281,12 @@ where
             0x31 => {
                 // AND (zp),Y
                 let value = self.ind_y_address_value();
+
+                self.and(value);
+            }
+            0x35 => {
+                // AND zp,X
+                let value = self.zpg_x_address_value();
 
                 self.and(value);
             }

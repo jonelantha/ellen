@@ -48,7 +48,7 @@ fn opcode_cycle_test(_name: &str, initial_state: &CPUTestState, cycle_syncs: &Ve
 
     let mut executor = Executor::new(&mut cycle_manager_mock, &mut registers);
 
-    executor.execute();
+    executor.execute(true);
 
     assert_eq!(&cycle_manager_mock.cycle_syncs, cycle_syncs);
 }
