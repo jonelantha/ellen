@@ -567,6 +567,16 @@ where
 
                 self.write(address, self.registers.x, CycleOp::CheckInterrupt);
             }
+            0x87 => {
+                // SAX zp
+                let address = self.zpg_address();
+
+                self.write(
+                    address,
+                    self.registers.a & self.registers.x,
+                    CycleOp::CheckInterrupt,
+                );
+            }
             0x88 => {
                 // DEY
                 self.phantom_pc_read();
