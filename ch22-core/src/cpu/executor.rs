@@ -24,7 +24,7 @@ where
     pub fn execute(&mut self, allow_untested_in_wild: bool) -> Option<u8> {
         let opcode = self.imm();
 
-        if [0x35].contains(&opcode) && !allow_untested_in_wild {
+        if [0x35, 0x36].contains(&opcode) && !allow_untested_in_wild {
             panic!("untested opcode: {:02x}", opcode);
         }
 
@@ -289,6 +289,18 @@ where
                 let value = self.zpg_x_address_value();
 
                 self.and(value);
+            }
+            0x36 => {
+                // ROL zp,X
+                let address = self.zpg_x_address();
+
+                let old_value = self.read(address, CycleOp::Sync);
+
+                self.write(address, old_value, CycleOp::Sync);
+
+                let new_value = self.rol(old_value);
+
+                self.write(address, new_value, CycleOp::Sync);
             }
             0x38 => {
                 // SEC
