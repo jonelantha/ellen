@@ -182,6 +182,11 @@ fn _31_test() {
 }
 
 #[test]
+fn _35_test() {
+    opcode_single_step_tests_from_file("35", false);
+}
+
+#[test]
 fn _38_test() {
     opcode_single_step_tests_from_file("38", false);
 }
@@ -632,13 +637,13 @@ fn _cc_test() {
 }
 
 #[test]
-fn _ce_test() {
-    opcode_single_step_tests_from_file("ce", false);
+fn _cd_test() {
+    opcode_single_step_tests_from_file("cd", false);
 }
 
 #[test]
-fn _cd_test() {
-    opcode_single_step_tests_from_file("cd", false);
+fn _ce_test() {
+    opcode_single_step_tests_from_file("ce", false);
 }
 
 #[test]
@@ -821,7 +826,7 @@ fn opcode_single_step_test(
 
     let mut executor = Executor::new(&mut cycle_manager_mock, &mut registers);
 
-    executor.execute();
+    executor.execute(true);
 
     assert_eq!(
         &cycle_manager_mock.cycles, expected_cycles,
