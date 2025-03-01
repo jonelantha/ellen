@@ -24,7 +24,7 @@ where
     pub fn execute(&mut self, allow_untested_in_wild: bool) -> Option<u8> {
         let opcode = self.imm();
 
-        if [0x35, 0x36].contains(&opcode) && !allow_untested_in_wild {
+        if [0x35, 0x36, 0x41].contains(&opcode) && !allow_untested_in_wild {
             panic!("untested opcode: {:02x}", opcode);
         }
 
@@ -343,6 +343,12 @@ where
                 self.registers.set_p(p);
 
                 self.registers.pc = self.pop_16();
+            }
+            0x41 => {
+                // EOR (zp,X)
+                let value = self.idx_x_address_value();
+
+                self.xor(value);
             }
             0x45 => {
                 // EOR zp
