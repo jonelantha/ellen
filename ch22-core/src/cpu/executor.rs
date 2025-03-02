@@ -1695,5 +1695,6 @@ fn to_low_nibble(value: u8) -> u8 {
     value & 0x0f
 }
 
-const NMI_VECTOR: u16 = 0xfffa;
-const IRQ_BRK_VECTOR: u16 = 0xfffe;
+pub const NMI_VECTOR: u16 = 0xfffa;
+pub const RESET_VECTOR: u16 = 0xfffc;
+pub const IRQ_BRK_VECTOR: u16 = 0xfffe;

@@ -1,4 +1,4 @@
-use executor::Executor;
+use executor::*;
 use js_sys::Function;
 use registers::Registers;
 use wasm_bindgen::prelude::*;
@@ -28,6 +28,11 @@ impl Ch22Cpu {
         self.js_advance_cycles
             .call2(&JsValue::NULL, &cycles.into(), &check_interrupt.into())
             .expect("js_advance_cycles error");
+    }
+
+    pub fn reset(&mut self, memory: &mut Ch22Memory, registers: &mut Registers) {
+        registers.pc =
+            u16::from_le_bytes([memory.read(RESET_VECTOR), memory.read(RESET_VECTOR + 1)]);
     }
 
     pub fn handle_next_instruction(&mut self, memory: &mut Ch22Memory, registers: &mut Registers) {
