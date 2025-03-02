@@ -23,24 +23,12 @@ where
 
     pub fn interrupt(&mut self, nmi: bool) {
         self.phantom_pc_read();
-        self.phantom_pc_read();
 
-        self.push_16(self.registers.pc);
-
-        self.push(self.registers.get_p());
-
-        self.registers.p_interrupt_disable = true;
-
-        let reset_vector = if nmi {
-            (0xfffa, 0xfffb)
-        } else {
-            (0xfffe, 0xffff)
-        };
-
-        self.registers.pc = u16::from_le_bytes([
-            self.cycle_manager.read(reset_vector.0, CycleOp::None),
-            self.cycle_manager.read(reset_vector.1, CycleOp::None),
-        ]);
+        self.brk(
+            self.registers.pc,
+            self.registers.get_p(),
+            if nmi { NMI_VECTOR } else { IRQ_BRK_VECTOR },
+        );
 
         self.cycle_manager.complete();
     }
@@ -55,18 +43,11 @@ where
         match opcode {
             0x00 => {
                 // BRK
-                self.phantom_pc_read();
-
-                self.push_16(self.registers.pc.wrapping_add(1));
-
-                self.push(self.registers.get_p() | P_BREAK_FLAG);
-
-                self.registers.p_interrupt_disable = true;
-
-                self.registers.pc = u16::from_le_bytes([
-                    self.read(0xfffe, CycleOp::None),
-                    self.read(0xffff, CycleOp::None),
-                ]);
+                self.brk(
+                    self.registers.pc.wrapping_add(1),
+                    self.registers.get_p() | P_BREAK_FLAG,
+                    IRQ_BRK_VECTOR,
+                );
             }
             0x01 => {
                 // ORA (zp,X)
@@ -1372,6 +1353,21 @@ where
         self.read(address, CycleOp::CheckInterrupt)
     }
 
+    fn brk(&mut self, return_address: u16, stack_p_flags: u8, interrupt_vector: u16) {
+        self.phantom_pc_read();
+
+        self.push_16(return_address);
+
+        self.push(stack_p_flags);
+
+        self.registers.p_interrupt_disable = true;
+
+        self.registers.pc = u16::from_le_bytes([
+            self.read(interrupt_vector, CycleOp::None),
+            self.read(interrupt_vector + 1, CycleOp::None),
+        ]);
+    }
+
     fn branch(&mut self, condition: bool) {
         if !condition {
             self.phantom_pc_read();
@@ -1698,3 +1694,6 @@ fn to_high_nibble(value: u8) -> u8 {
 fn to_low_nibble(value: u8) -> u8 {
     value & 0x0f
 }
+
+const NMI_VECTOR: u16 = 0xfffa;
+const IRQ_BRK_VECTOR: u16 = 0xfffe;

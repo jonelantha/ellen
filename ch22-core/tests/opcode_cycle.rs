@@ -15,7 +15,7 @@ struct CycleTestParams {
 
 #[test]
 fn opcode_cycle_tests_from_file() {
-    let data = fs::read_to_string("./tests/opcode_data/cycles.json").expect("Unable to read file");
+    let data = fs::read_to_string("./tests/test_cases/cycles.json").expect("Unable to read file");
 
     let test_params: Vec<CycleTestParams> =
         serde_json::from_str(&data).expect("JSON was not well-formatted");
