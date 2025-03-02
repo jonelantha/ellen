@@ -31,14 +31,6 @@ impl Ch22Memory {
     pub fn whole_ram_size(&self) -> usize {
         RAM_SIZE
     }
-
-    pub fn read_direct(&self, address: usize) -> u8 {
-        self.whole_ram[address]
-    }
-
-    pub fn write_direct(&mut self, address: usize, value: u8) {
-        self.whole_ram[address] = value;
-    }
 }
 
 impl Ch22Memory {
