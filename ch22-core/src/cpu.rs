@@ -35,7 +35,11 @@ impl Ch22Cpu {
             u16::from_le_bytes([memory.read(RESET_VECTOR), memory.read(RESET_VECTOR + 1)]);
     }
 
-    pub fn handle_next_instruction(&mut self, memory: &mut Ch22Memory, registers: &mut Registers) {
+    pub fn handle_next_instruction(
+        &mut self,
+        memory: &mut Ch22Memory,
+        registers: &mut Registers,
+    ) -> bool {
         let mut cycle_manager = CycleManager::new(
             memory,
             Box::new(|cycles, check_interrupt| self.handle_advance_cycles(cycles, check_interrupt)),
@@ -43,10 +47,17 @@ impl Ch22Cpu {
 
         let mut executor = Executor::new(&mut cycle_manager, registers);
 
-        executor.execute(false)
+        executor.execute(false);
+
+        registers.p_interrupt_disable
     }
 
-    pub fn interrupt(&mut self, memory: &mut Ch22Memory, registers: &mut Registers, nmi: bool) {
+    pub fn interrupt(
+        &mut self,
+        memory: &mut Ch22Memory,
+        registers: &mut Registers,
+        nmi: bool,
+    ) -> bool {
         let mut cycle_manager = CycleManager::new(
             memory,
             Box::new(|cycles, check_interrupt| self.handle_advance_cycles(cycles, check_interrupt)),
@@ -54,6 +65,8 @@ impl Ch22Cpu {
 
         let mut executor = Executor::new(&mut cycle_manager, registers);
 
-        executor.interrupt(nmi)
+        executor.interrupt(nmi);
+
+        registers.p_interrupt_disable
     }
 }
