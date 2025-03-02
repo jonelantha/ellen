@@ -3,7 +3,6 @@ use serde::Deserialize;
 
 use std::collections::HashMap;
 
-#[allow(dead_code)]
 #[derive(Deserialize)]
 pub struct CPUTestState {
     pub pc: u16,
