@@ -17,13 +17,13 @@ pub enum CycleOp {
 pub struct CycleManager<'a> {
     cycles: u8,
     memory: &'a mut Ch22Memory,
-    advance_cycles_handler: Box<dyn Fn(u8, bool) + 'a>,
+    advance_cycles_handler: &'a (dyn Fn(u8, bool) + 'a),
 }
 
 impl<'a> CycleManager<'a> {
     pub fn new(
         memory: &'a mut Ch22Memory,
-        advance_cycles_handler: Box<dyn Fn(u8, bool) + 'a>,
+        advance_cycles_handler: &'a (dyn Fn(u8, bool) + 'a),
     ) -> Self {
         CycleManager {
             cycles: 0,
