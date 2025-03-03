@@ -1,6 +1,3 @@
-use wasm_bindgen::prelude::*;
-
-#[wasm_bindgen]
 pub struct Registers {
     pub pc: u16,
     pub s: u8,
@@ -15,7 +12,6 @@ pub struct Registers {
     pub p_negative: bool,
 }
 
-#[wasm_bindgen]
 impl Registers {
     pub fn new() -> Registers {
         Registers {
