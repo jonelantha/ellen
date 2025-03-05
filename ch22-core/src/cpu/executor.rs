@@ -69,25 +69,13 @@ where
                 // ASL zp
                 let address = self.zpg_address();
 
-                let old_value = self.read(address, CycleOp::Sync);
-
-                self.write(address, old_value, CycleOp::Sync);
-
-                let new_value = self.asl(old_value);
-
-                self.write(address, new_value, CycleOp::Sync);
+                self.read_modify_write(address, Self::asl);
             }
             0x07 => {
                 // SLO zp
                 let address = self.zpg_address();
 
-                let old_value = self.read(address, CycleOp::Sync);
-
-                self.write(address, old_value, CycleOp::Sync);
-
-                let new_value = self.asl(old_value);
-
-                self.write(address, new_value, CycleOp::Sync);
+                let new_value = self.read_modify_write(address, Self::asl);
 
                 self.or(new_value);
             }
@@ -125,13 +113,7 @@ where
                 // ASL abs
                 let address = self.abs_address();
 
-                let old_value = self.read(address, CycleOp::Sync);
-
-                self.write(address, old_value, CycleOp::Sync);
-
-                let new_value = self.asl(old_value);
-
-                self.write(address, new_value, CycleOp::Sync);
+                self.read_modify_write(address, Self::asl);
             }
             0x10 => {
                 // BPL rel
@@ -153,13 +135,7 @@ where
                 // ASL zp,X
                 let address = self.zpg_x_address();
 
-                let old_value = self.read(address, CycleOp::Sync);
-
-                self.write(address, old_value, CycleOp::Sync);
-
-                let new_value = self.asl(old_value);
-
-                self.write(address, new_value, CycleOp::Sync);
+                self.read_modify_write(address, Self::asl);
             }
             0x18 => {
                 // CLC
@@ -177,13 +153,7 @@ where
                 // ASL abs,X
                 let address = self.abs_offset_address(self.registers.x);
 
-                let old_value = self.read(address, CycleOp::Sync);
-
-                self.write(address, old_value, CycleOp::Sync);
-
-                let new_value = self.asl(old_value);
-
-                self.write(address, new_value, CycleOp::Sync);
+                self.read_modify_write(address, Self::asl);
             }
             0x19 => {
                 // ORA abs,Y
@@ -225,13 +195,7 @@ where
                 // ROL zp
                 let address = self.zpg_address();
 
-                let old_value = self.read(address, CycleOp::Sync);
-
-                self.write(address, old_value, CycleOp::Sync);
-
-                let new_value = self.rol(old_value);
-
-                self.write(address, new_value, CycleOp::Sync);
+                self.read_modify_write(address, Self::rol);
             }
             0x28 => {
                 // PLP
@@ -271,13 +235,7 @@ where
                 // ROL abs
                 let address = self.abs_address();
 
-                let old_value = self.read(address, CycleOp::Sync);
-
-                self.write(address, old_value, CycleOp::Sync);
-
-                let new_value = self.rol(old_value);
-
-                self.write(address, new_value, CycleOp::Sync);
+                self.read_modify_write(address, Self::rol);
             }
             0x30 => {
                 // BMI rel
@@ -299,13 +257,7 @@ where
                 // ROL zp,X
                 let address = self.zpg_x_address();
 
-                let old_value = self.read(address, CycleOp::Sync);
-
-                self.write(address, old_value, CycleOp::Sync);
-
-                let new_value = self.rol(old_value);
-
-                self.write(address, new_value, CycleOp::Sync);
+                self.read_modify_write(address, Self::rol);
             }
             0x38 => {
                 // SEC
@@ -329,13 +281,7 @@ where
                 // ROL abs,X
                 let address = self.abs_offset_address(self.registers.x);
 
-                let old_value = self.read(address, CycleOp::Sync);
-
-                self.write(address, old_value, CycleOp::Sync);
-
-                let new_value = self.rol(old_value);
-
-                self.write(address, new_value, CycleOp::Sync);
+                self.read_modify_write(address, Self::rol);
             }
             0x40 => {
                 // RTI
@@ -365,13 +311,7 @@ where
                 // LSR zp
                 let address = self.zpg_address();
 
-                let old_value = self.read(address, CycleOp::Sync);
-
-                self.write(address, old_value, CycleOp::Sync);
-
-                let new_value = self.lsr(old_value);
-
-                self.write(address, new_value, CycleOp::Sync);
+                self.read_modify_write(address, Self::lsr);
             }
             0x48 => {
                 // PHA
@@ -411,13 +351,7 @@ where
                 // LSR abs
                 let address = self.abs_address();
 
-                let old_value = self.read(address, CycleOp::Sync);
-
-                self.write(address, old_value, CycleOp::Sync);
-
-                let new_value = self.lsr(old_value);
-
-                self.write(address, new_value, CycleOp::Sync);
+                self.read_modify_write(address, Self::lsr);
             }
             0x50 => {
                 // BVC rel
@@ -439,13 +373,7 @@ where
                 // LSR zp,X
                 let address = self.zpg_x_address();
 
-                let old_value = self.read(address, CycleOp::Sync);
-
-                self.write(address, old_value, CycleOp::Sync);
-
-                let new_value = self.lsr(old_value);
-
-                self.write(address, new_value, CycleOp::Sync);
+                self.read_modify_write(address, Self::lsr);
             }
             0x58 => {
                 // CLI
@@ -469,13 +397,7 @@ where
                 // LSR abs,X
                 let address = self.abs_offset_address(self.registers.x);
 
-                let old_value = self.read(address, CycleOp::Sync);
-
-                self.write(address, old_value, CycleOp::Sync);
-
-                let new_value = self.lsr(old_value);
-
-                self.write(address, new_value, CycleOp::Sync);
+                self.read_modify_write(address, Self::lsr);
             }
             0x60 => {
                 // RTS
@@ -505,13 +427,7 @@ where
                 // ROR zp
                 let address = self.zpg_address();
 
-                let old_value = self.read(address, CycleOp::Sync);
-
-                self.write(address, old_value, CycleOp::Sync);
-
-                let new_value = self.ror(old_value);
-
-                self.write(address, new_value, CycleOp::Sync);
+                self.read_modify_write(address, Self::ror);
             }
             0x68 => {
                 // PLA
@@ -554,13 +470,7 @@ where
                 // ROR abs
                 let address = self.abs_address();
 
-                let old_value = self.read(address, CycleOp::Sync);
-
-                self.write(address, old_value, CycleOp::Sync);
-
-                let new_value = self.ror(old_value);
-
-                self.write(address, new_value, CycleOp::Sync);
+                self.read_modify_write(address, Self::ror);
             }
             0x70 => {
                 // BVS rel
@@ -582,13 +492,7 @@ where
                 // ROR zp,X
                 let address = self.zpg_x_address();
 
-                let old_value = self.read(address, CycleOp::Sync);
-
-                self.write(address, old_value, CycleOp::Sync);
-
-                let new_value = self.ror(old_value);
-
-                self.write(address, new_value, CycleOp::Sync);
+                self.read_modify_write(address, Self::ror);
             }
             0x78 => {
                 // SEI
@@ -612,13 +516,7 @@ where
                 // ROR abs,X
                 let address = self.abs_offset_address(self.registers.x);
 
-                let old_value = self.read(address, CycleOp::Sync);
-
-                self.write(address, old_value, CycleOp::Sync);
-
-                let new_value = self.ror(old_value);
-
-                self.write(address, new_value, CycleOp::Sync);
+                self.read_modify_write(address, Self::ror);
             }
             0x81 => {
                 // STA (zp,X)
@@ -922,13 +820,7 @@ where
                 // DEC zp
                 let address = self.zpg_address();
 
-                let old_value = self.read(address, CycleOp::Sync);
-
-                self.write(address, old_value, CycleOp::Sync);
-
-                let new_value = self.dec(old_value);
-
-                self.write(address, new_value, CycleOp::Sync);
+                self.read_modify_write(address, Self::dec);
             }
             0xc8 => {
                 // INY
@@ -964,13 +856,7 @@ where
                 // DEC abs
                 let address = self.abs_address();
 
-                let old_value = self.read(address, CycleOp::Sync);
-
-                self.write(address, old_value, CycleOp::Sync);
-
-                let new_value = self.dec(old_value);
-
-                self.write(address, new_value, CycleOp::Sync);
+                self.read_modify_write(address, Self::dec);
             }
             0xd0 => {
                 // BNE rel
@@ -992,13 +878,7 @@ where
                 // DEC zp,X
                 let address = self.zpg_x_address();
 
-                let old_value = self.read(address, CycleOp::Sync);
-
-                self.write(address, old_value, CycleOp::Sync);
-
-                let new_value = self.dec(old_value);
-
-                self.write(address, new_value, CycleOp::Sync);
+                self.read_modify_write(address, Self::dec);
             }
             0xd8 => {
                 // CLD
@@ -1026,13 +906,7 @@ where
                 // DEC abs,X
                 let address = self.abs_offset_address(self.registers.x);
 
-                let old_value = self.read(address, CycleOp::Sync);
-
-                self.write(address, old_value, CycleOp::Sync);
-
-                let new_value = self.dec(old_value);
-
-                self.write(address, new_value, CycleOp::Sync);
+                self.read_modify_write(address, Self::dec);
             }
             0xe0 => {
                 // CPX imm
@@ -1062,13 +936,7 @@ where
                 // INC zp
                 let address = self.zpg_address();
 
-                let old_value = self.read(address, CycleOp::Sync);
-
-                self.write(address, old_value, CycleOp::Sync);
-
-                let new_value = self.inc(old_value);
-
-                self.write(address, new_value, CycleOp::Sync);
+                self.read_modify_write(address, Self::inc);
             }
             0xe8 => {
                 // INX
@@ -1102,13 +970,7 @@ where
                 // INC abs
                 let address = self.abs_address();
 
-                let old_value = self.read(address, CycleOp::Sync);
-
-                self.write(address, old_value, CycleOp::Sync);
-
-                let new_value = self.inc(old_value);
-
-                self.write(address, new_value, CycleOp::Sync);
+                self.read_modify_write(address, Self::inc);
             }
             0xf0 => {
                 // BEQ rel
@@ -1130,13 +992,7 @@ where
                 // INC zp,X
                 let address = self.zpg_x_address();
 
-                let old_value = self.read(address, CycleOp::Sync);
-
-                self.write(address, old_value, CycleOp::Sync);
-
-                let new_value = self.inc(old_value);
-
-                self.write(address, new_value, CycleOp::Sync);
+                self.read_modify_write(address, Self::inc);
             }
             0xf8 => {
                 // SED
@@ -1160,13 +1016,7 @@ where
                 // INC abs,X
                 let address = self.abs_offset_address(self.registers.x);
 
-                let old_value = self.read(address, CycleOp::Sync);
-
-                self.write(address, old_value, CycleOp::Sync);
-
-                let new_value = self.inc(old_value);
-
-                self.write(address, new_value, CycleOp::Sync);
+                self.read_modify_write(address, Self::inc);
             }
             _ => {
                 panic!("Unimplemented opcode: {:#04x}", opcode);
@@ -1351,6 +1201,18 @@ where
         }
 
         self.read(address, CycleOp::CheckInterrupt)
+    }
+
+    fn read_modify_write(&mut self, address: u16, op: fn(&mut Self, u8) -> u8) -> u8 {
+        let old_value = self.read(address, CycleOp::Sync);
+
+        self.write(address, old_value, CycleOp::Sync);
+
+        let new_value = op(self, old_value);
+
+        self.write(address, new_value, CycleOp::Sync);
+
+        new_value
     }
 
     fn brk(&mut self, return_address: u16, stack_p_flags: u8, interrupt_vector: u16) {
