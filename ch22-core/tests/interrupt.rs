@@ -57,13 +57,14 @@ fn interrupt_cycles_test(
     expected_cycles: &CPUCycles,
     nmi: bool,
 ) {
-    let mut registers = Registers::new();
-    registers.pc = initial_state.pc;
-    registers.s = initial_state.s;
-    registers.a = initial_state.a;
-    registers.x = initial_state.x;
-    registers.y = initial_state.y;
-    registers.set_p(initial_state.p);
+    let mut registers = Registers {
+        pc: initial_state.pc,
+        s: initial_state.s,
+        a: initial_state.a,
+        x: initial_state.x,
+        y: initial_state.y,
+        p: initial_state.p.into(),
+    };
 
     let mut cycle_manager_mock = CycleManagerMock::new(&initial_state.ram);
 
@@ -82,5 +83,9 @@ fn interrupt_cycles_test(
     assert_eq!(registers.x, final_state.x, "x mismatch");
     assert_eq!(registers.y, final_state.y, "y mismatch");
 
-    assert_eq!(registers.get_p(), final_state.p, "p mismatch");
+    assert_eq!(
+        registers.p,
+        StatusRegister::from(final_state.p),
+        "p mismatch"
+    );
 }

@@ -36,13 +36,14 @@ fn opcode_cycle_tests_from_file() {
 }
 
 fn opcode_cycle_test(_name: &str, initial_state: &CPUTestState, cycle_syncs: &Vec<String>) {
-    let mut registers = Registers::new();
-    registers.pc = initial_state.pc;
-    registers.s = initial_state.s;
-    registers.a = initial_state.a;
-    registers.x = initial_state.x;
-    registers.y = initial_state.y;
-    registers.set_p(initial_state.p);
+    let mut registers = Registers {
+        pc: initial_state.pc,
+        s: initial_state.s,
+        a: initial_state.a,
+        x: initial_state.x,
+        y: initial_state.y,
+        p: initial_state.p.into(),
+    };
 
     let mut cycle_manager_mock = CycleManagerMock::new(&initial_state.ram);
 
