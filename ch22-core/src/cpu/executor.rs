@@ -26,7 +26,7 @@ where
 
         self.brk(
             self.registers.pc,
-            self.registers.get_p(),
+            u8::from(&self.registers.p),
             if nmi { NMI_VECTOR } else { IRQ_BRK_VECTOR },
         );
 
@@ -45,7 +45,7 @@ where
                 // BRK
                 self.brk(
                     self.registers.pc.wrapping_add(1),
-                    self.registers.get_p() | P_BREAK_FLAG,
+                    u8::from(&self.registers.p) | P_BREAK_FLAG,
                     IRQ_BRK_VECTOR,
                 );
             }
@@ -95,7 +95,7 @@ where
                 // PHP
                 self.phantom_pc_read();
 
-                self.push(self.registers.get_p() | P_BREAK_FLAG);
+                self.push(u8::from(&self.registers.p) | P_BREAK_FLAG);
             }
             0x09 => {
                 // ORA imm
@@ -135,7 +135,7 @@ where
             }
             0x10 => {
                 // BPL rel
-                self.branch(!self.registers.p_negative);
+                self.branch(!self.registers.p.negative);
             }
             0x11 => {
                 // ORA (zp),Y
@@ -165,7 +165,7 @@ where
                 // CLC
                 self.phantom_pc_read();
 
-                self.registers.p_carry = false;
+                self.registers.p.carry = false;
             }
             0x1d => {
                 // ORA abs,X
@@ -241,7 +241,7 @@ where
 
                 let value = self.pop();
 
-                self.registers.set_p(value);
+                self.registers.p = value.into();
             }
             0x29 => {
                 // AND imm
@@ -281,7 +281,7 @@ where
             }
             0x30 => {
                 // BMI rel
-                self.branch(self.registers.p_negative);
+                self.branch(self.registers.p.negative);
             }
             0x31 => {
                 // AND (zp),Y
@@ -311,7 +311,7 @@ where
                 // SEC
                 self.phantom_pc_read();
 
-                self.registers.p_carry = true;
+                self.registers.p.carry = true;
             }
             0x39 => {
                 // AND abs,Y
@@ -345,7 +345,7 @@ where
 
                 let p = self.pop();
 
-                self.registers.set_p(p);
+                self.registers.p = p.into();
 
                 self.registers.pc = self.pop_16();
             }
@@ -421,7 +421,7 @@ where
             }
             0x50 => {
                 // BVC rel
-                self.branch(!self.registers.p_overflow)
+                self.branch(!self.registers.p.overflow)
             }
             0x51 => {
                 // EOR (zp),Y
@@ -451,7 +451,7 @@ where
                 // CLI
                 self.phantom_pc_read();
 
-                self.registers.p_interrupt_disable = false;
+                self.registers.p.interrupt_disable = false;
             }
             0x59 => {
                 // EOR abs,Y
@@ -564,7 +564,7 @@ where
             }
             0x70 => {
                 // BVS rel
-                self.branch(self.registers.p_overflow);
+                self.branch(self.registers.p.overflow);
             }
             0x71 => {
                 // ADC (zp),Y
@@ -594,7 +594,7 @@ where
                 // SEI
                 self.phantom_pc_read();
 
-                self.registers.p_interrupt_disable = true;
+                self.registers.p.interrupt_disable = true;
             }
             0x79 => {
                 // ADC abs,Y
@@ -686,7 +686,7 @@ where
             }
             0x90 => {
                 // BCC rel
-                self.branch(!self.registers.p_carry);
+                self.branch(!self.registers.p.carry);
             }
             0x91 => {
                 // STA (zp),Y
@@ -832,7 +832,7 @@ where
             }
             0xb0 => {
                 // BCS rel
-                self.branch(self.registers.p_carry);
+                self.branch(self.registers.p.carry);
             }
             0xb1 => {
                 // LDA (zp),Y
@@ -862,7 +862,7 @@ where
                 // CLV
                 self.phantom_pc_read();
 
-                self.registers.p_overflow = false;
+                self.registers.p.overflow = false;
             }
             0xb9 => {
                 // LDA abs,Y
@@ -974,7 +974,7 @@ where
             }
             0xd0 => {
                 // BNE rel
-                self.branch(!self.registers.p_zero);
+                self.branch(!self.registers.p.zero);
             }
             0xd1 => {
                 // CMP (zp),Y
@@ -1004,7 +1004,7 @@ where
                 // CLD
                 self.phantom_pc_read();
 
-                self.registers.p_decimal_mode = false;
+                self.registers.p.decimal_mode = false;
             }
             0xd9 => {
                 // CMP abs,Y
@@ -1112,7 +1112,7 @@ where
             }
             0xf0 => {
                 // BEQ rel
-                self.branch(self.registers.p_zero);
+                self.branch(self.registers.p.zero);
             }
             0xf1 => {
                 // SBC (zp),Y
@@ -1142,7 +1142,7 @@ where
                 // SED
                 self.phantom_pc_read();
 
-                self.registers.p_decimal_mode = true;
+                self.registers.p.decimal_mode = true;
             }
             0xf9 => {
                 // SBC abs,Y
@@ -1360,7 +1360,7 @@ where
 
         self.push(stack_p_flags);
 
-        self.registers.p_interrupt_disable = true;
+        self.registers.p.interrupt_disable = true;
 
         self.registers.pc = u16::from_le_bytes([
             self.read(interrupt_vector, CycleOp::None),
@@ -1403,15 +1403,15 @@ where
     }
 
     fn compare(&mut self, value: u8, register: u8) {
-        self.registers.p_carry = register >= value;
-        self.registers.p_zero = register == value;
+        self.registers.p.carry = register >= value;
+        self.registers.p.zero = register == value;
         self.set_p_negative(register.wrapping_sub(value));
     }
 
     fn asl(&mut self, old_value: u8) -> u8 {
         let new_value = old_value << 1;
 
-        self.registers.p_carry = (old_value & 0x80) != 0;
+        self.registers.p.carry = (old_value & 0x80) != 0;
 
         self.set_p_zero_negative(new_value);
 
@@ -1421,18 +1421,18 @@ where
     fn lsr(&mut self, old_value: u8) -> u8 {
         let new_value = old_value >> 1;
 
-        self.registers.p_carry = (old_value & 0x01) != 0;
+        self.registers.p.carry = (old_value & 0x01) != 0;
 
         self.set_p_zero(new_value);
-        self.registers.p_negative = false;
+        self.registers.p.negative = false;
 
         new_value
     }
 
     fn rol(&mut self, old_value: u8) -> u8 {
-        let new_value = (old_value << 1) + self.registers.p_carry as u8;
+        let new_value = (old_value << 1) + self.registers.p.carry as u8;
 
-        self.registers.p_carry = (old_value & 0x80) != 0;
+        self.registers.p.carry = (old_value & 0x80) != 0;
 
         self.set_p_zero_negative(new_value);
 
@@ -1440,11 +1440,11 @@ where
     }
 
     fn ror(&mut self, old_value: u8) -> u8 {
-        let new_value = (old_value >> 1) + (self.registers.p_carry as u8) * 0x80;
+        let new_value = (old_value >> 1) + (self.registers.p.carry as u8) * 0x80;
 
         self.set_p_zero_negative(new_value);
 
-        self.registers.p_carry = (old_value & 0x01) != 0;
+        self.registers.p.carry = (old_value & 0x01) != 0;
 
         new_value
     }
@@ -1492,7 +1492,7 @@ where
     fn anc(&mut self, operand: u8) {
         self.and(operand);
 
-        self.registers.p_carry = self.registers.p_negative;
+        self.registers.p.carry = self.registers.p.negative;
     }
 
     fn or(&mut self, operand: u8) {
@@ -1509,12 +1509,12 @@ where
 
     fn bit(&mut self, operand: u8) {
         self.set_p_zero(self.registers.a & operand);
-        self.registers.p_overflow = operand & 0x40 != 0;
+        self.registers.p.overflow = operand & 0x40 != 0;
         self.set_p_negative(operand);
     }
 
     fn adc(&mut self, operand: u8) {
-        if self.registers.p_decimal_mode {
+        if self.registers.p.decimal_mode {
             self.adc_bcd(operand);
         } else {
             self.adc_bin(operand);
@@ -1522,12 +1522,12 @@ where
     }
 
     fn adc_bin(&mut self, operand: u8) {
-        let carry = self.registers.p_carry as u8;
+        let carry = self.registers.p.carry as u8;
 
         let (result, operand_overflow) = self.registers.a.overflowing_add(operand);
         let (result, carry_overflow) = result.overflowing_add(carry);
 
-        self.registers.p_carry = operand_overflow || carry_overflow;
+        self.registers.p.carry = operand_overflow || carry_overflow;
 
         self.set_p_zero_negative(result);
         self.set_overflow_adc(result, operand);
@@ -1536,7 +1536,7 @@ where
     }
 
     fn adc_bcd(&mut self, operand: u8) {
-        let carry_in = self.registers.p_carry as u8;
+        let carry_in = self.registers.p.carry as u8;
 
         // calculate normally for zero flag
 
@@ -1561,13 +1561,13 @@ where
 
         let (high_nibble, high_carry_out) = wrap_nibble_up(high_nibble);
 
-        self.registers.p_carry = high_carry_out == 1;
+        self.registers.p.carry = high_carry_out == 1;
 
         self.registers.a = from_nibbles(high_nibble, low_nibble);
     }
 
     fn sbc(&mut self, operand: u8) {
-        if self.registers.p_decimal_mode {
+        if self.registers.p.decimal_mode {
             self.sbc_bcd(operand);
         } else {
             self.adc_bin(!operand);
@@ -1575,7 +1575,7 @@ where
     }
 
     fn sbc_bcd(&mut self, operand: u8) {
-        let borrow_in = 1 - self.registers.p_carry as u8;
+        let borrow_in = 1 - self.registers.p.carry as u8;
 
         // calculate normally for flags
 
@@ -1599,7 +1599,7 @@ where
 
         let (high_nibble, high_borrow_out) = wrap_nibble_down(high_nibble);
 
-        self.registers.p_carry = high_borrow_out == 0;
+        self.registers.p.carry = high_borrow_out == 0;
 
         self.registers.a = from_nibbles(high_nibble, low_nibble);
     }
@@ -1607,7 +1607,7 @@ where
     // flag helpers
 
     fn set_overflow_adc(&mut self, result: u8, operand: u8) {
-        self.registers.p_overflow =
+        self.registers.p.overflow =
             is_negative((self.registers.a ^ result) & (self.registers.a ^ !operand));
     }
 
@@ -1616,11 +1616,11 @@ where
     }
 
     fn set_p_negative(&mut self, value: u8) {
-        self.registers.p_negative = is_negative(value);
+        self.registers.p.negative = is_negative(value);
     }
 
     fn set_p_zero(&mut self, value: u8) {
-        self.registers.p_zero = value == 0;
+        self.registers.p.zero = value == 0;
     }
 
     fn set_p_zero_negative(&mut self, value: u8) {

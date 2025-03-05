@@ -839,13 +839,14 @@ fn opcode_single_step_test(
     expected_cycles: &CPUCycles,
     ignore_break: bool,
 ) {
-    let mut registers = Registers::new();
-    registers.pc = initial_state.pc;
-    registers.s = initial_state.s;
-    registers.a = initial_state.a;
-    registers.x = initial_state.x;
-    registers.y = initial_state.y;
-    registers.set_p(initial_state.p);
+    let mut registers = Registers {
+        pc: initial_state.pc,
+        s: initial_state.s,
+        a: initial_state.a,
+        x: initial_state.x,
+        y: initial_state.y,
+        p: initial_state.p.into(),
+    };
 
     let mut cycle_manager_mock = CycleManagerMock::new(&initial_state.ram);
 
@@ -864,10 +865,13 @@ fn opcode_single_step_test(
     assert_eq!(registers.x, final_state.x, "x mismatch");
     assert_eq!(registers.y, final_state.y, "y mismatch");
 
-    let expected_p = if ignore_break {
-        final_state.p & !P_BREAK_FLAG
-    } else {
-        final_state.p
-    };
-    assert_eq!(registers.get_p(), expected_p, "p mismatch");
+    if (final_state.p & P_BREAK_FLAG) != 0 && !ignore_break {
+        panic!("expecting break flag");
+    }
+
+    assert_eq!(
+        registers.p,
+        StatusRegister::from(final_state.p),
+        "p mismatch"
+    );
 }

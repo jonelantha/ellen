@@ -1,6 +1,6 @@
 use executor::*;
 use js_sys::Function;
-use registers::Registers;
+use registers::*;
 use wasm_bindgen::prelude::*;
 //use web_sys::console;
 
@@ -30,13 +30,22 @@ impl Ch22Cpu {
 
         Ch22Cpu {
             advance_cycles,
-            registers: Registers::new(),
+            registers: Registers::default(),
         }
     }
 
-    pub fn reset(&mut self, memory: &mut Ch22Memory) {
-        self.registers.pc =
-            u16::from_le_bytes([memory.read(RESET_VECTOR), memory.read(RESET_VECTOR + 1)]);
+    pub fn reset(&mut self, memory: &mut Ch22Memory) -> bool {
+        self.registers = Registers {
+            pc: u16::from_le_bytes([memory.read(RESET_VECTOR), memory.read(RESET_VECTOR + 1)]),
+            s: 0xff,
+            p: StatusRegister {
+                interrupt_disable: true,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+
+        self.registers.p.interrupt_disable
     }
 
     pub fn handle_next_instruction(&mut self, memory: &mut Ch22Memory) -> bool {
@@ -46,7 +55,7 @@ impl Ch22Cpu {
 
         executor.execute(false);
 
-        self.registers.p_interrupt_disable
+        self.registers.p.interrupt_disable
     }
 
     pub fn interrupt(&mut self, memory: &mut Ch22Memory, nmi: bool) -> bool {
@@ -56,6 +65,6 @@ impl Ch22Cpu {
 
         executor.interrupt(nmi);
 
-        self.registers.p_interrupt_disable
+        self.registers.p.interrupt_disable
     }
 }
