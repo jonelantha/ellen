@@ -8,6 +8,304 @@ pub struct Registers {
     pub p: StatusRegister,
 }
 
+impl Registers {
+    pub fn get(&self, register_type: RegisterType) -> u8 {
+        match register_type {
+            RegisterType::Stack => self.s,
+            RegisterType::Accumulator => self.a,
+            RegisterType::X => self.x,
+            RegisterType::Y => self.y,
+        }
+    }
+
+    pub fn set(&mut self, register_type: RegisterType, value: u8) {
+        match register_type {
+            RegisterType::Stack => {
+                self.s = value;
+            }
+            RegisterType::Accumulator => {
+                self.a = value;
+            }
+            RegisterType::X => {
+                self.x = value;
+            }
+            RegisterType::Y => {
+                self.y = value;
+            }
+        }
+    }
+
+    pub fn set_with_flags(&mut self, register_type: RegisterType, value: u8) {
+        self.set(register_type, value);
+
+        self.set_p_zero_negative(value);
+    }
+
+    pub fn compare(&mut self, value: u8, register: u8) {
+        self.p.carry = register >= value;
+        self.p.zero = register == value;
+        self.set_p_negative(register.wrapping_sub(value));
+    }
+
+    pub fn asl(&mut self, old_value: u8) -> u8 {
+        let new_value = old_value << 1;
+
+        self.p.carry = (old_value & 0x80) != 0;
+
+        self.set_p_zero_negative(new_value);
+
+        new_value
+    }
+
+    pub fn lsr(&mut self, old_value: u8) -> u8 {
+        let new_value = old_value >> 1;
+
+        self.p.carry = (old_value & 0x01) != 0;
+
+        self.set_p_zero(new_value);
+        self.p.negative = false;
+
+        new_value
+    }
+
+    pub fn rol(&mut self, old_value: u8) -> u8 {
+        let new_value = (old_value << 1) + self.p.carry as u8;
+
+        self.p.carry = (old_value & 0x80) != 0;
+
+        self.set_p_zero_negative(new_value);
+
+        new_value
+    }
+
+    pub fn ror(&mut self, old_value: u8) -> u8 {
+        let new_value = (old_value >> 1) + (self.p.carry as u8) * 0x80;
+
+        self.set_p_zero_negative(new_value);
+
+        self.p.carry = (old_value & 0x01) != 0;
+
+        new_value
+    }
+
+    pub fn slo(&mut self, old_value: u8) -> u8 {
+        let new_value = old_value << 1;
+
+        self.p.carry = (old_value & 0x80) != 0;
+
+        self.a |= new_value;
+
+        self.set_p_zero_negative(self.a);
+
+        new_value
+    }
+
+    pub fn inc(&mut self, old_val: u8) -> u8 {
+        let new_value = old_val.wrapping_add(1);
+
+        self.set_p_zero_negative(new_value);
+
+        new_value
+    }
+
+    pub fn dec(&mut self, old_value: u8) -> u8 {
+        let new_value = old_value.wrapping_sub(1);
+
+        self.set_p_zero_negative(new_value);
+
+        new_value
+    }
+
+    pub fn and(&mut self, operand: u8) {
+        self.a &= operand;
+
+        self.set_p_zero_negative(self.a);
+    }
+
+    pub fn anc(&mut self, operand: u8) {
+        self.and(operand);
+
+        self.p.carry = self.p.negative;
+    }
+
+    pub fn ora(&mut self, operand: u8) {
+        self.a |= operand;
+
+        self.set_p_zero_negative(self.a);
+    }
+
+    pub fn alr(&mut self, operand: u8) {
+        self.a = self.lsr(self.a & operand);
+    }
+
+    pub fn eor(&mut self, operand: u8) {
+        self.a ^= operand;
+
+        self.set_p_zero_negative(self.a);
+    }
+
+    pub fn bit(&mut self, operand: u8) {
+        self.set_p_zero(self.a & operand);
+        self.p.overflow = operand & 0x40 != 0;
+        self.set_p_negative(operand);
+    }
+
+    pub fn adc(&mut self, operand: u8) {
+        if self.p.decimal_mode {
+            self.adc_bcd(operand);
+        } else {
+            self.adc_bin(operand);
+        }
+    }
+
+    fn adc_bin(&mut self, operand: u8) {
+        let carry = self.p.carry as u8;
+
+        let (result, operand_overflow) = self.a.overflowing_add(operand);
+        let (result, carry_overflow) = result.overflowing_add(carry);
+
+        self.p.carry = operand_overflow || carry_overflow;
+
+        self.set_p_zero_negative(result);
+        self.set_overflow_adc(result, operand);
+
+        self.a = result;
+    }
+
+    fn adc_bcd(&mut self, operand: u8) {
+        let carry_in = self.p.carry as u8;
+
+        // calculate normally for zero flag
+
+        let result = self.a.wrapping_add(operand);
+        let result = result.wrapping_add(carry_in);
+
+        self.set_p_zero(result);
+
+        // bcd calculation
+
+        let low_nibble = to_low_nibble(self.a) + to_low_nibble(operand) + carry_in;
+
+        let (low_nibble, low_carry_out) = wrap_nibble_up(low_nibble);
+
+        let high_nibble = to_high_nibble(self.a) + to_high_nibble(operand) + low_carry_out;
+
+        // N and V are determined before high nibble is adjusted
+        let result_so_far = from_nibbles(high_nibble, low_nibble);
+        self.set_overflow_adc(result_so_far, operand);
+        self.set_p_negative(result_so_far);
+
+        let (high_nibble, high_carry_out) = wrap_nibble_up(high_nibble);
+
+        self.p.carry = high_carry_out == 1;
+
+        self.a = from_nibbles(high_nibble, low_nibble);
+    }
+
+    pub fn sbc(&mut self, operand: u8) {
+        if self.p.decimal_mode {
+            self.sbc_bcd(operand);
+        } else {
+            self.adc_bin(!operand);
+        }
+    }
+
+    fn sbc_bcd(&mut self, operand: u8) {
+        let borrow_in = 1 - self.p.carry as u8;
+
+        // calculate normally for flags
+
+        let result = self.a.wrapping_sub(operand);
+        let result = result.wrapping_sub(borrow_in);
+
+        self.set_p_zero_negative(result);
+        self.set_overflow_sbc(result, operand);
+
+        // then calculate for BCD
+
+        let low_nibble = to_low_nibble(self.a)
+            .wrapping_sub(to_low_nibble(operand))
+            .wrapping_sub(borrow_in);
+
+        let (low_nibble, low_borrow_out) = wrap_nibble_down(low_nibble);
+
+        let high_nibble = to_high_nibble(self.a)
+            .wrapping_sub(to_high_nibble(operand))
+            .wrapping_sub(low_borrow_out);
+
+        let (high_nibble, high_borrow_out) = wrap_nibble_down(high_nibble);
+
+        self.p.carry = high_borrow_out == 0;
+
+        self.a = from_nibbles(high_nibble, low_nibble);
+    }
+
+    fn set_overflow_adc(&mut self, result: u8, operand: u8) {
+        self.p.overflow = is_negative((self.a ^ result) & (self.a ^ !operand));
+    }
+
+    fn set_overflow_sbc(&mut self, result: u8, operand: u8) {
+        self.set_overflow_adc(result, !operand);
+    }
+
+    fn set_p_negative(&mut self, value: u8) {
+        self.p.negative = is_negative(value);
+    }
+
+    fn set_p_zero(&mut self, value: u8) {
+        self.p.zero = value == 0;
+    }
+
+    fn set_p_zero_negative(&mut self, value: u8) {
+        self.set_p_zero(value);
+        self.set_p_negative(value);
+    }
+}
+
+#[derive(Clone, Copy)]
+pub enum RegisterType {
+    Stack,
+    Accumulator,
+    X,
+    Y,
+}
+
+// helpers
+
+fn is_negative(value: u8) -> bool {
+    value & 0x80 != 0
+}
+
+// nibble helpers
+
+fn wrap_nibble_up(nibble: u8) -> (u8, u8) {
+    if nibble > 0x09 {
+        (nibble + 0x06, 1)
+    } else {
+        (nibble, 0)
+    }
+}
+
+fn wrap_nibble_down(nibble: u8) -> (u8, u8) {
+    if nibble & 0x10 != 0 {
+        (nibble - 0x06, 1)
+    } else {
+        (nibble, 0)
+    }
+}
+
+fn from_nibbles(high: u8, low: u8) -> u8 {
+    (high << 4) | (low & 0x0f)
+}
+
+fn to_high_nibble(value: u8) -> u8 {
+    value >> 4
+}
+
+fn to_low_nibble(value: u8) -> u8 {
+    value & 0x0f
+}
+
 #[derive(Default, PartialEq, Debug)]
 pub struct StatusRegister {
     pub carry: bool,
