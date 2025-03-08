@@ -47,7 +47,7 @@ impl Registers {
         self.set_p_negative(register.wrapping_sub(value));
     }
 
-    pub fn asl(&mut self, old_value: u8) -> u8 {
+    pub fn shift_left(&mut self, old_value: u8) -> u8 {
         let new_value = old_value << 1;
 
         self.p.carry = (old_value & 0x80) != 0;
@@ -57,7 +57,7 @@ impl Registers {
         new_value
     }
 
-    pub fn lsr(&mut self, old_value: u8) -> u8 {
+    pub fn shift_right(&mut self, old_value: u8) -> u8 {
         let new_value = old_value >> 1;
 
         self.p.carry = (old_value & 0x01) != 0;
@@ -68,8 +68,8 @@ impl Registers {
         new_value
     }
 
-    pub fn rol(&mut self, old_value: u8) -> u8 {
-        let new_value = (old_value << 1) + self.p.carry as u8;
+    pub fn rotate_left(&mut self, old_value: u8) -> u8 {
+        let new_value = (old_value << 1) | self.p.carry as u8;
 
         self.p.carry = (old_value & 0x80) != 0;
 
@@ -78,8 +78,8 @@ impl Registers {
         new_value
     }
 
-    pub fn ror(&mut self, old_value: u8) -> u8 {
-        let new_value = (old_value >> 1) + (self.p.carry as u8) * 0x80;
+    pub fn rotate_right(&mut self, old_value: u8) -> u8 {
+        let new_value = (old_value >> 1) | (self.p.carry as u8) * 0x80;
 
         self.set_p_zero_negative(new_value);
 
@@ -88,7 +88,7 @@ impl Registers {
         new_value
     }
 
-    pub fn slo(&mut self, old_value: u8) -> u8 {
+    pub fn accumulator_shift_left_or(&mut self, old_value: u8) -> u8 {
         let new_value = old_value << 1;
 
         self.p.carry = (old_value & 0x80) != 0;
@@ -100,7 +100,7 @@ impl Registers {
         new_value
     }
 
-    pub fn inc(&mut self, old_val: u8) -> u8 {
+    pub fn increment(&mut self, old_val: u8) -> u8 {
         let new_value = old_val.wrapping_add(1);
 
         self.set_p_zero_negative(new_value);
@@ -108,7 +108,7 @@ impl Registers {
         new_value
     }
 
-    pub fn dec(&mut self, old_value: u8) -> u8 {
+    pub fn decrement(&mut self, old_value: u8) -> u8 {
         let new_value = old_value.wrapping_sub(1);
 
         self.set_p_zero_negative(new_value);
@@ -116,49 +116,49 @@ impl Registers {
         new_value
     }
 
-    pub fn and(&mut self, operand: u8) {
+    pub fn accumulator_and(&mut self, operand: u8) {
         self.a &= operand;
 
         self.set_p_zero_negative(self.a);
     }
 
-    pub fn anc(&mut self, operand: u8) {
-        self.and(operand);
+    pub fn and_negative_carry(&mut self, operand: u8) {
+        self.accumulator_and(operand);
 
         self.p.carry = self.p.negative;
     }
 
-    pub fn ora(&mut self, operand: u8) {
+    pub fn accumulator_or(&mut self, operand: u8) {
         self.a |= operand;
 
         self.set_p_zero_negative(self.a);
     }
 
-    pub fn alr(&mut self, operand: u8) {
-        self.a = self.lsr(self.a & operand);
+    pub fn accumulator_and_shift_right(&mut self, operand: u8) {
+        self.a = self.shift_right(self.a & operand);
     }
 
-    pub fn eor(&mut self, operand: u8) {
+    pub fn accumulator_xor(&mut self, operand: u8) {
         self.a ^= operand;
 
         self.set_p_zero_negative(self.a);
     }
 
-    pub fn bit(&mut self, operand: u8) {
+    pub fn accumulator_bit_test(&mut self, operand: u8) {
         self.set_p_zero(self.a & operand);
         self.p.overflow = operand & 0x40 != 0;
         self.set_p_negative(operand);
     }
 
-    pub fn adc(&mut self, operand: u8) {
+    pub fn add_with_carry(&mut self, operand: u8) {
         if self.p.decimal_mode {
-            self.adc_bcd(operand);
+            self.add_with_carry_bcd(operand);
         } else {
-            self.adc_bin(operand);
+            self.add_with_carry_non_bcd(operand);
         }
     }
 
-    fn adc_bin(&mut self, operand: u8) {
+    fn add_with_carry_non_bcd(&mut self, operand: u8) {
         let carry = self.p.carry as u8;
 
         let (result, operand_overflow) = self.a.overflowing_add(operand);
@@ -167,12 +167,12 @@ impl Registers {
         self.p.carry = operand_overflow || carry_overflow;
 
         self.set_p_zero_negative(result);
-        self.set_overflow_adc(result, operand);
+        self.set_overflow_add_with_carry(result, operand);
 
         self.a = result;
     }
 
-    fn adc_bcd(&mut self, operand: u8) {
+    fn add_with_carry_bcd(&mut self, operand: u8) {
         let carry_in = self.p.carry as u8;
 
         // calculate normally for zero flag
@@ -192,7 +192,7 @@ impl Registers {
 
         // N and V are determined before high nibble is adjusted
         let result_so_far = from_nibbles(high_nibble, low_nibble);
-        self.set_overflow_adc(result_so_far, operand);
+        self.set_overflow_add_with_carry(result_so_far, operand);
         self.set_p_negative(result_so_far);
 
         let (high_nibble, high_carry_out) = wrap_nibble_up(high_nibble);
@@ -202,15 +202,15 @@ impl Registers {
         self.a = from_nibbles(high_nibble, low_nibble);
     }
 
-    pub fn sbc(&mut self, operand: u8) {
+    pub fn substract_with_carry(&mut self, operand: u8) {
         if self.p.decimal_mode {
-            self.sbc_bcd(operand);
+            self.subtract_with_carry_bcd(operand);
         } else {
-            self.adc_bin(!operand);
+            self.add_with_carry_non_bcd(!operand);
         }
     }
 
-    fn sbc_bcd(&mut self, operand: u8) {
+    fn subtract_with_carry_bcd(&mut self, operand: u8) {
         let borrow_in = 1 - self.p.carry as u8;
 
         // calculate normally for flags
@@ -219,7 +219,7 @@ impl Registers {
         let result = result.wrapping_sub(borrow_in);
 
         self.set_p_zero_negative(result);
-        self.set_overflow_sbc(result, operand);
+        self.set_overflow_subtract_with_carry(result, operand);
 
         // then calculate for BCD
 
@@ -240,12 +240,12 @@ impl Registers {
         self.a = from_nibbles(high_nibble, low_nibble);
     }
 
-    fn set_overflow_adc(&mut self, result: u8, operand: u8) {
+    fn set_overflow_add_with_carry(&mut self, result: u8, operand: u8) {
         self.p.overflow = is_negative((self.a ^ result) & (self.a ^ !operand));
     }
 
-    fn set_overflow_sbc(&mut self, result: u8, operand: u8) {
-        self.set_overflow_adc(result, !operand);
+    fn set_overflow_subtract_with_carry(&mut self, result: u8, operand: u8) {
+        self.set_overflow_add_with_carry(result, !operand);
     }
 
     fn set_p_negative(&mut self, value: u8) {
