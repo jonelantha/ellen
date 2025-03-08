@@ -1,6 +1,12 @@
+use core::panic;
+
 use crate::cycle_manager::*;
 
 use super::registers::*;
+
+use AddressMode::*;
+
+use RegisterType::*;
 
 pub struct Executor<'a, T>
 where
@@ -41,986 +47,485 @@ where
         }
 
         match opcode {
-            0x00 => {
-                // BRK
-                self.brk(
-                    self.registers.pc.wrapping_add(1),
-                    u8::from(&self.registers.p) | P_BREAK_FLAG,
-                    IRQ_BRK_VECTOR,
-                );
-            }
-            0x01 => {
-                // ORA (zp,X)
-                let value = self.idx_x_address_value();
-
-                self.or(value);
-            }
-            0x04 => {
-                // DOP zp
-                self.zpg_address_value();
-            }
-            0x05 => {
-                // ORA zp
-                let value = self.zpg_address_value();
-
-                self.or(value);
-            }
-            0x06 => {
-                // ASL zp
-                let address = self.zpg_address();
-
-                self.read_modify_write(address, Self::asl);
-            }
-            0x07 => {
-                // SLO zp
-                let address = self.zpg_address();
-
-                let new_value = self.read_modify_write(address, Self::asl);
-
-                self.or(new_value);
-            }
-            0x08 => {
-                // PHP
-                self.phantom_pc_read();
-
-                self.push(u8::from(&self.registers.p) | P_BREAK_FLAG);
-            }
-            0x09 => {
-                // ORA imm
-                let value = self.imm();
-
-                self.or(value);
-            }
-            0x0a => {
-                // ASL A
-                self.phantom_pc_read();
-
-                self.registers.a = self.asl(self.registers.a);
-            }
-            0x0b => {
-                // ANC imm
-                let value = self.imm();
-
-                self.anc(value);
-            }
-            0x0d => {
-                // ORA abs
-                let value = self.abs_address_value();
-
-                self.or(value);
-            }
-            0x0e => {
-                // ASL abs
-                let address = self.abs_address();
-
-                self.read_modify_write(address, Self::asl);
-            }
-            0x10 => {
-                // BPL rel
-                self.branch(!self.registers.p.negative);
-            }
-            0x11 => {
-                // ORA (zp),Y
-                let value = self.ind_y_address_value();
-
-                self.or(value);
-            }
-            0x15 => {
-                // ORA zp,X
-                let value = self.zpg_x_address_value();
-
-                self.or(value);
-            }
-            0x16 => {
-                // ASL zp,X
-                let address = self.zpg_x_address();
-
-                self.read_modify_write(address, Self::asl);
-            }
-            0x18 => {
-                // CLC
-                self.phantom_pc_read();
-
-                self.registers.p.carry = false;
-            }
-            0x1d => {
-                // ORA abs,X
-                let value = self.abs_offset_address_value(self.registers.x);
-
-                self.or(value);
-            }
-            0x1e => {
-                // ASL abs,X
-                let address = self.abs_offset_address(self.registers.x);
-
-                self.read_modify_write(address, Self::asl);
-            }
-            0x19 => {
-                // ORA abs,Y
-                let value = self.abs_offset_address_value(self.registers.y);
-
-                self.or(value);
-            }
-            0x20 => {
-                // JSR abs
-                let pc_low = self.imm();
-
-                self.phantom_stack_read();
-
-                self.push_16(self.registers.pc);
-
-                let pc_high = self.imm_peek();
-
-                self.registers.pc = u16::from_le_bytes([pc_low, pc_high]);
-            }
-            0x21 => {
-                // AND (zp,X)
-                let value = self.idx_x_address_value();
-
-                self.and(value);
-            }
-            0x24 => {
-                // BIT zp
-                let value = self.zpg_address_value();
-
-                self.bit(value);
-            }
-            0x25 => {
-                // AND zp
-                let value = self.zpg_address_value();
-
-                self.and(value);
-            }
-            0x26 => {
-                // ROL zp
-                let address = self.zpg_address();
-
-                self.read_modify_write(address, Self::rol);
-            }
-            0x28 => {
-                // PLP
-                self.phantom_pc_read();
-
-                self.phantom_stack_read();
-
-                let value = self.pop();
-
-                self.registers.p = value.into();
-            }
-            0x29 => {
-                // AND imm
-                let value = self.imm();
-
-                self.and(value);
-            }
-            0x2a => {
-                // ROL A
-                self.phantom_pc_read();
-
-                self.registers.a = self.rol(self.registers.a);
-            }
-            0x2c => {
-                // BIT abs
-                let value = self.abs_address_value();
-
-                self.bit(value);
-            }
-            0x2d => {
-                // AND abs
-                let value = self.abs_address_value();
-
-                self.and(value);
-            }
-            0x2e => {
-                // ROL abs
-                let address = self.abs_address();
-
-                self.read_modify_write(address, Self::rol);
-            }
-            0x30 => {
-                // BMI rel
-                self.branch(self.registers.p.negative);
-            }
-            0x31 => {
-                // AND (zp),Y
-                let value = self.ind_y_address_value();
-
-                self.and(value);
-            }
-            0x35 => {
-                // AND zp,X
-                let value = self.zpg_x_address_value();
-
-                self.and(value);
-            }
-            0x36 => {
-                // ROL zp,X
-                let address = self.zpg_x_address();
-
-                self.read_modify_write(address, Self::rol);
-            }
-            0x38 => {
-                // SEC
-                self.phantom_pc_read();
-
-                self.registers.p.carry = true;
-            }
-            0x39 => {
-                // AND abs,Y
-                let value = self.abs_offset_address_value(self.registers.y);
-
-                self.and(value);
-            }
-            0x3d => {
-                // AND abs,X
-                let value = self.abs_offset_address_value(self.registers.x);
-
-                self.and(value);
-            }
-            0x3e => {
-                // ROL abs,X
-                let address = self.abs_offset_address(self.registers.x);
-
-                self.read_modify_write(address, Self::rol);
-            }
-            0x40 => {
-                // RTI
-                self.phantom_pc_read();
-
-                self.phantom_stack_read();
-
-                let p = self.pop();
-
-                self.registers.p = p.into();
-
-                self.registers.pc = self.pop_16();
-            }
-            0x41 => {
-                // EOR (zp,X)
-                let value = self.idx_x_address_value();
-
-                self.xor(value);
-            }
-            0x45 => {
-                // EOR zp
-                let value = self.zpg_address_value();
-
-                self.xor(value);
-            }
-            0x46 => {
-                // LSR zp
-                let address = self.zpg_address();
-
-                self.read_modify_write(address, Self::lsr);
-            }
-            0x48 => {
-                // PHA
-                self.phantom_pc_read();
-
-                self.push(self.registers.a);
-            }
-            0x49 => {
-                // EOR imm
-                let value = self.imm();
-
-                self.xor(value);
-            }
-            0x4a => {
-                // LSR A
-                self.phantom_pc_read();
-
-                self.registers.a = self.lsr(self.registers.a);
-            }
-            0x4b => {
-                // ALR imm
-                let value = self.imm();
-
-                self.registers.a = self.lsr(self.registers.a & value);
-            }
-            0x4c => {
-                // JMP abs
-                self.registers.pc = self.abs_address();
-            }
-            0x4d => {
-                // EOR abs
-                let value = self.abs_address_value();
-
-                self.xor(value);
-            }
-            0x4e => {
-                // LSR abs
-                let address = self.abs_address();
-
-                self.read_modify_write(address, Self::lsr);
-            }
-            0x50 => {
-                // BVC rel
-                self.branch(!self.registers.p.overflow)
-            }
-            0x51 => {
-                // EOR (zp),Y
-                let value = self.ind_y_address_value();
-
-                self.xor(value);
-            }
-            0x55 => {
-                // EOR zp,X
-                let value = self.zpg_x_address_value();
-
-                self.xor(value);
-            }
-            0x56 => {
-                // LSR zp,X
-                let address = self.zpg_x_address();
-
-                self.read_modify_write(address, Self::lsr);
-            }
-            0x58 => {
-                // CLI
-                self.phantom_pc_read();
-
-                self.registers.p.interrupt_disable = false;
-            }
-            0x59 => {
-                // EOR abs,Y
-                let value = self.abs_offset_address_value(self.registers.y);
-
-                self.xor(value);
-            }
-            0x5d => {
-                // EOR abs,X
-                let value = self.abs_offset_address_value(self.registers.x);
-
-                self.xor(value);
-            }
-            0x5e => {
-                // LSR abs,X
-                let address = self.abs_offset_address(self.registers.x);
-
-                self.read_modify_write(address, Self::lsr);
-            }
-            0x60 => {
-                // RTS
-                self.phantom_pc_read();
-
-                self.phantom_stack_read();
-
-                self.registers.pc = self.pop_16();
-
-                self.phantom_pc_read();
-
-                self.registers.pc = self.registers.pc.wrapping_add(1);
-            }
-            0x61 => {
-                // ADC (zp,X)
-                let value = self.idx_x_address_value();
-
-                self.adc(value);
-            }
-            0x65 => {
-                // ADC zp
-                let value = self.zpg_address_value();
-
-                self.adc(value);
-            }
-            0x66 => {
-                // ROR zp
-                let address = self.zpg_address();
-
-                self.read_modify_write(address, Self::ror);
-            }
-            0x68 => {
-                // PLA
-                self.phantom_pc_read();
-
-                self.phantom_stack_read();
-
-                let value = self.pop();
-
-                self.lda(value);
-            }
-            0x69 => {
-                // ADC imm
-                let value = self.imm();
-
-                self.adc(value);
-            }
-            0x6a => {
-                // ROR A
-                self.phantom_pc_read();
-
-                self.registers.a = self.ror(self.registers.a);
-            }
-            0x6c => {
-                // JMP (abs)
-                let address = self.abs_address();
-
-                self.registers.pc = u16::from_le_bytes([
-                    self.read(address, CycleOp::None),
-                    self.read(next_address_same_page(address), CycleOp::None),
-                ]);
-            }
-            0x6d => {
-                // ADC abs
-                let value = self.abs_address_value();
-
-                self.adc(value);
-            }
-            0x6e => {
-                // ROR abs
-                let address = self.abs_address();
-
-                self.read_modify_write(address, Self::ror);
-            }
-            0x70 => {
-                // BVS rel
-                self.branch(self.registers.p.overflow);
-            }
-            0x71 => {
-                // ADC (zp),Y
-                let value = self.ind_y_address_value();
-
-                self.adc(value);
-            }
-            0x75 => {
-                // ADC zp,X
-                let value = self.zpg_x_address_value();
-
-                self.adc(value);
-            }
-            0x76 => {
-                // ROR zp,X
-                let address = self.zpg_x_address();
-
-                self.read_modify_write(address, Self::ror);
-            }
-            0x78 => {
-                // SEI
-                self.phantom_pc_read();
-
-                self.registers.p.interrupt_disable = true;
-            }
-            0x79 => {
-                // ADC abs,Y
-                let value = self.abs_offset_address_value(self.registers.y);
-
-                self.adc(value);
-            }
-            0x7d => {
-                // ADC abs,X
-                let value = self.abs_offset_address_value(self.registers.x);
-
-                self.adc(value);
-            }
-            0x7e => {
-                // ROR abs,X
-                let address = self.abs_offset_address(self.registers.x);
-
-                self.read_modify_write(address, Self::ror);
-            }
-            0x81 => {
-                // STA (zp,X)
-                let address = self.idx_x_address();
-
-                self.write(address, self.registers.a, CycleOp::CheckInterrupt);
-            }
-            0x84 => {
-                // STY zp
-                let address = self.zpg_address();
-
-                self.write(address, self.registers.y, CycleOp::CheckInterrupt);
-            }
-            0x85 => {
-                // STA zp
-                let address = self.zpg_address();
-
-                self.write(address, self.registers.a, CycleOp::CheckInterrupt);
-            }
-            0x86 => {
-                // STX zp
-                let address = self.zpg_address();
-
-                self.write(address, self.registers.x, CycleOp::CheckInterrupt);
-            }
-            0x87 => {
-                // SAX zp
-                let address = self.zpg_address();
-
-                self.write(
-                    address,
-                    self.registers.a & self.registers.x,
-                    CycleOp::CheckInterrupt,
-                );
-            }
-            0x88 => {
-                // DEY
-                self.phantom_pc_read();
-
-                self.registers.y = self.dec(self.registers.y);
-            }
-            0x8a => {
-                // TXA
-                self.phantom_pc_read();
-
-                self.lda(self.registers.x);
-            }
-            0x8c => {
-                // STY abs
-                let address = self.abs_address();
-
-                self.write(address, self.registers.y, CycleOp::CheckInterrupt);
-            }
-            0x8d => {
-                // STA abs
-                let address = self.abs_address();
-
-                self.write(address, self.registers.a, CycleOp::CheckInterrupt);
-            }
-            0x8e => {
-                // STX abs
-                let address = self.abs_address();
-
-                self.write(address, self.registers.x, CycleOp::CheckInterrupt);
-            }
-            0x90 => {
-                // BCC rel
-                self.branch(!self.registers.p.carry);
-            }
-            0x91 => {
-                // STA (zp),Y
-                let address = self.ind_y_address();
-
-                self.write(address, self.registers.a, CycleOp::CheckInterrupt);
-            }
-            0x94 => {
-                // STY zp,X
-                let address = self.zpg_x_address();
-
-                self.write(address, self.registers.y, CycleOp::CheckInterrupt);
-            }
-            0x95 => {
-                // STA zp,X
-                let address = self.zpg_x_address();
-
-                self.write(address, self.registers.a, CycleOp::CheckInterrupt);
-            }
-            0x96 => {
-                // STX zp,Y
-                let address = self.zpg_y_address();
-
-                self.write(address, self.registers.x, CycleOp::CheckInterrupt);
-            }
-            0x99 => {
-                // STA abs,Y
-                let address = self.abs_offset_address(self.registers.y);
-
-                self.write(address, self.registers.a, CycleOp::CheckInterrupt);
-            }
-            0x98 => {
-                // TYA
-                self.phantom_pc_read();
-
-                self.lda(self.registers.y);
-            }
-            0x9a => {
-                // TXS
-                self.phantom_pc_read();
-
-                self.registers.s = self.registers.x;
-            }
-            0x9c => {
-                // SHY abs,X
-                let (address, carry_result) =
-                    address_offset_unsigned(self.abs_address(), self.registers.x);
-
-                let [low, high] = address.to_le_bytes();
-
-                if let CarryResult::Carried { intermediate } = carry_result {
-                    self.phantom_read(intermediate);
-
-                    let value = self.registers.y & high;
-                    let address = u16::from_le_bytes([low, value]);
-
-                    self.write(address, value, CycleOp::CheckInterrupt);
-                } else {
-                    self.phantom_read(address);
-
-                    let value = self.registers.y & high.wrapping_add(1);
-
-                    self.write(address, value, CycleOp::CheckInterrupt);
-                }
-            }
-            0x9d => {
-                // STA abs,X
-                let address = self.abs_offset_address(self.registers.x);
-
-                self.write(address, self.registers.a, CycleOp::CheckInterrupt);
-            }
-            0xa0 => {
-                // LDY imm
-                let value = self.imm();
-
-                self.ldy(value);
-            }
-            0xa1 => {
-                // LDA (zp,X)
-                let value = self.idx_x_address_value();
-
-                self.lda(value);
-            }
-            0xa2 => {
-                // LDX imm
-                let value = self.imm();
-
-                self.ldx(value);
-            }
-            0xa4 => {
-                // LDY zp
-                let value = self.zpg_address_value();
-
-                self.ldy(value);
-            }
-            0xa5 => {
-                // LDA zp
-                let value = self.zpg_address_value();
-
-                self.lda(value);
-            }
-            0xa6 => {
-                // LDX zp
-                let value = self.zpg_address_value();
-
-                self.ldx(value);
-            }
-            0xa8 => {
-                // TAY
-                self.phantom_pc_read();
-
-                self.ldy(self.registers.a);
-            }
-            0xa9 => {
-                // LDA imm
-                let value = self.imm();
-
-                self.lda(value);
-            }
-            0xaa => {
-                // TXA
-                self.phantom_pc_read();
-
-                self.ldx(self.registers.a);
-            }
-            0xac => {
-                // LDY abs
-                let value = self.abs_address_value();
-
-                self.ldy(value);
-            }
-            0xad => {
-                // LDA abs
-                let value = self.abs_address_value();
-
-                self.lda(value);
-            }
-            0xae => {
-                // LDX abs
-                let value = self.abs_address_value();
-
-                self.ldx(value);
-            }
-            0xb0 => {
-                // BCS rel
-                self.branch(self.registers.p.carry);
-            }
-            0xb1 => {
-                // LDA (zp),Y
-                let value = self.ind_y_address_value();
-
-                self.lda(value);
-            }
-            0xb4 => {
-                // LDY zp,X
-                let value = self.zpg_x_address_value();
-
-                self.ldy(value);
-            }
-            0xb5 => {
-                // LDA zp,X
-                let value = self.zpg_x_address_value();
-
-                self.lda(value);
-            }
-            0xb6 => {
-                // LDX zp,Y
-                let value = self.zpg_y_address_value();
-
-                self.ldx(value);
-            }
-            0xb8 => {
-                // CLV
-                self.phantom_pc_read();
-
-                self.registers.p.overflow = false;
-            }
-            0xb9 => {
-                // LDA abs,Y
-                let value = self.abs_offset_address_value(self.registers.y);
-
-                self.lda(value);
-            }
-            0xba => {
-                // TSX
-                self.phantom_pc_read();
-
-                self.ldx(self.registers.s);
-            }
-            0xbc => {
-                // LDY abs,X
-                let value = self.abs_offset_address_value(self.registers.x);
-
-                self.ldy(value);
-            }
-            0xbd => {
-                // LDA abs,X
-                let value = self.abs_offset_address_value(self.registers.x);
-
-                self.lda(value);
-            }
-            0xbe => {
-                // LDX abs,Y
-                let value = self.abs_offset_address_value(self.registers.y);
-
-                self.ldx(value);
-            }
-            0xc0 => {
-                // CPY imm
-                let value = self.imm();
-
-                self.cpy(value);
-            }
-            0xc1 => {
-                // CMP (zp,X)
-                let value = self.idx_x_address_value();
-
-                self.cmp(value);
-            }
-            0xc4 => {
-                // CPY zp
-                let value = self.zpg_address_value();
-
-                self.cpy(value);
-            }
-            0xc5 => {
-                // CMP zp
-                let value = self.zpg_address_value();
-
-                self.cmp(value);
-            }
-            0xc6 => {
-                // DEC zp
-                let address = self.zpg_address();
-
-                self.read_modify_write(address, Self::dec);
-            }
-            0xc8 => {
-                // INY
-                self.phantom_pc_read();
-
-                self.registers.y = self.inc(self.registers.y);
-            }
-            0xc9 => {
-                // CMP abs
-                let value = self.imm();
-
-                self.cmp(value);
-            }
-            0xca => {
-                // DEX
-                self.phantom_pc_read();
-
-                self.registers.x = self.dec(self.registers.x);
-            }
-            0xcc => {
-                // CPY abs
-                let value = self.abs_address_value();
-
-                self.cpy(value);
-            }
-            0xcd => {
-                // CMP abs
-                let value = self.abs_address_value();
-
-                self.cmp(value);
-            }
-            0xce => {
-                // DEC abs
-                let address = self.abs_address();
-
-                self.read_modify_write(address, Self::dec);
-            }
-            0xd0 => {
-                // BNE rel
-                self.branch(!self.registers.p.zero);
-            }
-            0xd1 => {
-                // CMP (zp),Y
-                let value = self.ind_y_address_value();
-
-                self.cmp(value);
-            }
-            0xd5 => {
-                // CMP zp,X
-                let value = self.zpg_x_address_value();
-
-                self.cmp(value);
-            }
-            0xd6 => {
-                // DEC zp,X
-                let address = self.zpg_x_address();
-
-                self.read_modify_write(address, Self::dec);
-            }
-            0xd8 => {
-                // CLD
-                self.phantom_pc_read();
-
-                self.registers.p.decimal_mode = false;
-            }
-            0xd9 => {
-                // CMP abs,Y
-                let value = self.abs_offset_address_value(self.registers.y);
-
-                self.cmp(value);
-            }
-            0xdc => {
-                // NOP abs,X
-                self.abs_offset_address_value(self.registers.x);
-            }
-            0xdd => {
-                // CMP abs,X
-                let value = self.abs_offset_address_value(self.registers.x);
-
-                self.cmp(value);
-            }
-            0xde => {
-                // DEC abs,X
-                let address = self.abs_offset_address(self.registers.x);
-
-                self.read_modify_write(address, Self::dec);
-            }
-            0xe0 => {
-                // CPX imm
-                let value = self.imm();
-
-                self.cpx(value);
-            }
-            0xe1 => {
-                // SBC (zp,X)
-                let value = self.idx_x_address_value();
-
-                self.sbc(value);
-            }
-            0xe4 => {
-                // CPX zp
-                let value = self.zpg_address_value();
-
-                self.cpx(value);
-            }
-            0xe5 => {
-                // SBC zp
-                let value = self.zpg_address_value();
-
-                self.sbc(value);
-            }
-            0xe6 => {
-                // INC zp
-                let address = self.zpg_address();
-
-                self.read_modify_write(address, Self::inc);
-            }
-            0xe8 => {
-                // INX
-                self.phantom_pc_read();
-
-                self.registers.x = self.inc(self.registers.x);
-            }
-            0xe9 => {
-                // SBC imm
-                let value = self.imm();
-
-                self.sbc(value)
-            }
-            0xea => {
-                // NOP
-                self.phantom_pc_read();
-            }
-            0xec => {
-                // CPX abs
-                let value = self.abs_address_value();
-
-                self.cpx(value);
-            }
-            0xed => {
-                // SBC abs
-                let value = self.abs_address_value();
-
-                self.sbc(value);
-            }
-            0xee => {
-                // INC abs
-                let address = self.abs_address();
-
-                self.read_modify_write(address, Self::inc);
-            }
-            0xf0 => {
-                // BEQ rel
-                self.branch(self.registers.p.zero);
-            }
-            0xf1 => {
-                // SBC (zp),Y
-                let value = self.ind_y_address_value();
-
-                self.sbc(value);
-            }
-            0xf5 => {
-                // SBC zp,X
-                let value = self.zpg_x_address_value();
-
-                self.sbc(value);
-            }
-            0xf6 => {
-                // INC zp,X
-                let address = self.zpg_x_address();
-
-                self.read_modify_write(address, Self::inc);
-            }
-            0xf8 => {
-                // SED
-                self.phantom_pc_read();
-
-                self.registers.p.decimal_mode = true;
-            }
-            0xf9 => {
-                // SBC abs,Y
-                let value = self.abs_offset_address_value(self.registers.y);
-
-                self.sbc(value);
-            }
-            0xfd => {
-                // SBC abs,X
-                let value = self.abs_offset_address_value(self.registers.x);
-
-                self.sbc(value);
-            }
-            0xfe => {
-                // INC abs,X
-                let address = self.abs_offset_address(self.registers.x);
-
-                self.read_modify_write(address, Self::inc);
-            }
-            _ => {
-                panic!("Unimplemented opcode: {:#04x}", opcode);
-            }
+            // BRK
+            0x00 => self.brk(
+                self.registers.pc.wrapping_add(1),
+                u8::from(&self.registers.p) | P_BREAK_FLAG,
+                IRQ_BRK_VECTOR,
+            ),
+
+            // ORA (zp,X)
+            0x01 => self.accumulator_op(Registers::ora, IndexedIndirectX),
+
+            // DOP zp
+            0x04 => self.data_no_return(ZeroPage),
+
+            // ORA zp
+            0x05 => self.accumulator_op(Registers::ora, ZeroPage),
+
+            // ASL zp
+            0x06 => self.read_modify_write(Registers::asl, ZeroPage),
+
+            // SLO zp
+            0x07 => self.read_modify_write(Registers::slo, ZeroPage),
+
+            // PHP
+            0x08 => self.php(),
+
+            // ORA imm
+            0x09 => self.accumulator_op(Registers::ora, Immediate),
+
+            // ASL A
+            0x0a => self.read_modify_write(Registers::asl, Register(Accumulator)),
+
+            // ANC imm
+            0x0b => self.accumulator_op(Registers::anc, Immediate),
+
+            // ORA abs
+            0x0d => self.accumulator_op(Registers::ora, Absolute),
+
+            // ASL abs
+            0x0e => self.read_modify_write(Registers::asl, Absolute),
+
+            // BPL rel
+            0x10 => self.branch(!self.registers.p.negative),
+
+            // ORA (zp),Y
+            0x11 => self.accumulator_op(Registers::ora, IndirectIndexedY),
+
+            // ORA zp,X
+            0x15 => self.accumulator_op(Registers::ora, ZeroPageX),
+
+            // ASL zp,X
+            0x16 => self.read_modify_write(Registers::asl, ZeroPageX),
+
+            // CLC
+            0x18 => self.set_carry(false),
+
+            // ORA abs,X
+            0x1d => self.accumulator_op(Registers::ora, AbsoluteX),
+
+            // ASL abs,X
+            0x1e => self.read_modify_write(Registers::asl, AbsoluteX),
+
+            // ORA abs,Y
+            0x19 => self.accumulator_op(Registers::ora, AbsoluteY),
+
+            // JSR abs
+            0x20 => self.jsr(),
+
+            // AND (zp,X)
+            0x21 => self.accumulator_op(Registers::and, IndexedIndirectX),
+
+            // BIT zp
+            0x24 => self.accumulator_op(Registers::bit, ZeroPage),
+
+            // AND zp
+            0x25 => self.accumulator_op(Registers::and, ZeroPage),
+
+            // ROL zp
+            0x26 => self.read_modify_write(Registers::rol, ZeroPage),
+
+            // PLP
+            0x28 => self.plp(),
+
+            // AND imm
+            0x29 => self.accumulator_op(Registers::and, Immediate),
+
+            // ROL A
+            0x2a => self.read_modify_write(Registers::rol, Register(Accumulator)),
+
+            // BIT abs
+            0x2c => self.accumulator_op(Registers::bit, Absolute),
+
+            // AND abs
+            0x2d => self.accumulator_op(Registers::and, Absolute),
+
+            // ROL abs
+            0x2e => self.read_modify_write(Registers::rol, Absolute),
+
+            // BMI rel
+            0x30 => self.branch(self.registers.p.negative),
+
+            // AND (zp),Y
+            0x31 => self.accumulator_op(Registers::and, IndirectIndexedY),
+
+            // AND zp,X
+            0x35 => self.accumulator_op(Registers::and, ZeroPageX),
+
+            // ROL zp,X
+            0x36 => self.read_modify_write(Registers::rol, ZeroPageX),
+
+            // SEC
+            0x38 => self.set_carry(true),
+
+            // AND abs,Y
+            0x39 => self.accumulator_op(Registers::and, AbsoluteY),
+
+            // AND abs,X
+            0x3d => self.accumulator_op(Registers::and, AbsoluteX),
+
+            // ROL abs,X
+            0x3e => self.read_modify_write(Registers::rol, AbsoluteX),
+
+            // RTI
+            0x40 => self.rti(),
+
+            // EOR (zp,X)
+            0x41 => self.accumulator_op(Registers::eor, IndexedIndirectX),
+
+            // EOR zp
+            0x45 => self.accumulator_op(Registers::eor, ZeroPage),
+
+            // LSR zp
+            0x46 => self.read_modify_write(Registers::lsr, ZeroPage),
+
+            // PHA
+            0x48 => self.pha(),
+
+            // EOR imm
+            0x49 => self.accumulator_op(Registers::eor, Immediate),
+
+            // LSR A
+            0x4a => self.read_modify_write(Registers::lsr, Register(Accumulator)),
+
+            // ALR imm
+            0x4b => self.accumulator_op(Registers::alr, Immediate),
+
+            // JMP abs
+            0x4c => self.jmp(Absolute),
+
+            // EOR abs
+            0x4d => self.accumulator_op(Registers::eor, Absolute),
+
+            // LSR abs
+            0x4e => self.read_modify_write(Registers::lsr, Absolute),
+
+            // BVC rel
+            0x50 => self.branch(!self.registers.p.overflow),
+
+            // EOR (zp),Y
+            0x51 => self.accumulator_op(Registers::eor, IndirectIndexedY),
+
+            // EOR zp,X
+            0x55 => self.accumulator_op(Registers::eor, ZeroPageX),
+
+            // LSR zp,X
+            0x56 => self.read_modify_write(Registers::lsr, ZeroPageX),
+
+            // CLI
+            0x58 => self.set_interrupt_disable(false),
+
+            // EOR abs,Y
+            0x59 => self.accumulator_op(Registers::eor, AbsoluteY),
+
+            // EOR abs,X
+            0x5d => self.accumulator_op(Registers::eor, AbsoluteX),
+
+            // LSR abs,X
+            0x5e => self.read_modify_write(Registers::lsr, AbsoluteX),
+
+            // RTS
+            0x60 => self.rts(),
+
+            // ADC (zp,X)
+            0x61 => self.accumulator_op(Registers::adc, IndexedIndirectX),
+
+            // ADC zp
+            0x65 => self.accumulator_op(Registers::adc, ZeroPage),
+
+            // ROR zp
+            0x66 => self.read_modify_write(Registers::ror, ZeroPage),
+
+            // PLA
+            0x68 => self.pla(),
+
+            // ADC imm
+            0x69 => self.accumulator_op(Registers::adc, Immediate),
+
+            // ROR A
+            0x6a => self.read_modify_write(Registers::ror, Register(Accumulator)),
+
+            // JMP (abs)
+            0x6c => self.jmp(Indirect),
+
+            // ADC abs
+            0x6d => self.accumulator_op(Registers::adc, Absolute),
+
+            // ROR abs
+            0x6e => self.read_modify_write(Registers::ror, Absolute),
+
+            // BVS rel
+            0x70 => self.branch(self.registers.p.overflow),
+
+            // ADC (zp)
+            0x71 => self.accumulator_op(Registers::adc, IndirectIndexedY),
+
+            // ADC zp,X
+            0x75 => self.accumulator_op(Registers::adc, ZeroPageX),
+
+            // ROR zp,X
+            0x76 => self.read_modify_write(Registers::ror, ZeroPageX),
+
+            // SEI
+            0x78 => self.set_interrupt_disable(true),
+
+            // ADC abs,Y
+            0x79 => self.accumulator_op(Registers::adc, AbsoluteY),
+
+            // ADC abs,X
+            0x7d => self.accumulator_op(Registers::adc, AbsoluteX),
+
+            // ROR abs,X
+            0x7e => self.read_modify_write(Registers::ror, AbsoluteX),
+
+            // STA (zp,X)
+            0x81 => self.store(IndexedIndirectX, self.registers.a),
+
+            // STY zp
+            0x84 => self.store(ZeroPage, self.registers.y),
+
+            // STA zp
+            0x85 => self.store(ZeroPage, self.registers.a),
+
+            // STX zp
+            0x86 => self.store(ZeroPage, self.registers.x),
+
+            // SAX zp
+            0x87 => self.store(ZeroPage, self.registers.a & self.registers.x),
+
+            // DEY
+            0x88 => self.read_modify_write(Registers::dec, Register(Y)),
+
+            // TXA
+            0x8a => self.load_register(Accumulator, Register(X)),
+
+            // STY abs
+            0x8c => self.store(Absolute, self.registers.y),
+
+            // STA abs
+            0x8d => self.store(Absolute, self.registers.a),
+
+            // STX abs
+            0x8e => self.store(Absolute, self.registers.x),
+
+            // BCC rel
+            0x90 => self.branch(!self.registers.p.carry),
+
+            // STA (zp),Y
+            0x91 => self.store(IndirectIndexedY, self.registers.a),
+
+            // STY zp,X
+            0x94 => self.store(ZeroPageX, self.registers.y),
+
+            // STA zp,X
+            0x95 => self.store(ZeroPageX, self.registers.a),
+
+            // STX zp,Y
+            0x96 => self.store(ZeroPageY, self.registers.x),
+
+            // STA abs,Y
+            0x99 => self.store(AbsoluteY, self.registers.a),
+
+            // TYA
+            0x98 => self.load_register(Accumulator, Register(Y)),
+
+            // TXS
+            0x9a => self.txs(),
+
+            // SHY abs,X
+            0x9c => self.shy(AbsoluteX),
+
+            // STA abs,X
+            0x9d => self.store(AbsoluteX, self.registers.a),
+
+            // LDY imm
+            0xa0 => self.load_register(Y, Immediate),
+
+            // LDA (zp,X)
+            0xa1 => self.load_register(Accumulator, IndexedIndirectX),
+
+            // LDX imm
+            0xa2 => self.load_register(X, Immediate),
+
+            // LDY zp
+            0xa4 => self.load_register(Y, ZeroPage),
+
+            // LDA zp
+            0xa5 => self.load_register(Accumulator, ZeroPage),
+
+            // LDX zp
+            0xa6 => self.load_register(X, ZeroPage),
+
+            // TAY
+            0xa8 => self.load_register(Y, Register(Accumulator)),
+
+            // LDA imm
+            0xa9 => self.load_register(Accumulator, Immediate),
+
+            // TXA
+            0xaa => self.load_register(X, Register(Accumulator)),
+
+            // LDY abs
+            0xac => self.load_register(Y, Absolute),
+
+            // LDA abs
+            0xad => self.load_register(Accumulator, Absolute),
+
+            // LDX abs
+            0xae => self.load_register(X, Absolute),
+
+            // BCS rel
+            0xb0 => self.branch(self.registers.p.carry),
+
+            // LDA (zp),Y
+            0xb1 => self.load_register(Accumulator, IndirectIndexedY),
+
+            // LDY zp,X
+            0xb4 => self.load_register(Y, ZeroPageX),
+
+            // LDA zp,X
+            0xb5 => self.load_register(Accumulator, ZeroPageX),
+
+            // LDX zp,Y
+            0xb6 => self.load_register(X, ZeroPageY),
+
+            // CLV
+            0xb8 => self.set_overflow(false),
+
+            // LDA abs,Y
+            0xb9 => self.load_register(Accumulator, AbsoluteY),
+
+            // TSX
+            0xba => self.load_register(X, Register(Stack)),
+
+            // LDY abs,X
+            0xbc => self.load_register(Y, AbsoluteX),
+
+            // LDA abs,X
+            0xbd => self.load_register(Accumulator, AbsoluteX),
+
+            // LDX abs,Y
+            0xbe => self.load_register(X, AbsoluteY),
+
+            // CPY imm
+            0xc0 => self.compare(Immediate, self.registers.y),
+
+            // CMP (zp,X)
+            0xc1 => self.compare(IndexedIndirectX, self.registers.a),
+
+            // CPY zp
+            0xc4 => self.compare(ZeroPage, self.registers.y),
+
+            // CMP zp
+            0xc5 => self.compare(ZeroPage, self.registers.a),
+
+            // DEC zp
+            0xc6 => self.read_modify_write(Registers::dec, ZeroPage),
+
+            // INY
+            0xc8 => self.read_modify_write(Registers::inc, Register(Y)),
+
+            // CMP abs
+            0xc9 => self.compare(Immediate, self.registers.a),
+
+            // DEX
+            0xca => self.read_modify_write(Registers::dec, Register(X)),
+
+            // CPY abs
+            0xcc => self.compare(Absolute, self.registers.y),
+
+            // CMP abs
+            0xcd => self.compare(Absolute, self.registers.a),
+
+            // DEC abs
+            0xce => self.read_modify_write(Registers::dec, Absolute),
+
+            // BNE rel
+            0xd0 => self.branch(!self.registers.p.zero),
+
+            // CMP (zp),Y
+            0xd1 => self.compare(IndirectIndexedY, self.registers.a),
+
+            // CMP zp,X
+            0xd5 => self.compare(ZeroPageX, self.registers.a),
+
+            // DEC zp,X
+            0xd6 => self.read_modify_write(Registers::dec, ZeroPageX),
+
+            // CLD
+            0xd8 => self.set_decimal_mode(false),
+
+            // CMP abs,Y
+            0xd9 => self.compare(AbsoluteY, self.registers.a),
+
+            // NOP abs,X
+            0xdc => self.data_no_return(AbsoluteX),
+
+            // CMP abs,X
+            0xdd => self.compare(AbsoluteX, self.registers.a),
+
+            // DEC abs,X
+            0xde => self.read_modify_write(Registers::dec, AbsoluteX),
+
+            // CPX imm
+            0xe0 => self.compare(Immediate, self.registers.x),
+
+            // SBC (zp,X)
+            0xe1 => self.accumulator_op(Registers::sbc, IndexedIndirectX),
+
+            // CPX zp
+            0xe4 => self.compare(ZeroPage, self.registers.x),
+
+            // SBC zp
+            0xe5 => self.accumulator_op(Registers::sbc, ZeroPage),
+
+            // INC zp
+            0xe6 => self.read_modify_write(Registers::inc, ZeroPage),
+
+            // INX
+            0xe8 => self.read_modify_write(Registers::inc, Register(X)),
+
+            // SBC imm
+            0xe9 => self.accumulator_op(Registers::sbc, Immediate),
+
+            // NOP
+            0xea => self.phantom_pc_read(),
+
+            // CPX abs
+            0xec => self.compare(Absolute, self.registers.x),
+
+            // SBC abs
+            0xed => self.accumulator_op(Registers::sbc, Absolute),
+
+            // INC abs
+            0xee => self.read_modify_write(Registers::inc, Absolute),
+
+            // BEQ rel
+            0xf0 => self.branch(self.registers.p.zero),
+
+            // SBC (zp),Y
+            0xf1 => self.accumulator_op(Registers::sbc, IndirectIndexedY),
+
+            // SBC zp,X
+            0xf5 => self.accumulator_op(Registers::sbc, ZeroPageX),
+
+            // INC zp,X
+            0xf6 => self.read_modify_write(Registers::inc, ZeroPageX),
+
+            // SED
+            0xf8 => self.set_decimal_mode(true),
+
+            // SBC abs,Y
+            0xf9 => self.accumulator_op(Registers::sbc, AbsoluteY),
+
+            // SBC abs,X
+            0xfd => self.accumulator_op(Registers::sbc, AbsoluteX),
+
+            // INC abs,X
+            0xfe => self.read_modify_write(Registers::inc, AbsoluteX),
+
+            _ => panic!("Unimplemented opcode: {:#04x}", opcode),
         }
 
         self.cycle_manager.complete();
@@ -1040,10 +545,6 @@ where
 
     fn write(&mut self, address: u16, value: u8, op: CycleOp) {
         self.cycle_manager.write(address, value, op);
-    }
-
-    fn imm_peek(&mut self) -> u8 {
-        self.read(self.registers.pc, CycleOp::None)
     }
 
     fn imm(&mut self) -> u8 {
@@ -1083,52 +584,137 @@ where
         u16::from_le_bytes([self.pop(), self.pop()])
     }
 
-    fn abs_address(&mut self) -> u16 {
-        u16::from_le_bytes([self.imm(), self.imm()])
-    }
+    fn address(&mut self, address_mode: AddressMode) -> u16 {
+        match address_mode {
+            ZeroPage => self.imm() as u16,
+            ZeroPageX => {
+                let base_address = self.imm();
 
-    fn abs_address_value(&mut self) -> u8 {
-        let address = self.abs_address();
+                self.phantom_read(base_address as u16);
 
-        self.read(address, CycleOp::CheckInterrupt)
-    }
+                base_address.wrapping_add(self.registers.x) as u16
+            }
+            ZeroPageY => {
+                let base_address = self.imm();
 
-    fn abs_offset_address(&mut self, offset: u8) -> u16 {
-        let (address, carry_result) = address_offset_unsigned(self.abs_address(), offset);
+                self.phantom_read(base_address as u16);
 
-        if let CarryResult::Carried { intermediate } = carry_result {
-            self.phantom_read(intermediate);
-        } else {
-            self.phantom_read(address);
+                base_address.wrapping_add(self.registers.y) as u16
+            }
+            Relative => {
+                let rel_address = self.imm() as i8;
+
+                self.phantom_pc_read();
+
+                let (address, carry_result) = address_offset_signed(self.registers.pc, rel_address);
+
+                if let CarryResult::Carried { intermediate } = carry_result {
+                    self.phantom_read(intermediate);
+                }
+
+                address
+            }
+            Absolute => u16::from_le_bytes([self.imm(), self.imm()]),
+            AbsoluteX | AbsoluteY => {
+                let offset = match address_mode {
+                    AbsoluteX => self.registers.x,
+                    AbsoluteY => self.registers.y,
+                    _ => panic!(""),
+                };
+
+                let (address, carry_result) =
+                    address_offset_unsigned(u16::from_le_bytes([self.imm(), self.imm()]), offset);
+
+                if let CarryResult::Carried { intermediate } = carry_result {
+                    self.phantom_read(intermediate);
+                } else {
+                    self.phantom_read(address);
+                }
+
+                address
+            }
+            Indirect => {
+                let base_address = u16::from_le_bytes([self.imm(), self.imm()]);
+
+                u16::from_le_bytes([
+                    self.read(base_address, CycleOp::None),
+                    self.read(next_address_same_page(base_address), CycleOp::None),
+                ])
+            }
+            IndexedIndirectX => {
+                let address = self.address(ZeroPageX);
+
+                u16::from_le_bytes([
+                    self.read(address, CycleOp::None),
+                    self.read((address + 1) & 0xff, CycleOp::None),
+                ])
+            }
+            IndirectIndexedY => {
+                let (address, carry_result) =
+                    address_offset_unsigned(self.zpg_address_value_16(), self.registers.y);
+
+                if let CarryResult::Carried { intermediate } = carry_result {
+                    self.phantom_read(intermediate);
+                } else {
+                    self.phantom_read(address);
+                }
+
+                address
+            }
+            _ => panic!(),
         }
-
-        address
     }
 
-    fn abs_offset_address_value(&mut self, offset: u8) -> u8 {
-        let (address, carry_result) = address_offset_unsigned(self.abs_address(), offset);
+    fn data(&mut self, address_mode: AddressMode) -> u8 {
+        match address_mode {
+            Register(register) => {
+                self.phantom_pc_read();
 
-        if let CarryResult::Carried { intermediate } = carry_result {
-            self.phantom_read(intermediate);
+                self.registers.get(register)
+            }
+            Immediate => self.imm(),
+            ZeroPage | ZeroPageX | ZeroPageY | Absolute | IndexedIndirectX => {
+                let address = self.address(address_mode);
+
+                self.read(address, CycleOp::CheckInterrupt)
+            }
+            AbsoluteX | AbsoluteY => {
+                let offset = match address_mode {
+                    AbsoluteX => self.registers.x,
+                    AbsoluteY => self.registers.y,
+                    _ => panic!(""),
+                };
+
+                let (address, carry_result) =
+                    address_offset_unsigned(self.address(Absolute), offset);
+
+                if let CarryResult::Carried { intermediate } = carry_result {
+                    self.phantom_read(intermediate);
+                }
+
+                self.read(address, CycleOp::CheckInterrupt)
+            }
+            IndirectIndexedY => {
+                let (address, carry_result) =
+                    address_offset_unsigned(self.zpg_address_value_16(), self.registers.y);
+
+                if let CarryResult::Carried { intermediate } = carry_result {
+                    self.phantom_read(intermediate);
+                }
+
+                self.read(address, CycleOp::CheckInterrupt)
+            }
+
+            _ => panic!(),
         }
-
-        self.read(address, CycleOp::CheckInterrupt)
     }
 
-    fn zpg_address(&mut self) -> u16 {
-        let address = self.imm();
-
-        address as u16
-    }
-
-    fn zpg_address_value(&mut self) -> u8 {
-        let address = self.zpg_address();
-
-        self.read(address, CycleOp::CheckInterrupt)
+    fn data_no_return(&mut self, address_mode: AddressMode) {
+        self.data(address_mode);
     }
 
     fn zpg_address_value_16(&mut self) -> u16 {
-        let zpg_address = self.zpg_address();
+        let zpg_address = self.address(ZeroPage);
 
         u16::from_le_bytes([
             self.read(zpg_address, CycleOp::None),
@@ -1136,83 +722,30 @@ where
         ])
     }
 
-    fn zpg_x_address(&mut self) -> u16 {
-        let base_address = self.imm();
+    fn store(&mut self, address_mode: AddressMode, value: u8) {
+        let address = self.address(address_mode);
 
-        self.phantom_read(base_address as u16);
-
-        base_address.wrapping_add(self.registers.x) as u16
+        self.write(address, value, CycleOp::CheckInterrupt);
     }
 
-    fn zpg_x_address_value(&mut self) -> u8 {
-        let address = self.zpg_x_address();
+    fn read_modify_write(&mut self, op: fn(&mut Registers, u8) -> u8, address_mode: AddressMode) {
+        if let Register(register_type) = address_mode {
+            let value = self.data(address_mode);
 
-        self.read(address, CycleOp::CheckInterrupt)
-    }
+            let new_value = op(self.registers, value);
 
-    fn zpg_y_address(&mut self) -> u16 {
-        let base_address = self.imm();
-
-        self.phantom_read(base_address as u16);
-
-        base_address.wrapping_add(self.registers.y) as u16
-    }
-
-    fn zpg_y_address_value(&mut self) -> u8 {
-        let address = self.zpg_y_address();
-
-        self.read(address, CycleOp::CheckInterrupt)
-    }
-
-    fn idx_x_address(&mut self) -> u16 {
-        let address = self.zpg_x_address();
-
-        u16::from_le_bytes([
-            self.read(address, CycleOp::None),
-            self.read((address + 1) & 0xff, CycleOp::None),
-        ])
-    }
-
-    fn idx_x_address_value(&mut self) -> u8 {
-        let address = self.idx_x_address();
-
-        self.read(address, CycleOp::CheckInterrupt)
-    }
-
-    fn ind_y_address(&mut self) -> u16 {
-        let (address, carry_result) =
-            address_offset_unsigned(self.zpg_address_value_16(), self.registers.y);
-
-        if let CarryResult::Carried { intermediate } = carry_result {
-            self.phantom_read(intermediate);
+            self.registers.set(register_type, new_value);
         } else {
-            self.phantom_read(address);
+            let address = self.address(address_mode);
+
+            let old_value = self.read(address, CycleOp::Sync);
+
+            self.write(address, old_value, CycleOp::Sync);
+
+            let new_value = op(self.registers, old_value);
+
+            self.write(address, new_value, CycleOp::Sync);
         }
-
-        address
-    }
-
-    fn ind_y_address_value(&mut self) -> u8 {
-        let (address, carry_result) =
-            address_offset_unsigned(self.zpg_address_value_16(), self.registers.y);
-
-        if let CarryResult::Carried { intermediate } = carry_result {
-            self.phantom_read(intermediate);
-        }
-
-        self.read(address, CycleOp::CheckInterrupt)
-    }
-
-    fn read_modify_write(&mut self, address: u16, op: fn(&mut Self, u8) -> u8) -> u8 {
-        let old_value = self.read(address, CycleOp::Sync);
-
-        self.write(address, old_value, CycleOp::Sync);
-
-        let new_value = op(self, old_value);
-
-        self.write(address, new_value, CycleOp::Sync);
-
-        new_value
     }
 
     fn brk(&mut self, return_address: u16, stack_p_flags: u8, interrupt_vector: u16) {
@@ -1230,6 +763,78 @@ where
         ]);
     }
 
+    fn jsr(&mut self) {
+        let pc_low = self.imm();
+
+        self.phantom_stack_read();
+
+        self.push_16(self.registers.pc);
+
+        let pc_high = self.imm();
+
+        self.registers.pc = u16::from_le_bytes([pc_low, pc_high]);
+    }
+
+    fn jmp(&mut self, address_mode: AddressMode) {
+        self.registers.pc = self.address(address_mode);
+    }
+
+    fn rti(&mut self) {
+        self.phantom_pc_read();
+
+        self.phantom_stack_read();
+
+        let p = self.pop();
+
+        self.registers.p = p.into();
+
+        self.registers.pc = self.pop_16();
+    }
+
+    fn rts(&mut self) {
+        self.phantom_pc_read();
+
+        self.phantom_stack_read();
+
+        self.registers.pc = self.pop_16();
+
+        self.phantom_pc_read();
+
+        self.registers.pc = self.registers.pc.wrapping_add(1);
+    }
+
+    fn pla(&mut self) {
+        self.phantom_pc_read();
+
+        self.phantom_stack_read();
+
+        let a = self.pop();
+
+        self.registers.set_with_flags(Accumulator, a);
+    }
+
+    fn pha(&mut self) {
+        self.phantom_pc_read();
+
+        self.push(self.registers.a);
+    }
+
+    fn php(&mut self) {
+        self.phantom_pc_read();
+
+        self.push(u8::from(&self.registers.p) | P_BREAK_FLAG);
+    }
+
+    fn plp(&mut self) {
+        self.phantom_pc_read();
+
+        self.phantom_stack_read();
+
+        let value = self.pop();
+
+        self.registers.p = value.into();
+    }
+
     fn branch(&mut self, condition: bool) {
         if !condition {
             self.phantom_pc_read();
@@ -1239,260 +844,89 @@ where
             return;
         }
 
-        let rel_address = self.imm() as i8;
+        self.registers.pc = self.address(Relative);
+    }
 
+    fn set_carry(&mut self, state: bool) {
         self.phantom_pc_read();
 
-        let (address, carry_result) = address_offset_signed(self.registers.pc, rel_address);
+        self.registers.p.carry = state;
+    }
+
+    fn set_decimal_mode(&mut self, state: bool) {
+        self.phantom_pc_read();
+
+        self.registers.p.decimal_mode = state;
+    }
+
+    fn set_interrupt_disable(&mut self, state: bool) {
+        self.phantom_pc_read();
+
+        self.registers.p.interrupt_disable = state;
+    }
+
+    fn set_overflow(&mut self, state: bool) {
+        self.phantom_pc_read();
+
+        self.registers.p.overflow = state;
+    }
+
+    fn compare(&mut self, address_mode: AddressMode, register: u8) {
+        let value = self.data(address_mode);
+
+        self.registers.compare(value, register)
+    }
+
+    fn load_register(&mut self, register_type: RegisterType, address_mode: AddressMode) {
+        let value = self.data(address_mode);
+
+        self.registers.set_with_flags(register_type, value);
+    }
+
+    fn txs(&mut self) {
+        self.phantom_pc_read();
+
+        self.registers.s = self.registers.x;
+    }
+
+    fn accumulator_op(&mut self, op: fn(&mut Registers, u8), address_mode: AddressMode) {
+        let operand = self.data(address_mode);
+
+        op(self.registers, operand);
+    }
+
+    fn shy(&mut self, address_mode: AddressMode) {
+        let AbsoluteX = address_mode else {
+            panic!();
+        };
+
+        let (address, carry_result) =
+            address_offset_unsigned(self.address(Absolute), self.registers.x);
 
         if let CarryResult::Carried { intermediate } = carry_result {
             self.phantom_read(intermediate);
-        }
-
-        self.registers.pc = address;
-    }
-
-    fn cmp(&mut self, value: u8) {
-        self.compare(value, self.registers.a);
-    }
-
-    fn cpx(&mut self, value: u8) {
-        self.compare(value, self.registers.x);
-    }
-
-    fn cpy(&mut self, value: u8) {
-        self.compare(value, self.registers.y);
-    }
-
-    fn compare(&mut self, value: u8, register: u8) {
-        self.registers.p.carry = register >= value;
-        self.registers.p.zero = register == value;
-        self.set_p_negative(register.wrapping_sub(value));
-    }
-
-    fn asl(&mut self, old_value: u8) -> u8 {
-        let new_value = old_value << 1;
-
-        self.registers.p.carry = (old_value & 0x80) != 0;
-
-        self.set_p_zero_negative(new_value);
-
-        new_value
-    }
-
-    fn lsr(&mut self, old_value: u8) -> u8 {
-        let new_value = old_value >> 1;
-
-        self.registers.p.carry = (old_value & 0x01) != 0;
-
-        self.set_p_zero(new_value);
-        self.registers.p.negative = false;
-
-        new_value
-    }
-
-    fn rol(&mut self, old_value: u8) -> u8 {
-        let new_value = (old_value << 1) + self.registers.p.carry as u8;
-
-        self.registers.p.carry = (old_value & 0x80) != 0;
-
-        self.set_p_zero_negative(new_value);
-
-        new_value
-    }
-
-    fn ror(&mut self, old_value: u8) -> u8 {
-        let new_value = (old_value >> 1) + (self.registers.p.carry as u8) * 0x80;
-
-        self.set_p_zero_negative(new_value);
-
-        self.registers.p.carry = (old_value & 0x01) != 0;
-
-        new_value
-    }
-
-    fn inc(&mut self, old_val: u8) -> u8 {
-        let new_value = old_val.wrapping_add(1);
-
-        self.set_p_zero_negative(new_value);
-
-        new_value
-    }
-
-    fn dec(&mut self, old_val: u8) -> u8 {
-        let new_value = old_val.wrapping_sub(1);
-
-        self.set_p_zero_negative(new_value);
-
-        new_value
-    }
-
-    fn lda(&mut self, operand: u8) {
-        self.registers.a = operand;
-
-        self.set_p_zero_negative(operand);
-    }
-
-    fn ldx(&mut self, operand: u8) {
-        self.registers.x = operand;
-
-        self.set_p_zero_negative(operand);
-    }
-
-    fn ldy(&mut self, operand: u8) {
-        self.registers.y = operand;
-
-        self.set_p_zero_negative(operand);
-    }
-
-    fn and(&mut self, operand: u8) {
-        self.registers.a &= operand;
-
-        self.set_p_zero_negative(self.registers.a);
-    }
-
-    fn anc(&mut self, operand: u8) {
-        self.and(operand);
-
-        self.registers.p.carry = self.registers.p.negative;
-    }
-
-    fn or(&mut self, operand: u8) {
-        self.registers.a |= operand;
-
-        self.set_p_zero_negative(self.registers.a);
-    }
-
-    fn xor(&mut self, operand: u8) {
-        self.registers.a ^= operand;
-
-        self.set_p_zero_negative(self.registers.a);
-    }
-
-    fn bit(&mut self, operand: u8) {
-        self.set_p_zero(self.registers.a & operand);
-        self.registers.p.overflow = operand & 0x40 != 0;
-        self.set_p_negative(operand);
-    }
-
-    fn adc(&mut self, operand: u8) {
-        if self.registers.p.decimal_mode {
-            self.adc_bcd(operand);
         } else {
-            self.adc_bin(operand);
+            self.phantom_read(address);
         }
-    }
 
-    fn adc_bin(&mut self, operand: u8) {
-        let carry = self.registers.p.carry as u8;
-
-        let (result, operand_overflow) = self.registers.a.overflowing_add(operand);
-        let (result, carry_overflow) = result.overflowing_add(carry);
-
-        self.registers.p.carry = operand_overflow || carry_overflow;
-
-        self.set_p_zero_negative(result);
-        self.set_overflow_adc(result, operand);
-
-        self.registers.a = result;
-    }
-
-    fn adc_bcd(&mut self, operand: u8) {
-        let carry_in = self.registers.p.carry as u8;
-
-        // calculate normally for zero flag
-
-        let result = self.registers.a.wrapping_add(operand);
-        let result = result.wrapping_add(carry_in);
-
-        self.set_p_zero(result);
-
-        // bcd calculation
-
-        let low_nibble = to_low_nibble(self.registers.a) + to_low_nibble(operand) + carry_in;
-
-        let (low_nibble, low_carry_out) = wrap_nibble_up(low_nibble);
-
-        let high_nibble =
-            to_high_nibble(self.registers.a) + to_high_nibble(operand) + low_carry_out;
-
-        // N and V are determined before high nibble is adjusted
-        let result_so_far = from_nibbles(high_nibble, low_nibble);
-        self.set_overflow_adc(result_so_far, operand);
-        self.set_p_negative(result_so_far);
-
-        let (high_nibble, high_carry_out) = wrap_nibble_up(high_nibble);
-
-        self.registers.p.carry = high_carry_out == 1;
-
-        self.registers.a = from_nibbles(high_nibble, low_nibble);
-    }
-
-    fn sbc(&mut self, operand: u8) {
-        if self.registers.p.decimal_mode {
-            self.sbc_bcd(operand);
+        let carried = if let CarryResult::Carried { .. } = carry_result {
+            true
         } else {
-            self.adc_bin(!operand);
-        }
+            false
+        };
+
+        let [low, high] = address.to_le_bytes();
+
+        let value = self.registers.y & if carried { high } else { high.wrapping_add(1) };
+
+        let address = if carried {
+            u16::from_le_bytes([low, value])
+        } else {
+            address
+        };
+
+        self.write(address, value, CycleOp::CheckInterrupt);
     }
-
-    fn sbc_bcd(&mut self, operand: u8) {
-        let borrow_in = 1 - self.registers.p.carry as u8;
-
-        // calculate normally for flags
-
-        let result = self.registers.a.wrapping_sub(operand);
-        let result = result.wrapping_sub(borrow_in);
-
-        self.set_p_zero_negative(result);
-        self.set_overflow_sbc(result, operand);
-
-        // then calculate for BCD
-
-        let low_nibble = to_low_nibble(self.registers.a)
-            .wrapping_sub(to_low_nibble(operand))
-            .wrapping_sub(borrow_in);
-
-        let (low_nibble, low_borrow_out) = wrap_nibble_down(low_nibble);
-
-        let high_nibble = to_high_nibble(self.registers.a)
-            .wrapping_sub(to_high_nibble(operand))
-            .wrapping_sub(low_borrow_out);
-
-        let (high_nibble, high_borrow_out) = wrap_nibble_down(high_nibble);
-
-        self.registers.p.carry = high_borrow_out == 0;
-
-        self.registers.a = from_nibbles(high_nibble, low_nibble);
-    }
-
-    // flag helpers
-
-    fn set_overflow_adc(&mut self, result: u8, operand: u8) {
-        self.registers.p.overflow =
-            is_negative((self.registers.a ^ result) & (self.registers.a ^ !operand));
-    }
-
-    fn set_overflow_sbc(&mut self, result: u8, operand: u8) {
-        self.set_overflow_adc(result, !operand);
-    }
-
-    fn set_p_negative(&mut self, value: u8) {
-        self.registers.p.negative = is_negative(value);
-    }
-
-    fn set_p_zero(&mut self, value: u8) {
-        self.registers.p.zero = value == 0;
-    }
-
-    fn set_p_zero_negative(&mut self, value: u8) {
-        self.set_p_zero(value);
-        self.set_p_negative(value);
-    }
-}
-
-fn is_negative(value: u8) -> bool {
-    value & 0x80 != 0
 }
 
 fn next_address_same_page(address: u16) -> u16 {
@@ -1527,36 +961,21 @@ enum CarryResult {
     NoCarry,
 }
 
-// nibble helpers
-
-fn wrap_nibble_up(nibble: u8) -> (u8, u8) {
-    if nibble > 0x09 {
-        (nibble + 0x06, 1)
-    } else {
-        (nibble, 0)
-    }
-}
-
-fn wrap_nibble_down(nibble: u8) -> (u8, u8) {
-    if nibble & 0x10 != 0 {
-        (nibble - 0x06, 1)
-    } else {
-        (nibble, 0)
-    }
-}
-
-fn from_nibbles(high: u8, low: u8) -> u8 {
-    (high << 4) | (low & 0x0f)
-}
-
-fn to_high_nibble(value: u8) -> u8 {
-    value >> 4
-}
-
-fn to_low_nibble(value: u8) -> u8 {
-    value & 0x0f
-}
-
 pub const NMI_VECTOR: u16 = 0xfffa;
 pub const RESET_VECTOR: u16 = 0xfffc;
 pub const IRQ_BRK_VECTOR: u16 = 0xfffe;
+
+enum AddressMode {
+    Register(RegisterType),
+    Immediate,
+    ZeroPage,
+    ZeroPageX,
+    ZeroPageY,
+    Relative,
+    Absolute,
+    AbsoluteX,
+    AbsoluteY,
+    Indirect,
+    IndexedIndirectX,
+    IndirectIndexedY,
+}
