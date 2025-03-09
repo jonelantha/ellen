@@ -58,13 +58,13 @@ where
             ),
 
             // ORA (zp,X)
-            0x01 => self.register_op(accumulator_ops::or, IndexedIndirectX),
+            0x01 => self.accumulator_op(accumulator_ops::or, IndexedIndirectX),
 
             // DOP zp
             0x04 => self.data_no_return(ZeroPage),
 
             // ORA zp
-            0x05 => self.register_op(accumulator_ops::or, ZeroPage),
+            0x05 => self.accumulator_op(accumulator_ops::or, ZeroPage),
 
             // ASL zp
             0x06 => self.read_modify_write(byte_ops::shift_left, ZeroPage),
@@ -80,16 +80,16 @@ where
             0x08 => self.php(),
 
             // ORA imm
-            0x09 => self.register_op(accumulator_ops::or, Immediate),
+            0x09 => self.accumulator_op(accumulator_ops::or, Immediate),
 
             // ASL A
             0x0a => self.read_modify_write(byte_ops::shift_left, Register(Accumulator)),
 
             // ANC imm
-            0x0b => self.register_op(accumulator_ops::and_negative_carry, Immediate),
+            0x0b => self.accumulator_op(accumulator_ops::and_negative_carry, Immediate),
 
             // ORA abs
-            0x0d => self.register_op(accumulator_ops::or, Absolute),
+            0x0d => self.accumulator_op(accumulator_ops::or, Absolute),
 
             // ASL abs
             0x0e => self.read_modify_write(byte_ops::shift_left, Absolute),
@@ -98,10 +98,10 @@ where
             0x10 => self.branch(!self.registers.p.negative),
 
             // ORA (zp),Y
-            0x11 => self.register_op(accumulator_ops::or, IndirectIndexedY),
+            0x11 => self.accumulator_op(accumulator_ops::or, IndirectIndexedY),
 
             // ORA zp,X
-            0x15 => self.register_op(accumulator_ops::or, ZeroPageX),
+            0x15 => self.accumulator_op(accumulator_ops::or, ZeroPageX),
 
             // ASL zp,X
             0x16 => self.read_modify_write(byte_ops::shift_left, ZeroPageX),
@@ -110,25 +110,25 @@ where
             0x18 => self.flag_op(|p| p.carry = false),
 
             // ORA abs,X
-            0x1d => self.register_op(accumulator_ops::or, AbsoluteX),
+            0x1d => self.accumulator_op(accumulator_ops::or, AbsoluteX),
 
             // ASL abs,X
             0x1e => self.read_modify_write(byte_ops::shift_left, AbsoluteX),
 
             // ORA abs,Y
-            0x19 => self.register_op(accumulator_ops::or, AbsoluteY),
+            0x19 => self.accumulator_op(accumulator_ops::or, AbsoluteY),
 
             // JSR abs
             0x20 => self.jsr(),
 
             // AND (zp,X)
-            0x21 => self.register_op(accumulator_ops::and, IndexedIndirectX),
+            0x21 => self.accumulator_op(accumulator_ops::and, IndexedIndirectX),
 
             // BIT zp
-            0x24 => self.register_op(accumulator_ops::bit_test, ZeroPage),
+            0x24 => self.accumulator_op(accumulator_ops::bit_test, ZeroPage),
 
             // AND zp
-            0x25 => self.register_op(accumulator_ops::and, ZeroPage),
+            0x25 => self.accumulator_op(accumulator_ops::and, ZeroPage),
 
             // ROL zp
             0x26 => self.read_modify_write(byte_ops::rotate_left, ZeroPage),
@@ -137,16 +137,16 @@ where
             0x28 => self.plp(),
 
             // AND imm
-            0x29 => self.register_op(accumulator_ops::and, Immediate),
+            0x29 => self.accumulator_op(accumulator_ops::and, Immediate),
 
             // ROL A
             0x2a => self.read_modify_write(byte_ops::rotate_left, Register(Accumulator)),
 
             // BIT abs
-            0x2c => self.register_op(accumulator_ops::bit_test, Absolute),
+            0x2c => self.accumulator_op(accumulator_ops::bit_test, Absolute),
 
             // AND abs
-            0x2d => self.register_op(accumulator_ops::and, Absolute),
+            0x2d => self.accumulator_op(accumulator_ops::and, Absolute),
 
             // ROL abs
             0x2e => self.read_modify_write(byte_ops::rotate_left, Absolute),
@@ -155,10 +155,10 @@ where
             0x30 => self.branch(self.registers.p.negative),
 
             // AND (zp),Y
-            0x31 => self.register_op(accumulator_ops::and, IndirectIndexedY),
+            0x31 => self.accumulator_op(accumulator_ops::and, IndirectIndexedY),
 
             // AND zp,X
-            0x35 => self.register_op(accumulator_ops::and, ZeroPageX),
+            0x35 => self.accumulator_op(accumulator_ops::and, ZeroPageX),
 
             // ROL zp,X
             0x36 => self.read_modify_write(byte_ops::rotate_left, ZeroPageX),
@@ -167,10 +167,10 @@ where
             0x38 => self.flag_op(|p| p.carry = true),
 
             // AND abs,Y
-            0x39 => self.register_op(accumulator_ops::and, AbsoluteY),
+            0x39 => self.accumulator_op(accumulator_ops::and, AbsoluteY),
 
             // AND abs,X
-            0x3d => self.register_op(accumulator_ops::and, AbsoluteX),
+            0x3d => self.accumulator_op(accumulator_ops::and, AbsoluteX),
 
             // ROL abs,X
             0x3e => self.read_modify_write(byte_ops::rotate_left, AbsoluteX),
@@ -179,10 +179,10 @@ where
             0x40 => self.rti(),
 
             // EOR (zp,X)
-            0x41 => self.register_op(accumulator_ops::xor, IndexedIndirectX),
+            0x41 => self.accumulator_op(accumulator_ops::xor, IndexedIndirectX),
 
             // EOR zp
-            0x45 => self.register_op(accumulator_ops::xor, ZeroPage),
+            0x45 => self.accumulator_op(accumulator_ops::xor, ZeroPage),
 
             // LSR zp
             0x46 => self.read_modify_write(byte_ops::shift_right, ZeroPage),
@@ -191,19 +191,19 @@ where
             0x48 => self.pha(),
 
             // EOR imm
-            0x49 => self.register_op(accumulator_ops::xor, Immediate),
+            0x49 => self.accumulator_op(accumulator_ops::xor, Immediate),
 
             // LSR A
             0x4a => self.read_modify_write(byte_ops::shift_right, Register(Accumulator)),
 
             // ALR imm
-            0x4b => self.register_op(accumulator_ops::and_shift_right, Immediate),
+            0x4b => self.accumulator_op(accumulator_ops::and_shift_right, Immediate),
 
             // JMP abs
             0x4c => self.jmp(Absolute),
 
             // EOR abs
-            0x4d => self.register_op(accumulator_ops::xor, Absolute),
+            0x4d => self.accumulator_op(accumulator_ops::xor, Absolute),
 
             // LSR abs
             0x4e => self.read_modify_write(byte_ops::shift_right, Absolute),
@@ -212,10 +212,10 @@ where
             0x50 => self.branch(!self.registers.p.overflow),
 
             // EOR (zp),Y
-            0x51 => self.register_op(accumulator_ops::xor, IndirectIndexedY),
+            0x51 => self.accumulator_op(accumulator_ops::xor, IndirectIndexedY),
 
             // EOR zp,X
-            0x55 => self.register_op(accumulator_ops::xor, ZeroPageX),
+            0x55 => self.accumulator_op(accumulator_ops::xor, ZeroPageX),
 
             // LSR zp,X
             0x56 => self.read_modify_write(byte_ops::shift_right, ZeroPageX),
@@ -224,10 +224,10 @@ where
             0x58 => self.flag_op(|p| p.interrupt_disable = false),
 
             // EOR abs,Y
-            0x59 => self.register_op(accumulator_ops::xor, AbsoluteY),
+            0x59 => self.accumulator_op(accumulator_ops::xor, AbsoluteY),
 
             // EOR abs,X
-            0x5d => self.register_op(accumulator_ops::xor, AbsoluteX),
+            0x5d => self.accumulator_op(accumulator_ops::xor, AbsoluteX),
 
             // LSR abs,X
             0x5e => self.read_modify_write(byte_ops::shift_right, AbsoluteX),
@@ -236,10 +236,10 @@ where
             0x60 => self.rts(),
 
             // ADC (zp,X)
-            0x61 => self.register_op(accumulator_ops::add_with_carry, IndexedIndirectX),
+            0x61 => self.accumulator_op(accumulator_ops::add_with_carry, IndexedIndirectX),
 
             // ADC zp
-            0x65 => self.register_op(accumulator_ops::add_with_carry, ZeroPage),
+            0x65 => self.accumulator_op(accumulator_ops::add_with_carry, ZeroPage),
 
             // ROR zp
             0x66 => self.read_modify_write(byte_ops::rotate_right, ZeroPage),
@@ -248,7 +248,7 @@ where
             0x68 => self.pla(),
 
             // ADC imm
-            0x69 => self.register_op(accumulator_ops::add_with_carry, Immediate),
+            0x69 => self.accumulator_op(accumulator_ops::add_with_carry, Immediate),
 
             // ROR A
             0x6a => self.read_modify_write(byte_ops::rotate_right, Register(Accumulator)),
@@ -257,7 +257,7 @@ where
             0x6c => self.jmp(Indirect),
 
             // ADC abs
-            0x6d => self.register_op(accumulator_ops::add_with_carry, Absolute),
+            0x6d => self.accumulator_op(accumulator_ops::add_with_carry, Absolute),
 
             // ROR abs
             0x6e => self.read_modify_write(byte_ops::rotate_right, Absolute),
@@ -266,10 +266,10 @@ where
             0x70 => self.branch(self.registers.p.overflow),
 
             // ADC (zp)
-            0x71 => self.register_op(accumulator_ops::add_with_carry, IndirectIndexedY),
+            0x71 => self.accumulator_op(accumulator_ops::add_with_carry, IndirectIndexedY),
 
             // ADC zp,X
-            0x75 => self.register_op(accumulator_ops::add_with_carry, ZeroPageX),
+            0x75 => self.accumulator_op(accumulator_ops::add_with_carry, ZeroPageX),
 
             // ROR zp,X
             0x76 => self.read_modify_write(byte_ops::rotate_right, ZeroPageX),
@@ -278,10 +278,10 @@ where
             0x78 => self.flag_op(|p| p.interrupt_disable = true),
 
             // ADC abs,Y
-            0x79 => self.register_op(accumulator_ops::add_with_carry, AbsoluteY),
+            0x79 => self.accumulator_op(accumulator_ops::add_with_carry, AbsoluteY),
 
             // ADC abs,X
-            0x7d => self.register_op(accumulator_ops::add_with_carry, AbsoluteX),
+            0x7d => self.accumulator_op(accumulator_ops::add_with_carry, AbsoluteX),
 
             // ROR abs,X
             0x7e => self.read_modify_write(byte_ops::rotate_right, AbsoluteX),
@@ -479,13 +479,13 @@ where
             0xe0 => self.compare(Immediate, self.registers.x),
 
             // SBC (zp,X)
-            0xe1 => self.register_op(accumulator_ops::subtract_with_carry, IndexedIndirectX),
+            0xe1 => self.accumulator_op(accumulator_ops::subtract_with_carry, IndexedIndirectX),
 
             // CPX zp
             0xe4 => self.compare(ZeroPage, self.registers.x),
 
             // SBC zp
-            0xe5 => self.register_op(accumulator_ops::subtract_with_carry, ZeroPage),
+            0xe5 => self.accumulator_op(accumulator_ops::subtract_with_carry, ZeroPage),
 
             // INC zp
             0xe6 => self.read_modify_write(byte_ops::increment, ZeroPage),
@@ -494,7 +494,7 @@ where
             0xe8 => self.read_modify_write(byte_ops::increment, Register(X)),
 
             // SBC imm
-            0xe9 => self.register_op(accumulator_ops::subtract_with_carry, Immediate),
+            0xe9 => self.accumulator_op(accumulator_ops::subtract_with_carry, Immediate),
 
             // NOP
             0xea => self.phantom_pc_read(),
@@ -503,7 +503,7 @@ where
             0xec => self.compare(Absolute, self.registers.x),
 
             // SBC abs
-            0xed => self.register_op(accumulator_ops::subtract_with_carry, Absolute),
+            0xed => self.accumulator_op(accumulator_ops::subtract_with_carry, Absolute),
 
             // INC abs
             0xee => self.read_modify_write(byte_ops::increment, Absolute),
@@ -512,10 +512,10 @@ where
             0xf0 => self.branch(self.registers.p.zero),
 
             // SBC (zp),Y
-            0xf1 => self.register_op(accumulator_ops::subtract_with_carry, IndirectIndexedY),
+            0xf1 => self.accumulator_op(accumulator_ops::subtract_with_carry, IndirectIndexedY),
 
             // SBC zp,X
-            0xf5 => self.register_op(accumulator_ops::subtract_with_carry, ZeroPageX),
+            0xf5 => self.accumulator_op(accumulator_ops::subtract_with_carry, ZeroPageX),
 
             // INC zp,X
             0xf6 => self.read_modify_write(byte_ops::increment, ZeroPageX),
@@ -524,10 +524,10 @@ where
             0xf8 => self.flag_op(|p| p.decimal_mode = true),
 
             // SBC abs,Y
-            0xf9 => self.register_op(accumulator_ops::subtract_with_carry, AbsoluteY),
+            0xf9 => self.accumulator_op(accumulator_ops::subtract_with_carry, AbsoluteY),
 
             // SBC abs,X
-            0xfd => self.register_op(accumulator_ops::subtract_with_carry, AbsoluteX),
+            0xfd => self.accumulator_op(accumulator_ops::subtract_with_carry, AbsoluteX),
 
             // INC abs,X
             0xfe => self.read_modify_write(byte_ops::increment, AbsoluteX),
@@ -758,7 +758,7 @@ where
     fn read_modify_write_accumulator(
         &mut self,
         op: fn(&mut StatusRegister, u8) -> u8,
-        accumulator_op: fn(&mut Registers, u8),
+        accumulator_op: fn(&mut StatusRegister, u8, u8) -> u8,
         address_mode: DataMode,
     ) {
         if let Register(register_type) = address_mode {
@@ -768,7 +768,7 @@ where
 
             self.registers.set(register_type, new_value);
 
-            accumulator_op(&mut self.registers, new_value);
+            self.registers.a = accumulator_op(&mut self.registers.p, self.registers.a, new_value);
         } else {
             let address = self.address(address_mode);
 
@@ -780,7 +780,7 @@ where
 
             self.write(address, new_value, CycleOp::Sync);
 
-            accumulator_op(&mut self.registers, new_value);
+            self.registers.a = accumulator_op(&mut self.registers.p, self.registers.a, new_value);
         }
     }
 
@@ -917,10 +917,14 @@ where
         self.registers.set_with_flags(register_type, value);
     }
 
-    fn register_op(&mut self, op: fn(&mut Registers, u8), address_mode: DataMode) {
+    fn accumulator_op(
+        &mut self,
+        op: fn(&mut StatusRegister, u8, u8) -> u8,
+        address_mode: DataMode,
+    ) {
         let operand = self.data(address_mode);
 
-        op(self.registers, operand);
+        self.registers.a = op(&mut self.registers.p, self.registers.a, operand);
     }
 
     fn shy(&mut self, address_mode: DataMode) {
