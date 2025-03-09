@@ -10,6 +10,7 @@ use crate::utils;
 
 pub mod executor;
 pub mod registers;
+pub mod util;
 
 #[wasm_bindgen]
 pub struct Ch22Cpu {
