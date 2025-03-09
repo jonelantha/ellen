@@ -1,4 +1,4 @@
-use crate::cpu::registers::StatusRegister;
+use crate::cpu::{registers::StatusRegister, util::*};
 
 use super::byte_ops::shift_right;
 
@@ -142,40 +142,4 @@ fn add_with_carry_overflow(accumulator: u8, result: u8, operand: u8) -> bool {
 
 fn subtract_with_carry_overflow(accumulator: u8, result: u8, operand: u8) -> bool {
     add_with_carry_overflow(accumulator, result, !operand)
-}
-
-// helpers
-
-fn is_negative(value: u8) -> bool {
-    value & 0x80 != 0
-}
-
-// nibble helpers
-
-fn wrap_nibble_up(nibble: u8) -> (u8, u8) {
-    if nibble > 0x09 {
-        (nibble + 0x06, 1)
-    } else {
-        (nibble, 0)
-    }
-}
-
-fn wrap_nibble_down(nibble: u8) -> (u8, u8) {
-    if nibble & 0x10 != 0 {
-        (nibble - 0x06, 1)
-    } else {
-        (nibble, 0)
-    }
-}
-
-fn from_nibbles(high: u8, low: u8) -> u8 {
-    (high << 4) | (low & 0x0f)
-}
-
-fn to_high_nibble(value: u8) -> u8 {
-    value >> 4
-}
-
-fn to_low_nibble(value: u8) -> u8 {
-    value & 0x0f
 }

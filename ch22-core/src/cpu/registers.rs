@@ -1,3 +1,5 @@
+use super::util::*;
+
 #[derive(Default)]
 pub struct Registers {
     pub pc: u16,
@@ -73,10 +75,6 @@ impl StatusRegister {
     pub fn update_negative(self: &mut Self, value: u8) {
         self.negative = is_negative(value);
     }
-}
-
-fn is_negative(value: u8) -> bool {
-    value & 0x80 != 0
 }
 
 impl From<u8> for StatusRegister {
