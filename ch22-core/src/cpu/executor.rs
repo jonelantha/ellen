@@ -32,11 +32,7 @@ where
     pub fn interrupt(&mut self, nmi: bool) {
         self.phantom_program_counter_read();
 
-        self.brk(
-            self.registers.program_counter,
-            u8::from(&self.registers.processor_flags),
-            if nmi { NMI_VECTOR } else { IRQ_BRK_VECTOR },
-        );
+        self.break_inst(0, 0, if nmi { NMI_VECTOR } else { IRQ_BRK_VECTOR });
 
         self.cycle_manager.complete();
     }
@@ -50,11 +46,7 @@ where
 
         match opcode {
             // BRK
-            0x00 => self.brk(
-                self.registers.program_counter.wrapping_add(1),
-                u8::from(&self.registers.processor_flags) | P_BREAK,
-                IRQ_BRK_VECTOR,
-            ),
+            0x00 => self.break_inst(1, P_BREAK, IRQ_BRK_VECTOR),
 
             // ORA (zp,X)
             0x01 => self.accumulator_binary_op(or, AddressMode::IndexedIndirectX),
@@ -74,7 +66,7 @@ where
             }
 
             // PHP
-            0x08 => self.php(),
+            0x08 => self.push_processor_flags(),
 
             // ORA imm
             0x09 => self.accumulator_binary_op(or, AddressMode::Immediate),
@@ -116,7 +108,7 @@ where
             0x19 => self.accumulator_binary_op(or, AddressMode::AbsoluteY),
 
             // JSR abs
-            0x20 => self.jsr(),
+            0x20 => self.jump_to_subroutine(),
 
             // AND (zp,X)
             0x21 => self.accumulator_binary_op(and, AddressMode::IndexedIndirectX),
@@ -131,7 +123,7 @@ where
             0x26 => self.read_modify_write(rotate_left, AddressMode::ZeroPage),
 
             // PLP
-            0x28 => self.plp(),
+            0x28 => self.pull_processor_flags(),
 
             // AND imm
             0x29 => self.accumulator_binary_op(and, AddressMode::Immediate),
@@ -173,7 +165,7 @@ where
             0x3e => self.read_modify_write(rotate_left, AddressMode::AbsoluteX),
 
             // RTI
-            0x40 => self.rti(),
+            0x40 => self.return_from_interrupt(),
 
             // EOR (zp,X)
             0x41 => self.accumulator_binary_op(xor, AddressMode::IndexedIndirectX),
@@ -185,7 +177,7 @@ where
             0x46 => self.read_modify_write(shift_right, AddressMode::ZeroPage),
 
             // PHA
-            0x48 => self.pha(),
+            0x48 => self.push_accumulator(),
 
             // EOR imm
             0x49 => self.accumulator_binary_op(xor, AddressMode::Immediate),
@@ -197,7 +189,7 @@ where
             0x4b => self.accumulator_binary_op(and_shift_right, AddressMode::Immediate),
 
             // JMP abs
-            0x4c => self.jmp(AddressMode::Absolute),
+            0x4c => self.jump(AddressMode::Absolute),
 
             // EOR abs
             0x4d => self.accumulator_binary_op(xor, AddressMode::Absolute),
@@ -230,7 +222,7 @@ where
             0x5e => self.read_modify_write(shift_right, AddressMode::AbsoluteX),
 
             // RTS
-            0x60 => self.rts(),
+            0x60 => self.return_from_subroutine(),
 
             // ADC (zp,X)
             0x61 => self.accumulator_binary_op(add_with_carry, AddressMode::IndexedIndirectX),
@@ -242,7 +234,7 @@ where
             0x66 => self.read_modify_write(rotate_right, AddressMode::ZeroPage),
 
             // PLA
-            0x68 => self.pla(),
+            0x68 => self.pull_accumulator(),
 
             // ADC imm
             0x69 => self.accumulator_binary_op(add_with_carry, AddressMode::Immediate),
@@ -251,7 +243,7 @@ where
             0x6a => self.accumulator_unary_op(rotate_right),
 
             // JMP (abs)
-            0x6c => self.jmp(AddressMode::Indirect),
+            0x6c => self.jump(AddressMode::Indirect),
 
             // ADC abs
             0x6d => self.accumulator_binary_op(add_with_carry, AddressMode::Absolute),
@@ -826,12 +818,22 @@ where
         callback(&mut self.registers.processor_flags);
     }
 
-    fn brk(&mut self, return_address: u16, stack_p_flags: u8, interrupt_vector: u16) {
+    fn break_inst(
+        &mut self,
+        return_address_offset: u8,
+        additional_processor_flags: u8,
+        interrupt_vector: u16,
+    ) {
         self.phantom_program_counter_read();
+
+        let return_address = self
+            .registers
+            .program_counter
+            .wrapping_add(return_address_offset as u16);
 
         self.push_16(return_address);
 
-        self.push(stack_p_flags);
+        self.push(u8::from(&self.registers.processor_flags) | additional_processor_flags);
 
         self.registers.processor_flags.interrupt_disable = true;
 
@@ -841,7 +843,7 @@ where
         ]);
     }
 
-    fn jsr(&mut self) {
+    fn jump_to_subroutine(&mut self) {
         let program_counter_low = self.imm();
 
         self.phantom_stack_read();
@@ -854,23 +856,21 @@ where
             u16::from_le_bytes([program_counter_low, program_counter_high]);
     }
 
-    fn jmp(&mut self, address_mode: AddressMode) {
+    fn jump(&mut self, address_mode: AddressMode) {
         self.registers.program_counter = self.address(address_mode);
     }
 
-    fn rti(&mut self) {
+    fn return_from_interrupt(&mut self) {
         self.phantom_program_counter_read();
 
         self.phantom_stack_read();
 
-        let processor_flags = self.pop();
-
-        self.registers.processor_flags = processor_flags.into();
+        self.registers.processor_flags = self.pop().into();
 
         self.registers.program_counter = self.pop_16();
     }
 
-    fn rts(&mut self) {
+    fn return_from_subroutine(&mut self) {
         self.phantom_program_counter_read();
 
         self.phantom_stack_read();
@@ -882,7 +882,7 @@ where
         self.registers.program_counter = self.registers.program_counter.wrapping_add(1);
     }
 
-    fn pla(&mut self) {
+    fn pull_accumulator(&mut self) {
         self.phantom_program_counter_read();
 
         self.phantom_stack_read();
@@ -894,24 +894,24 @@ where
             .update_zero_negative(self.registers.accumulator);
     }
 
-    fn pha(&mut self) {
+    fn push_accumulator(&mut self) {
         self.phantom_program_counter_read();
 
         self.push(self.registers.accumulator);
     }
 
-    fn php(&mut self) {
-        self.phantom_program_counter_read();
-
-        self.push(u8::from(&self.registers.processor_flags) | P_BREAK);
-    }
-
-    fn plp(&mut self) {
+    fn pull_processor_flags(&mut self) {
         self.phantom_program_counter_read();
 
         self.phantom_stack_read();
 
         self.registers.processor_flags = self.pop().into();
+    }
+
+    fn push_processor_flags(&mut self) {
+        self.phantom_program_counter_read();
+
+        self.push(u8::from(&self.registers.processor_flags) | P_BREAK);
     }
 
     fn branch(&mut self, condition: bool) {
