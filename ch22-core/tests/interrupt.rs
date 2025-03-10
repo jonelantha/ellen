@@ -58,12 +58,12 @@ fn interrupt_cycles_test(
     nmi: bool,
 ) {
     let mut registers = Registers {
-        pc: initial_state.pc,
-        s: initial_state.s,
-        a: initial_state.a,
-        x: initial_state.x,
-        y: initial_state.y,
-        p: initial_state.p.into(),
+        program_counter: initial_state.pc,
+        stack_pointer: initial_state.s,
+        accumulator: initial_state.a,
+        x_index: initial_state.x,
+        y_index: initial_state.y,
+        processor_flags: initial_state.p.into(),
     };
 
     let mut cycle_manager_mock = CycleManagerMock::new(&initial_state.ram);
@@ -77,15 +77,15 @@ fn interrupt_cycles_test(
         "cycles mismatch"
     );
 
-    assert_eq!(registers.pc, final_state.pc, "pc mismatch");
-    assert_eq!(registers.s, final_state.s, "s mismatch");
-    assert_eq!(registers.a, final_state.a, "a mismatch");
-    assert_eq!(registers.x, final_state.x, "x mismatch");
-    assert_eq!(registers.y, final_state.y, "y mismatch");
+    assert_eq!(registers.program_counter, final_state.pc, "pc mismatch");
+    assert_eq!(registers.stack_pointer, final_state.s, "s mismatch");
+    assert_eq!(registers.accumulator, final_state.a, "a mismatch");
+    assert_eq!(registers.x_index, final_state.x, "x mismatch");
+    assert_eq!(registers.y_index, final_state.y, "y mismatch");
 
     assert_eq!(
-        registers.p,
-        StatusRegister::from(final_state.p),
+        registers.processor_flags,
+        ProcessorFlags::from(final_state.p),
         "p mismatch"
     );
 }

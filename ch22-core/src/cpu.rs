@@ -37,16 +37,19 @@ impl Ch22Cpu {
 
     pub fn reset(&mut self, memory: &mut Ch22Memory) -> bool {
         self.registers = Registers {
-            pc: u16::from_le_bytes([memory.read(RESET_VECTOR), memory.read(RESET_VECTOR + 1)]),
-            s: 0xff,
-            p: StatusRegister {
+            program_counter: u16::from_le_bytes([
+                memory.read(RESET_VECTOR),
+                memory.read(RESET_VECTOR + 1),
+            ]),
+            stack_pointer: 0xff,
+            processor_flags: ProcessorFlags {
                 interrupt_disable: true,
                 ..Default::default()
             },
             ..Default::default()
         };
 
-        self.registers.p.interrupt_disable
+        self.registers.processor_flags.interrupt_disable
     }
 
     pub fn handle_next_instruction(&mut self, memory: &mut Ch22Memory) -> bool {
@@ -56,7 +59,7 @@ impl Ch22Cpu {
 
         executor.execute(false);
 
-        self.registers.p.interrupt_disable
+        self.registers.processor_flags.interrupt_disable
     }
 
     pub fn interrupt(&mut self, memory: &mut Ch22Memory, nmi: bool) -> bool {
@@ -66,6 +69,6 @@ impl Ch22Cpu {
 
         executor.interrupt(nmi);
 
-        self.registers.p.interrupt_disable
+        self.registers.processor_flags.interrupt_disable
     }
 }
