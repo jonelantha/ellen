@@ -32,7 +32,7 @@ pub fn rotate_left(processor_flags: &mut ProcessorFlags, old_value: u8) -> u8 {
 }
 
 pub fn rotate_right(processor_flags: &mut ProcessorFlags, old_value: u8) -> u8 {
-    let new_value = (old_value >> 1) | (processor_flags.carry as u8) * 0x80;
+    let new_value = (old_value >> 1) | ((processor_flags.carry as u8) * 0x80);
 
     processor_flags.update_zero_negative(new_value);
 

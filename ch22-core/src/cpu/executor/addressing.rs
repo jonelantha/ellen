@@ -1,295 +1,145 @@
-use crate::cpu::registers::Registers;
 use crate::cycle_manager::{CycleManagerTrait, CycleOp};
 
-pub type AddressFn<T> = fn(cycle_manager: &mut T, registers: &mut Registers) -> u16;
+use super::memory_access::MemoryAccess;
 
-pub fn zero_page_address<T: CycleManagerTrait>(
-    cycle_manager: &mut T,
-    registers: &mut Registers,
-) -> u16 {
-    read_immediate(cycle_manager, registers) as u16
+use AddressMode::*;
+
+pub enum AddressMode {
+    Immediate,
+    ZeroPage,
+    ZeroPageIndexed(u8),
+    Absolute,
+    AbsoluteIndexed(u8),
+    Indirect,
+    IndexedIndirect(u8),
+    IndirectIndexed(u8),
+    Relative,
 }
 
-pub fn zero_page_x_address<T: CycleManagerTrait>(
-    cycle_manager: &mut T,
-    registers: &mut Registers,
-) -> u16 {
-    let base_address = read_immediate(cycle_manager, registers);
+impl AddressMode {
+    pub fn address<T: CycleManagerTrait>(&self, memory_access: &mut MemoryAccess<T>) -> u16 {
+        match self {
+            Immediate => panic!(),
 
-    cycle_manager.phantom_read(base_address as u16);
+            ZeroPage => memory_access.read_immediate() as u16,
 
-    base_address.wrapping_add(registers.x_index) as u16
-}
+            ZeroPageIndexed(index) => {
+                let base_address = memory_access.read_immediate();
 
-pub fn zero_page_y_address<T: CycleManagerTrait>(
-    cycle_manager: &mut T,
-    registers: &mut Registers,
-) -> u16 {
-    let base_address = read_immediate(cycle_manager, registers);
+                memory_access.phantom_read(base_address as u16);
 
-    cycle_manager.phantom_read(base_address as u16);
+                base_address.wrapping_add(*index) as u16
+            }
 
-    base_address.wrapping_add(registers.y_index) as u16
-}
+            Absolute => memory_access.read_immediate_16(),
 
-pub fn relative_address<T: CycleManagerTrait>(
-    cycle_manager: &mut T,
-    registers: &mut Registers,
-) -> u16 {
-    let rel_address = read_immediate(cycle_manager, registers) as i8;
+            AbsoluteIndexed(_) => self.address_with_carry(memory_access).0,
 
-    phantom_program_counter_read(cycle_manager, registers);
+            Indirect => {
+                let base_address = memory_access.read_immediate_16();
 
-    let (address, carry_result) = address_offset_signed(registers.program_counter, rel_address);
+                memory_access.read_16(base_address, CycleOp::None)
+            }
 
-    if let CarryResult::Carried { intermediate } = carry_result {
-        cycle_manager.phantom_read(intermediate);
+            IndexedIndirect(index) => {
+                let address = ZeroPageIndexed(*index).address(memory_access);
+
+                memory_access.read_16(address, CycleOp::None)
+            }
+
+            IndirectIndexed(index) => {
+                let zero_page_address = ZeroPage.address(memory_access);
+
+                let base_address = memory_access.read_16(zero_page_address, CycleOp::None);
+
+                let (address, carry_result) = address_offset_unsigned(base_address, *index);
+
+                if let CarryResult::Carried { intermediate } = carry_result {
+                    memory_access.phantom_read(intermediate);
+                } else {
+                    memory_access.phantom_read(address);
+                }
+
+                address
+            }
+
+            Relative => {
+                let rel_address = memory_access.read_immediate() as i8;
+
+                memory_access.phantom_program_counter_read();
+
+                let (address, carry_result) =
+                    address_offset_signed(*memory_access.program_counter, rel_address);
+
+                if let CarryResult::Carried { intermediate } = carry_result {
+                    memory_access.phantom_read(intermediate);
+                }
+
+                address
+            }
+        }
     }
 
-    address
-}
+    pub fn address_with_carry<T: CycleManagerTrait>(
+        &self,
+        memory_access: &mut MemoryAccess<T>,
+    ) -> (u16, bool) {
+        match self {
+            AbsoluteIndexed(index) => {
+                let (address, carry_result) =
+                    address_offset_unsigned(memory_access.read_immediate_16(), *index);
 
-pub fn absolute_address<T: CycleManagerTrait>(
-    cycle_manager: &mut T,
-    registers: &mut Registers,
-) -> u16 {
-    u16::from_le_bytes([
-        read_immediate(cycle_manager, registers),
-        read_immediate(cycle_manager, registers),
-    ])
-}
+                if let CarryResult::Carried { intermediate } = carry_result {
+                    memory_access.phantom_read(intermediate);
 
-pub fn absolute_x_address<T: CycleManagerTrait>(
-    cycle_manager: &mut T,
-    registers: &mut Registers,
-) -> u16 {
-    absolute_offset_address(cycle_manager, registers, registers.x_index).0
-}
+                    (address, true)
+                } else {
+                    memory_access.phantom_read(address);
 
-pub fn absolute_y_address<T: CycleManagerTrait>(
-    cycle_manager: &mut T,
-    registers: &mut Registers,
-) -> u16 {
-    absolute_offset_address(cycle_manager, registers, registers.y_index).0
-}
+                    (address, false)
+                }
+            }
 
-pub fn indirect_address<T: CycleManagerTrait>(
-    cycle_manager: &mut T,
-    registers: &mut Registers,
-) -> u16 {
-    let base_address = u16::from_le_bytes([
-        read_immediate(cycle_manager, registers),
-        read_immediate(cycle_manager, registers),
-    ]);
-
-    u16::from_le_bytes([
-        cycle_manager.read(base_address, CycleOp::None),
-        cycle_manager.read(next_address_same_page(base_address), CycleOp::None),
-    ])
-}
-
-pub fn indexed_indirect_x_address<T: CycleManagerTrait>(
-    cycle_manager: &mut T,
-    registers: &mut Registers,
-) -> u16 {
-    let address = zero_page_x_address(cycle_manager, registers);
-
-    u16::from_le_bytes([
-        cycle_manager.read(address, CycleOp::None),
-        cycle_manager.read((address + 1) & 0xff, CycleOp::None),
-    ])
-}
-
-pub fn indirect_indexed_y_address<T: CycleManagerTrait>(
-    cycle_manager: &mut T,
-    registers: &mut Registers,
-) -> u16 {
-    let (address, carry_result) = address_offset_unsigned(
-        zpg_address_value_16(cycle_manager, registers),
-        registers.y_index,
-    );
-
-    if let CarryResult::Carried { intermediate } = carry_result {
-        cycle_manager.phantom_read(intermediate);
-    } else {
-        cycle_manager.phantom_read(address);
+            _ => panic!(),
+        }
     }
 
-    address
-}
+    pub fn data<T: CycleManagerTrait>(&self, memory_access: &mut MemoryAccess<T>) -> u8 {
+        match self {
+            Immediate => memory_access.read_immediate(),
 
-///
+            ZeroPage | ZeroPageIndexed(_) | Absolute | IndexedIndirect(_) | Indirect | Relative => {
+                let address = self.address(memory_access);
 
-pub type AddressWithCarryFn<T> =
-    fn(cycle_manager: &mut T, registers: &mut Registers) -> (u16, bool);
+                memory_access.read(address, CycleOp::CheckInterrupt)
+            }
 
-pub fn absolute_x_address_with_carry<T: CycleManagerTrait>(
-    cycle_manager: &mut T,
-    registers: &mut Registers,
-) -> (u16, bool) {
-    absolute_offset_address(cycle_manager, registers, registers.x_index)
-}
+            AbsoluteIndexed(index) => {
+                let (address, carry_result) =
+                    address_offset_unsigned(memory_access.read_immediate_16(), *index);
 
-fn absolute_offset_address<T: CycleManagerTrait>(
-    cycle_manager: &mut T,
-    registers: &mut Registers,
-    offset: u8,
-) -> (u16, bool) {
-    let (address, carry_result) = address_offset_unsigned(
-        u16::from_le_bytes([
-            read_immediate(cycle_manager, registers),
-            read_immediate(cycle_manager, registers),
-        ]),
-        offset,
-    );
+                if let CarryResult::Carried { intermediate } = carry_result {
+                    memory_access.phantom_read(intermediate);
+                }
 
-    if let CarryResult::Carried { intermediate } = carry_result {
-        cycle_manager.phantom_read(intermediate);
+                memory_access.read(address, CycleOp::CheckInterrupt)
+            }
 
-        (address, true)
-    } else {
-        cycle_manager.phantom_read(address);
+            IndirectIndexed(index) => {
+                let zero_page_address = ZeroPage.address(memory_access);
 
-        (address, false)
+                let base_address = memory_access.read_16(zero_page_address, CycleOp::None);
+
+                let (address, carry_result) = address_offset_unsigned(base_address, *index);
+
+                if let CarryResult::Carried { intermediate } = carry_result {
+                    memory_access.phantom_read(intermediate);
+                }
+
+                memory_access.read(address, CycleOp::CheckInterrupt)
+            }
+        }
     }
-}
-
-///
-
-pub type DataFn<T> = fn(cycle_manager: &mut T, registers: &mut Registers) -> u8;
-
-pub fn immediate_data<T: CycleManagerTrait>(
-    cycle_manager: &mut T,
-    registers: &mut Registers,
-) -> u8 {
-    read_immediate(cycle_manager, registers)
-}
-
-pub fn zero_page_data<T: CycleManagerTrait>(
-    cycle_manager: &mut T,
-    registers: &mut Registers,
-) -> u8 {
-    let address = zero_page_address(cycle_manager, registers);
-
-    cycle_manager.read(address, CycleOp::CheckInterrupt)
-}
-
-pub fn zero_page_x_data<T: CycleManagerTrait>(
-    cycle_manager: &mut T,
-    registers: &mut Registers,
-) -> u8 {
-    let address = zero_page_x_address(cycle_manager, registers);
-
-    cycle_manager.read(address, CycleOp::CheckInterrupt)
-}
-
-pub fn zero_page_y_data<T: CycleManagerTrait>(
-    cycle_manager: &mut T,
-    registers: &mut Registers,
-) -> u8 {
-    let address = zero_page_y_address(cycle_manager, registers);
-
-    cycle_manager.read(address, CycleOp::CheckInterrupt)
-}
-
-pub fn absolute_data<T: CycleManagerTrait>(cycle_manager: &mut T, registers: &mut Registers) -> u8 {
-    let address = absolute_address(cycle_manager, registers);
-
-    cycle_manager.read(address, CycleOp::CheckInterrupt)
-}
-
-pub fn absolute_x_data<T: CycleManagerTrait>(
-    cycle_manager: &mut T,
-    registers: &mut Registers,
-) -> u8 {
-    absolute_offset_data(cycle_manager, registers, registers.x_index)
-}
-
-pub fn absolute_y_data<T: CycleManagerTrait>(
-    cycle_manager: &mut T,
-    registers: &mut Registers,
-) -> u8 {
-    absolute_offset_data(cycle_manager, registers, registers.y_index)
-}
-
-fn absolute_offset_data<T: CycleManagerTrait>(
-    cycle_manager: &mut T,
-    registers: &mut Registers,
-    offset: u8,
-) -> u8 {
-    let (address, carry_result) = address_offset_unsigned(
-        u16::from_le_bytes([
-            read_immediate(cycle_manager, registers),
-            read_immediate(cycle_manager, registers),
-        ]),
-        offset,
-    );
-
-    if let CarryResult::Carried { intermediate } = carry_result {
-        cycle_manager.phantom_read(intermediate);
-    }
-
-    cycle_manager.read(address, CycleOp::CheckInterrupt)
-}
-
-pub fn indexed_indirect_x_data<T: CycleManagerTrait>(
-    cycle_manager: &mut T,
-    registers: &mut Registers,
-) -> u8 {
-    let address = indexed_indirect_x_address(cycle_manager, registers);
-
-    cycle_manager.read(address, CycleOp::CheckInterrupt)
-}
-
-pub fn indirect_indexed_y_data<T: CycleManagerTrait>(
-    cycle_manager: &mut T,
-    registers: &mut Registers,
-) -> u8 {
-    let (address, carry_result) = address_offset_unsigned(
-        zpg_address_value_16(cycle_manager, registers),
-        registers.y_index,
-    );
-
-    if let CarryResult::Carried { intermediate } = carry_result {
-        cycle_manager.phantom_read(intermediate);
-    }
-
-    cycle_manager.read(address, CycleOp::CheckInterrupt)
-}
-
-///
-
-fn zpg_address_value_16<T: CycleManagerTrait>(
-    cycle_manager: &mut T,
-    registers: &mut Registers,
-) -> u16 {
-    let zpg_address = zero_page_address(cycle_manager, registers);
-
-    u16::from_le_bytes([
-        cycle_manager.read(zpg_address, CycleOp::None),
-        cycle_manager.read((zpg_address + 1) & 0xff, CycleOp::None),
-    ])
-}
-
-fn phantom_program_counter_read<T: CycleManagerTrait>(
-    cycle_manager: &mut T,
-    registers: &mut Registers,
-) {
-    cycle_manager.phantom_read(registers.program_counter);
-}
-
-fn read_immediate<T: CycleManagerTrait>(cycle_manager: &mut T, registers: &mut Registers) -> u8 {
-    let value = cycle_manager.read(registers.program_counter, CycleOp::None);
-
-    registers.program_counter = registers.program_counter.wrapping_add(1);
-
-    value
-}
-
-fn next_address_same_page(address: u16) -> u16 {
-    let [address_low, address_high] = address.to_le_bytes();
-
-    u16::from_le_bytes([address_low.wrapping_add(1), address_high])
 }
 
 fn address_offset(base_address: u16, offset: i16) -> (u16, CarryResult) {
