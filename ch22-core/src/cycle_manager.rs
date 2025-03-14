@@ -7,7 +7,7 @@ pub trait CycleManagerTrait {
     fn complete(&self);
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone, Copy)]
 pub enum CycleOp {
     Sync,
     CheckInterrupt,

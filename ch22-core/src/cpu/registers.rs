@@ -10,23 +10,7 @@ pub struct Registers {
     pub processor_flags: ProcessorFlags,
 }
 
-pub fn set_stack_pointer(registers: &mut Registers, value: u8) {
-    registers.stack_pointer = value;
-}
-
-pub fn set_accumulator(registers: &mut Registers, value: u8) {
-    registers.accumulator = value;
-}
-
-pub fn set_x_index(registers: &mut Registers, value: u8) {
-    registers.x_index = value;
-}
-
-pub fn set_y_index(registers: &mut Registers, value: u8) {
-    registers.y_index = value;
-}
-
-#[derive(Default, PartialEq, Debug)]
+#[derive(Default, PartialEq, Debug, Clone, Copy)]
 pub struct ProcessorFlags {
     pub carry: bool,
     pub zero: bool,
@@ -37,16 +21,16 @@ pub struct ProcessorFlags {
 }
 
 impl ProcessorFlags {
-    pub fn update_zero_negative(self: &mut Self, value: u8) {
+    pub fn update_zero_negative(&mut self, value: u8) {
         self.update_zero(value);
         self.update_negative(value);
     }
 
-    pub fn update_zero(self: &mut Self, value: u8) {
+    pub fn update_zero(&mut self, value: u8) {
         self.zero = value == 0;
     }
 
-    pub fn update_negative(self: &mut Self, value: u8) {
+    pub fn update_negative(&mut self, value: u8) {
         self.negative = is_negative(value);
     }
 }
@@ -64,7 +48,7 @@ impl From<u8> for ProcessorFlags {
     }
 }
 
-impl From<&ProcessorFlags> for u8 {
+impl From<ProcessorFlags> for u8 {
     fn from(
         ProcessorFlags {
             carry,
@@ -73,19 +57,19 @@ impl From<&ProcessorFlags> for u8 {
             decimal_mode,
             overflow,
             negative,
-        }: &ProcessorFlags,
+        }: ProcessorFlags,
     ) -> Self {
-        (if *carry { P_CARRY } else { 0 })
-            | (if *zero { P_ZERO } else { 0 })
-            | (if *interrupt_disable {
+        (if carry { P_CARRY } else { 0 })
+            | (if zero { P_ZERO } else { 0 })
+            | (if interrupt_disable {
                 P_INTERRUPT_DISABLE
             } else {
                 0
             })
-            | (if *decimal_mode { P_DECIMAL_MODE } else { 0 })
+            | (if decimal_mode { P_DECIMAL_MODE } else { 0 })
             | P_BIT_5
-            | (if *overflow { P_OVERFLOW } else { 0 })
-            | (if *negative { P_NEGATIVE } else { 0 })
+            | (if overflow { P_OVERFLOW } else { 0 })
+            | (if negative { P_NEGATIVE } else { 0 })
     }
 }
 
