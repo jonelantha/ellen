@@ -5,17 +5,20 @@ use super::registers::*;
 mod addressing;
 mod binary_ops;
 mod memory_access;
+mod stack_access;
 mod unary_ops;
 
 use addressing::*;
 use binary_ops::*;
-use memory_access::MemoryAccess;
+use memory_access::*;
+use stack_access::*;
 use unary_ops::*;
 
 use AddressMode::*;
 
 pub struct Executor<'a, T: CycleManagerTrait + 'a> {
     memory_access: MemoryAccess<'a, T>,
+    stack_pointer: &'a mut u8,
     accumulator: &'a mut u8,
     x: &'a mut u8,
     y: &'a mut u8,
@@ -25,11 +28,8 @@ pub struct Executor<'a, T: CycleManagerTrait + 'a> {
 impl<'a, T: CycleManagerTrait + 'a> Executor<'a, T> {
     pub fn new(cycle_manager: &'a mut T, registers: &'a mut Registers) -> Self {
         Executor {
-            memory_access: MemoryAccess::new(
-                cycle_manager,
-                &mut registers.program_counter,
-                &mut registers.stack_pointer,
-            ),
+            memory_access: MemoryAccess::new(cycle_manager, &mut registers.program_counter),
+            stack_pointer: &mut registers.stack_pointer,
             accumulator: &mut registers.accumulator,
             x: &mut registers.x_index,
             y: &mut registers.y_index,
@@ -399,7 +399,7 @@ impl<'a, T: CycleManagerTrait + 'a> Executor<'a, T> {
             0xb9 => self.load_register(set_accumulator, AbsoluteIndexed(*self.y)),
 
             // TSX
-            0xba => self.transfer_register(*self.memory_access.stack_pointer, set_x_index),
+            0xba => self.transfer_register(*self.stack_pointer, set_x_index),
 
             // LDY abs,X
             0xbc => self.load_register(set_y_index, AbsoluteIndexed(*self.x)),
@@ -639,10 +639,15 @@ impl<'a, T: CycleManagerTrait + 'a> Executor<'a, T> {
             self.memory_access.increment_program_counter();
         }
 
-        self.memory_access.push_program_counter();
+        let program_counter = *self.memory_access.program_counter;
 
-        self.memory_access
-            .push(u8::from(*self.processor_flags) | additional_processor_flags);
+        push_16(&mut self.memory_access, self.stack_pointer, program_counter);
+
+        push(
+            &mut self.memory_access,
+            self.stack_pointer,
+            u8::from(*self.processor_flags) | additional_processor_flags,
+        );
 
         self.processor_flags.interrupt_disable = true;
 
@@ -653,9 +658,11 @@ impl<'a, T: CycleManagerTrait + 'a> Executor<'a, T> {
     fn jump_to_subroutine(&mut self) {
         let program_counter_low = self.memory_access.read_immediate();
 
-        self.memory_access.phantom_stack_read();
+        let program_counter = *self.memory_access.program_counter;
 
-        self.memory_access.push_program_counter();
+        phantom_stack_read(&mut self.memory_access, *self.stack_pointer);
+
+        push_16(&mut self.memory_access, self.stack_pointer, program_counter);
 
         let program_counter_high = self.memory_access.read_immediate();
 
@@ -670,19 +677,19 @@ impl<'a, T: CycleManagerTrait + 'a> Executor<'a, T> {
     fn return_from_interrupt(&mut self) {
         self.memory_access.phantom_program_counter_read();
 
-        self.memory_access.phantom_stack_read();
+        phantom_stack_read(&mut self.memory_access, *self.stack_pointer);
 
-        *self.processor_flags = self.memory_access.pop().into();
+        *self.processor_flags = pop(&mut self.memory_access, self.stack_pointer).into();
 
-        self.memory_access.pop_program_counter();
+        *self.memory_access.program_counter = pop_16(&mut self.memory_access, self.stack_pointer);
     }
 
     fn return_from_subroutine(&mut self) {
         self.memory_access.phantom_program_counter_read();
 
-        self.memory_access.phantom_stack_read();
+        phantom_stack_read(&mut self.memory_access, *self.stack_pointer);
 
-        self.memory_access.pop_program_counter();
+        *self.memory_access.program_counter = pop_16(&mut self.memory_access, self.stack_pointer);
 
         self.memory_access.phantom_program_counter_read();
 
@@ -692,9 +699,9 @@ impl<'a, T: CycleManagerTrait + 'a> Executor<'a, T> {
     fn pull_accumulator(&mut self) {
         self.memory_access.phantom_program_counter_read();
 
-        self.memory_access.phantom_stack_read();
+        phantom_stack_read(&mut self.memory_access, *self.stack_pointer);
 
-        *self.accumulator = self.memory_access.pop();
+        *self.accumulator = pop(&mut self.memory_access, self.stack_pointer);
 
         self.processor_flags.update_zero_negative(*self.accumulator);
     }
@@ -702,22 +709,29 @@ impl<'a, T: CycleManagerTrait + 'a> Executor<'a, T> {
     fn push_accumulator(&mut self) {
         self.memory_access.phantom_program_counter_read();
 
-        self.memory_access.push(*self.accumulator);
+        push(
+            &mut self.memory_access,
+            self.stack_pointer,
+            *self.accumulator,
+        );
     }
 
     fn pull_processor_flags(&mut self) {
         self.memory_access.phantom_program_counter_read();
 
-        self.memory_access.phantom_stack_read();
+        phantom_stack_read(&mut self.memory_access, *self.stack_pointer);
 
-        *self.processor_flags = self.memory_access.pop().into();
+        *self.processor_flags = pop(&mut self.memory_access, self.stack_pointer).into();
     }
 
     fn push_processor_flags(&mut self) {
         self.memory_access.phantom_program_counter_read();
 
-        self.memory_access
-            .push(u8::from(*self.processor_flags) | P_BREAK);
+        push(
+            &mut self.memory_access,
+            self.stack_pointer,
+            u8::from(*self.processor_flags) | P_BREAK,
+        );
     }
 
     fn branch(&mut self, condition: bool) {
@@ -788,7 +802,7 @@ pub const RESET_VECTOR: u16 = 0xfffc;
 pub const IRQ_BRK_VECTOR: u16 = 0xfffe;
 
 fn set_stack_pointer<T: CycleManagerTrait>(executor: &mut Executor<T>, value: u8) {
-    *executor.memory_access.stack_pointer = value;
+    *executor.stack_pointer = value;
 }
 
 fn set_accumulator<T: CycleManagerTrait>(executor: &mut Executor<T>, value: u8) {
