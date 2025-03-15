@@ -10,6 +10,10 @@ pub struct Registers {
     pub processor_flags: ProcessorFlags,
 }
 
+pub fn advance_program_counter(program_counter: &mut u16) {
+    *program_counter = program_counter.wrapping_add(1);
+}
+
 #[derive(Default, PartialEq, Debug, Clone, Copy)]
 pub struct ProcessorFlags {
     pub carry: bool,
