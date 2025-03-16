@@ -1,4 +1,4 @@
-use ch22_core::cycle_manager::*;
+use ch22_core::bus::*;
 use serde::Deserialize;
 
 use std::collections::HashMap;
@@ -36,7 +36,7 @@ impl CycleManagerMock {
     }
 }
 
-impl CycleManagerTrait for CycleManagerMock {
+impl BusTrait for CycleManagerMock {
     fn phantom_read(&mut self, address: u16) {
         self.read(address, CycleOp::None);
     }

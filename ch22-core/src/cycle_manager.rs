@@ -1,18 +1,5 @@
+use crate::bus::*;
 use crate::memory::*;
-
-pub trait CycleManagerTrait {
-    fn phantom_read(&mut self, address: u16);
-    fn read(&mut self, address: u16, op: CycleOp) -> u8;
-    fn write(&mut self, address: u16, value: u8, op: CycleOp);
-    fn complete(&self);
-}
-
-#[derive(PartialEq, Clone, Copy)]
-pub enum CycleOp {
-    Sync,
-    CheckInterrupt,
-    None,
-}
 
 pub struct CycleManager<'a> {
     cycles: u8,
@@ -33,7 +20,7 @@ impl<'a> CycleManager<'a> {
     }
 }
 
-impl CycleManagerTrait for CycleManager<'_> {
+impl BusTrait for CycleManager<'_> {
     fn phantom_read(&mut self, _address: u16) {
         self.cycles += 1;
     }
@@ -45,15 +32,11 @@ impl CycleManagerTrait for CycleManager<'_> {
 
         self.cycles += 1;
 
-        //console::log_1(&format!("read {:x} {:x}", address, value).into());
-
         value
     }
 
     fn write(&mut self, address: u16, value: u8, op: CycleOp) {
         self.process_op(op);
-
-        //console::log_1(&format!("write {:x} {:x}", address, value).into());
 
         self.memory.write(address, value);
 
@@ -62,7 +45,6 @@ impl CycleManagerTrait for CycleManager<'_> {
 
     fn complete(&self) {
         (self.advance_cycles_handler)(self.cycles, false);
-        //console::log_1(&format!("complete {:x}", self.cycles).into());
     }
 }
 

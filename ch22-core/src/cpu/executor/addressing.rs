@@ -1,4 +1,4 @@
-use crate::cycle_manager::{CycleManagerTrait, CycleOp};
+use crate::bus::*;
 
 use AddressMode::*;
 
@@ -17,65 +17,61 @@ pub enum AddressMode {
 }
 
 impl AddressMode {
-    pub fn address<T: CycleManagerTrait>(
-        &self,
-        cycle_manager: &mut T,
-        program_counter: &mut u16,
-    ) -> u16 {
+    pub fn address<T: BusTrait>(&self, bus: &mut T, program_counter: &mut u16) -> u16 {
         match self {
             Immediate => panic!(),
 
-            ZeroPage => read_immediate(cycle_manager, program_counter) as u16,
+            ZeroPage => read_immediate(bus, program_counter) as u16,
 
             ZeroPageIndexed(index) => {
-                let base_address = read_immediate(cycle_manager, program_counter);
+                let base_address = read_immediate(bus, program_counter);
 
-                cycle_manager.phantom_read(base_address as u16);
+                bus.phantom_read(base_address as u16);
 
                 base_address.wrapping_add(*index) as u16
             }
 
-            Absolute => read_immediate_16(cycle_manager, program_counter),
+            Absolute => read_immediate_16(bus, program_counter),
 
-            AbsoluteIndexed(_) => self.address_with_carry(cycle_manager, program_counter).0,
+            AbsoluteIndexed(_) => self.address_with_carry(bus, program_counter).0,
 
             Indirect => {
-                let base_address = read_immediate_16(cycle_manager, program_counter);
+                let base_address = read_immediate_16(bus, program_counter);
 
-                read_16(cycle_manager, base_address, CycleOp::None)
+                read_16(bus, base_address, CycleOp::None)
             }
 
             IndexedIndirect(index) => {
-                let address = ZeroPageIndexed(*index).address(cycle_manager, program_counter);
+                let address = ZeroPageIndexed(*index).address(bus, program_counter);
 
-                read_16(cycle_manager, address, CycleOp::None)
+                read_16(bus, address, CycleOp::None)
             }
 
             IndirectIndexed(index) => {
-                let zero_page_address = ZeroPage.address(cycle_manager, program_counter);
+                let zero_page_address = ZeroPage.address(bus, program_counter);
 
-                let base_address = read_16(cycle_manager, zero_page_address, CycleOp::None);
+                let base_address = read_16(bus, zero_page_address, CycleOp::None);
 
                 let (address, carry_result) = address_offset_unsigned(base_address, *index);
 
                 if let CarryResult::Carried { intermediate } = carry_result {
-                    cycle_manager.phantom_read(intermediate);
+                    bus.phantom_read(intermediate);
                 } else {
-                    cycle_manager.phantom_read(address);
+                    bus.phantom_read(address);
                 }
 
                 address
             }
 
             Relative => {
-                let rel_address = read_immediate(cycle_manager, program_counter) as i8;
+                let rel_address = read_immediate(bus, program_counter) as i8;
 
-                cycle_manager.phantom_read(*program_counter);
+                bus.phantom_read(*program_counter);
 
                 let (address, carry_result) = address_offset_signed(*program_counter, rel_address);
 
                 if let CarryResult::Carried { intermediate } = carry_result {
-                    cycle_manager.phantom_read(intermediate);
+                    bus.phantom_read(intermediate);
                 }
 
                 address
@@ -83,23 +79,23 @@ impl AddressMode {
         }
     }
 
-    pub fn address_with_carry<T: CycleManagerTrait>(
+    pub fn address_with_carry<T: BusTrait>(
         &self,
-        cycle_manager: &mut T,
+        bus: &mut T,
         program_counter: &mut u16,
     ) -> (u16, bool) {
         match self {
             AbsoluteIndexed(index) => {
-                let base_address = read_immediate_16(cycle_manager, program_counter);
+                let base_address = read_immediate_16(bus, program_counter);
 
                 let (address, carry_result) = address_offset_unsigned(base_address, *index);
 
                 if let CarryResult::Carried { intermediate } = carry_result {
-                    cycle_manager.phantom_read(intermediate);
+                    bus.phantom_read(intermediate);
 
                     (address, true)
                 } else {
-                    cycle_manager.phantom_read(address);
+                    bus.phantom_read(address);
 
                     (address, false)
                 }
@@ -109,44 +105,40 @@ impl AddressMode {
         }
     }
 
-    pub fn data<T: CycleManagerTrait>(
-        &self,
-        cycle_manager: &mut T,
-        program_counter: &mut u16,
-    ) -> u8 {
+    pub fn data<T: BusTrait>(&self, bus: &mut T, program_counter: &mut u16) -> u8 {
         match self {
-            Immediate => read_immediate(cycle_manager, program_counter),
+            Immediate => read_immediate(bus, program_counter),
 
             ZeroPage | ZeroPageIndexed(_) | Absolute | IndexedIndirect(_) | Indirect | Relative => {
-                let address = self.address(cycle_manager, program_counter);
+                let address = self.address(bus, program_counter);
 
-                cycle_manager.read(address, CycleOp::CheckInterrupt)
+                bus.read(address, CycleOp::CheckInterrupt)
             }
 
             AbsoluteIndexed(index) => {
-                let base_address = read_immediate_16(cycle_manager, program_counter);
+                let base_address = read_immediate_16(bus, program_counter);
 
                 let (address, carry_result) = address_offset_unsigned(base_address, *index);
 
                 if let CarryResult::Carried { intermediate } = carry_result {
-                    cycle_manager.phantom_read(intermediate);
+                    bus.phantom_read(intermediate);
                 }
 
-                cycle_manager.read(address, CycleOp::CheckInterrupt)
+                bus.read(address, CycleOp::CheckInterrupt)
             }
 
             IndirectIndexed(index) => {
-                let zero_page_address = ZeroPage.address(cycle_manager, program_counter);
+                let zero_page_address = ZeroPage.address(bus, program_counter);
 
-                let base_address = read_16(cycle_manager, zero_page_address, CycleOp::None);
+                let base_address = read_16(bus, zero_page_address, CycleOp::None);
 
                 let (address, carry_result) = address_offset_unsigned(base_address, *index);
 
                 if let CarryResult::Carried { intermediate } = carry_result {
-                    cycle_manager.phantom_read(intermediate);
+                    bus.phantom_read(intermediate);
                 }
 
-                cycle_manager.read(address, CycleOp::CheckInterrupt)
+                bus.read(address, CycleOp::CheckInterrupt)
             }
         }
     }
@@ -178,10 +170,10 @@ enum CarryResult {
     NoCarry,
 }
 
-pub fn read_16<T: CycleManagerTrait>(cycle_manager: &mut T, address: u16, op: CycleOp) -> u16 {
+pub fn read_16<T: BusTrait>(bus: &mut T, address: u16, op: CycleOp) -> u16 {
     u16::from_le_bytes([
-        cycle_manager.read(address, op),
-        cycle_manager.read(next_address_same_page(address), op),
+        bus.read(address, op),
+        bus.read(next_address_same_page(address), op),
     ])
 }
 
