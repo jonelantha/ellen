@@ -599,13 +599,11 @@ impl Instruction {
                     advance_program_counter(&mut registers.program_counter);
                 }
 
-                push_16(bus, &mut registers.stack_pointer, registers.program_counter);
+                let mut stack = StackAccess::new(bus, &mut registers.stack_pointer);
 
-                push(
-                    bus,
-                    &mut registers.stack_pointer,
-                    u8::from(registers.flags) | additional_flags,
-                );
+                stack.push_16(registers.program_counter);
+
+                stack.push(u8::from(registers.flags) | additional_flags);
 
                 registers.flags.interrupt_disable = true;
 
@@ -615,9 +613,11 @@ impl Instruction {
             JumpToSubRoutine => {
                 let program_counter_low = read_immediate(bus, &mut registers.program_counter);
 
-                phantom_stack_read(bus, registers.stack_pointer);
+                let mut stack = StackAccess::new(bus, &mut registers.stack_pointer);
 
-                push_16(bus, &mut registers.stack_pointer, registers.program_counter);
+                stack.phantom_read();
+
+                stack.push_16(registers.program_counter);
 
                 let program_counter_high = read_immediate(bus, &mut registers.program_counter);
 
@@ -633,19 +633,23 @@ impl Instruction {
             ReturnFromInterrupt => {
                 bus.phantom_read(registers.program_counter);
 
-                phantom_stack_read(bus, registers.stack_pointer);
+                let mut stack = StackAccess::new(bus, &mut registers.stack_pointer);
 
-                registers.flags = pop(bus, &mut registers.stack_pointer).into();
+                stack.phantom_read();
 
-                registers.program_counter = pop_16(bus, &mut registers.stack_pointer);
+                registers.flags = stack.pop().into();
+
+                registers.program_counter = stack.pop_16();
             }
 
             ReturnFromSubroutine => {
                 bus.phantom_read(registers.program_counter);
 
-                phantom_stack_read(bus, registers.stack_pointer);
+                let mut stack = StackAccess::new(bus, &mut registers.stack_pointer);
 
-                registers.program_counter = pop_16(bus, &mut registers.stack_pointer);
+                stack.phantom_read();
+
+                registers.program_counter = stack.pop_16();
 
                 bus.phantom_read(registers.program_counter);
 
@@ -655,9 +659,11 @@ impl Instruction {
             PullAccumulator => {
                 bus.phantom_read(registers.program_counter);
 
-                phantom_stack_read(bus, registers.stack_pointer);
+                let mut stack = StackAccess::new(bus, &mut registers.stack_pointer);
 
-                registers.accumulator = pop(bus, &mut registers.stack_pointer);
+                stack.phantom_read();
+
+                registers.accumulator = stack.pop();
 
                 registers.flags.update_zero_negative(registers.accumulator);
             }
@@ -665,25 +671,27 @@ impl Instruction {
             PushAccumulator => {
                 bus.phantom_read(registers.program_counter);
 
-                push(bus, &mut registers.stack_pointer, registers.accumulator);
+                let mut stack = StackAccess::new(bus, &mut registers.stack_pointer);
+
+                stack.push(registers.accumulator);
             }
 
             PullProcessorFlags => {
                 bus.phantom_read(registers.program_counter);
 
-                phantom_stack_read(bus, registers.stack_pointer);
+                let mut stack = StackAccess::new(bus, &mut registers.stack_pointer);
 
-                registers.flags = pop(bus, &mut registers.stack_pointer).into();
+                stack.phantom_read();
+
+                registers.flags = stack.pop().into();
             }
 
             PushProcessorFlags => {
                 bus.phantom_read(registers.program_counter);
 
-                push(
-                    bus,
-                    &mut registers.stack_pointer,
-                    u8::from(registers.flags) | P_BREAK,
-                );
+                let mut stack = StackAccess::new(bus, &mut registers.stack_pointer);
+
+                stack.push(u8::from(registers.flags) | P_BREAK);
             }
 
             Branch(condition) => {
