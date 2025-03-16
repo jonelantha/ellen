@@ -36,7 +36,7 @@ impl CycleManagerMock {
     }
 }
 
-impl BusTrait for CycleManagerMock {
+impl Bus for CycleManagerMock {
     fn phantom_read(&mut self, address: u16) {
         self.read(address, CycleOp::None);
     }

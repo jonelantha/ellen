@@ -17,7 +17,7 @@ use unary_ops::*;
 use AddressMode::*;
 use Instruction::*;
 
-pub fn interrupt<T: BusTrait>(bus: &mut T, registers: &mut Registers, nmi: bool) {
+pub fn interrupt<B: Bus>(bus: &mut B, registers: &mut Registers, nmi: bool) {
     bus.phantom_read(registers.program_counter);
 
     Break(false, 0, if nmi { NMI_VECTOR } else { IRQ_BRK_VECTOR }).execute(bus, registers);
@@ -25,7 +25,7 @@ pub fn interrupt<T: BusTrait>(bus: &mut T, registers: &mut Registers, nmi: bool)
     bus.complete();
 }
 
-pub fn execute<T: BusTrait>(bus: &mut T, registers: &mut Registers, allow_untested_in_wild: bool) {
+pub fn execute<B: Bus>(bus: &mut B, registers: &mut Registers, allow_untested_in_wild: bool) {
     let opcode = read_immediate(bus, &mut registers.program_counter);
 
     if [0x35, 0x36, 0x41, 0x56, 0x5e, 0xe1].contains(&opcode) && !allow_untested_in_wild {
@@ -520,7 +520,7 @@ fn decode(opcode: u8, registers: &Registers) -> Instruction {
 }
 
 impl Instruction {
-    pub fn execute<T: BusTrait>(&self, bus: &mut T, registers: &mut Registers) {
+    pub fn execute<B: Bus>(&self, bus: &mut B, registers: &mut Registers) {
         match self {
             NopRead(address_mode) => {
                 address_mode.data(bus, &mut registers.program_counter);
