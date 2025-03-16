@@ -40,9 +40,9 @@ fn opcode_cycle_test(_name: &str, initial_state: &CPUTestState, cycle_syncs: &Ve
         program_counter: initial_state.pc,
         stack_pointer: initial_state.s,
         accumulator: initial_state.a,
-        x_index: initial_state.x,
-        y_index: initial_state.y,
-        processor_flags: initial_state.p.into(),
+        x: initial_state.x,
+        y: initial_state.y,
+        flags: initial_state.p.into(),
     };
 
     let mut cycle_manager_mock = CycleManagerMock::new(&initial_state.ram);
