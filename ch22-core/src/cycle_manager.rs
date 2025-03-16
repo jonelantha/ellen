@@ -20,7 +20,7 @@ impl<'a> CycleManager<'a> {
     }
 }
 
-impl BusTrait for CycleManager<'_> {
+impl Bus for CycleManager<'_> {
     fn phantom_read(&mut self, _address: u16) {
         self.cycles += 1;
     }

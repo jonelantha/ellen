@@ -17,7 +17,7 @@ pub enum AddressMode {
 }
 
 impl AddressMode {
-    pub fn address<T: BusTrait>(&self, bus: &mut T, program_counter: &mut u16) -> u16 {
+    pub fn address<B: Bus>(&self, bus: &mut B, program_counter: &mut u16) -> u16 {
         match self {
             Immediate => panic!(),
 
@@ -79,9 +79,9 @@ impl AddressMode {
         }
     }
 
-    pub fn address_with_carry<T: BusTrait>(
+    pub fn address_with_carry<B: Bus>(
         &self,
-        bus: &mut T,
+        bus: &mut B,
         program_counter: &mut u16,
     ) -> (u16, bool) {
         match self {
@@ -105,7 +105,7 @@ impl AddressMode {
         }
     }
 
-    pub fn data<T: BusTrait>(&self, bus: &mut T, program_counter: &mut u16) -> u8 {
+    pub fn data<B: Bus>(&self, bus: &mut B, program_counter: &mut u16) -> u8 {
         match self {
             Immediate => read_immediate(bus, program_counter),
 
@@ -170,7 +170,7 @@ enum CarryResult {
     NoCarry,
 }
 
-pub fn read_16<T: BusTrait>(bus: &mut T, address: u16, op: CycleOp) -> u16 {
+pub fn read_16<B: Bus>(bus: &mut B, address: u16, op: CycleOp) -> u16 {
     u16::from_le_bytes([
         bus.read(address, op),
         bus.read(next_address_same_page(address), op),
