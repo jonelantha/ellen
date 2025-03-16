@@ -2,14 +2,14 @@ use crate::bus::*;
 
 use super::registers::*;
 
+mod accumulator_binary_ops;
 mod addressing;
-mod binary_ops;
 mod immediate_access;
 mod stack_access;
 mod unary_ops;
 
+use accumulator_binary_ops::*;
 use addressing::*;
-use binary_ops::*;
 use immediate_access::*;
 use stack_access::*;
 use unary_ops::*;
@@ -548,7 +548,7 @@ impl Instruction {
                 bus.write(address, new_value, CycleOp::Sync);
             }
 
-            ReadModifyWriteWithAccumulator(unary_op, binary_op, address_mode) => {
+            ReadModifyWriteWithAccumulator(unary_op, accumulator_binary_op, address_mode) => {
                 let address = address_mode.address(bus, &mut registers.program_counter);
 
                 let old_value = bus.read(address, CycleOp::Sync);
@@ -559,8 +559,7 @@ impl Instruction {
 
                 bus.write(address, new_value, CycleOp::Sync);
 
-                registers.accumulator =
-                    binary_op(&mut registers.flags, registers.accumulator, new_value);
+                accumulator_binary_op(&mut registers.flags, &mut registers.accumulator, new_value);
             }
 
             AccumulatorUnaryOp(unary_op) => {
@@ -581,11 +580,10 @@ impl Instruction {
                 registers.y = unary_op(&mut registers.flags, registers.y);
             }
 
-            AccumulatorBinaryOp(binary_op, address_mode) => {
+            AccumulatorBinaryOp(accumulator_binary_op, address_mode) => {
                 let operand = address_mode.data(bus, &mut registers.program_counter);
 
-                registers.accumulator =
-                    binary_op(&mut registers.flags, registers.accumulator, operand);
+                accumulator_binary_op(&mut registers.flags, &mut registers.accumulator, operand);
             }
 
             SetFlag(set_flag_fn, value) => {
@@ -757,12 +755,12 @@ enum Instruction {
     Nop,
     NopRead(AddressMode),
     Store(u8, AddressMode),
-    ReadModifyWrite(UnaryOp, AddressMode),
-    ReadModifyWriteWithAccumulator(UnaryOp, BinaryOp, AddressMode),
-    AccumulatorUnaryOp(UnaryOp),
-    XUnaryOp(UnaryOp),
-    YUnaryOp(UnaryOp),
-    AccumulatorBinaryOp(BinaryOp, AddressMode),
+    ReadModifyWrite(UnaryOpFn, AddressMode),
+    ReadModifyWriteWithAccumulator(UnaryOpFn, AccumulatorBinaryOpFn, AddressMode),
+    AccumulatorUnaryOp(UnaryOpFn),
+    XUnaryOp(UnaryOpFn),
+    YUnaryOp(UnaryOpFn),
+    AccumulatorBinaryOp(AccumulatorBinaryOpFn, AddressMode),
     SetFlag(SetFlagFn, bool),
     Break(bool, u8, u16),
     JumpToSubRoutine,
