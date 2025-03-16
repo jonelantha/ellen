@@ -42,14 +42,14 @@ impl Ch22Cpu {
                 memory.read(RESET_VECTOR + 1),
             ]),
             stack_pointer: 0xff,
-            processor_flags: ProcessorFlags {
+            flags: ProcessorFlags {
                 interrupt_disable: true,
                 ..Default::default()
             },
             ..Default::default()
         };
 
-        self.registers.processor_flags.interrupt_disable
+        self.registers.flags.interrupt_disable
     }
 
     pub fn handle_next_instruction(&mut self, memory: &mut Ch22Memory) -> bool {
@@ -57,7 +57,7 @@ impl Ch22Cpu {
 
         execute(&mut cycle_manager, &mut self.registers, false);
 
-        self.registers.processor_flags.interrupt_disable
+        self.registers.flags.interrupt_disable
     }
 
     pub fn interrupt(&mut self, memory: &mut Ch22Memory, nmi: bool) -> bool {
@@ -65,6 +65,6 @@ impl Ch22Cpu {
 
         interrupt(&mut cycle_manager, &mut self.registers, nmi);
 
-        self.registers.processor_flags.interrupt_disable
+        self.registers.flags.interrupt_disable
     }
 }

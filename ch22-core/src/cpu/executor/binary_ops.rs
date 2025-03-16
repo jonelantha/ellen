@@ -4,89 +4,81 @@ use super::unary_ops::shift_right;
 
 pub type BinaryOp = fn(&mut ProcessorFlags, u8, u8) -> u8;
 
-pub fn and(processor_flags: &mut ProcessorFlags, mut accumulator: u8, operand: u8) -> u8 {
+pub fn and(flags: &mut ProcessorFlags, mut accumulator: u8, operand: u8) -> u8 {
     accumulator &= operand;
 
-    processor_flags.update_zero_negative(accumulator);
+    flags.update_zero_negative(accumulator);
 
     accumulator
 }
 
-pub fn and_negative_carry(
-    processor_flags: &mut ProcessorFlags,
-    mut accumulator: u8,
-    operand: u8,
-) -> u8 {
-    accumulator = and(processor_flags, accumulator, operand);
+pub fn and_negative_carry(flags: &mut ProcessorFlags, mut accumulator: u8, operand: u8) -> u8 {
+    accumulator = and(flags, accumulator, operand);
 
-    processor_flags.carry = processor_flags.negative;
+    flags.carry = flags.negative;
 
     accumulator
 }
 
-pub fn or(processor_flags: &mut ProcessorFlags, mut accumulator: u8, operand: u8) -> u8 {
+pub fn or(flags: &mut ProcessorFlags, mut accumulator: u8, operand: u8) -> u8 {
     accumulator |= operand;
 
-    processor_flags.update_zero_negative(accumulator);
+    flags.update_zero_negative(accumulator);
 
     accumulator
 }
 
-pub fn xor(processor_flags: &mut ProcessorFlags, mut accumulator: u8, operand: u8) -> u8 {
+pub fn xor(flags: &mut ProcessorFlags, mut accumulator: u8, operand: u8) -> u8 {
     accumulator ^= operand;
 
-    processor_flags.update_zero_negative(accumulator);
+    flags.update_zero_negative(accumulator);
 
     accumulator
 }
 
-pub fn bit_test(processor_flags: &mut ProcessorFlags, accumulator: u8, operand: u8) -> u8 {
-    processor_flags.update_zero(accumulator & operand);
-    processor_flags.overflow = operand & 0x40 != 0;
-    processor_flags.update_negative(operand);
+pub fn bit_test(flags: &mut ProcessorFlags, accumulator: u8, operand: u8) -> u8 {
+    flags.update_zero(accumulator & operand);
+    flags.overflow = operand & 0x40 != 0;
+    flags.update_negative(operand);
 
     accumulator
 }
 
-pub fn and_shift_right(processor_flags: &mut ProcessorFlags, accumulator: u8, operand: u8) -> u8 {
-    shift_right(processor_flags, accumulator & operand)
+pub fn and_shift_right(flags: &mut ProcessorFlags, accumulator: u8, operand: u8) -> u8 {
+    shift_right(flags, accumulator & operand)
 }
 
-pub fn add_with_carry(processor_flags: &mut ProcessorFlags, accumulator: u8, operand: u8) -> u8 {
-    if processor_flags.decimal_mode {
-        add_with_carry_bcd(processor_flags, accumulator, operand)
+pub fn add_with_carry(flags: &mut ProcessorFlags, accumulator: u8, operand: u8) -> u8 {
+    if flags.decimal_mode {
+        add_with_carry_bcd(flags, accumulator, operand)
     } else {
-        add_with_carry_non_bcd(processor_flags, accumulator, operand)
+        add_with_carry_non_bcd(flags, accumulator, operand)
     }
 }
 
-fn add_with_carry_non_bcd(
-    processor_flags: &mut ProcessorFlags,
-    accumulator: u8,
-    operand: u8,
-) -> u8 {
-    let carry = processor_flags.carry as u8;
+fn add_with_carry_non_bcd(flags: &mut ProcessorFlags, accumulator: u8, operand: u8) -> u8 {
+    let carry = flags.carry as u8;
 
     let (result, operand_overflow) = accumulator.overflowing_add(operand);
     let (result, carry_overflow) = result.overflowing_add(carry);
 
-    processor_flags.carry = operand_overflow || carry_overflow;
+    flags.carry = operand_overflow || carry_overflow;
 
-    processor_flags.update_zero_negative(result);
-    processor_flags.overflow = add_with_carry_overflow(accumulator, result, operand);
+    flags.update_zero_negative(result);
+    flags.overflow = add_with_carry_overflow(accumulator, result, operand);
 
     result
 }
 
-fn add_with_carry_bcd(processor_flags: &mut ProcessorFlags, accumulator: u8, operand: u8) -> u8 {
-    let carry_in = processor_flags.carry as u8;
+fn add_with_carry_bcd(flags: &mut ProcessorFlags, accumulator: u8, operand: u8) -> u8 {
+    let carry_in = flags.carry as u8;
 
     // calculate normally for zero flag
 
     let result = accumulator.wrapping_add(operand);
     let result = result.wrapping_add(carry_in);
 
-    processor_flags.update_zero(result);
+    flags.update_zero(result);
 
     // bcd calculation
 
@@ -98,42 +90,34 @@ fn add_with_carry_bcd(processor_flags: &mut ProcessorFlags, accumulator: u8, ope
 
     // N and V are determined before high nibble is adjusted
     let result_so_far = from_nibbles(high_nibble, low_nibble);
-    processor_flags.overflow = add_with_carry_overflow(accumulator, result_so_far, operand);
-    processor_flags.update_negative(result_so_far);
+    flags.overflow = add_with_carry_overflow(accumulator, result_so_far, operand);
+    flags.update_negative(result_so_far);
 
     let (high_nibble, high_carry_out) = wrap_nibble_up(high_nibble);
 
-    processor_flags.carry = high_carry_out == 1;
+    flags.carry = high_carry_out == 1;
 
     from_nibbles(high_nibble, low_nibble)
 }
 
-pub fn subtract_with_carry(
-    processor_flags: &mut ProcessorFlags,
-    accumulator: u8,
-    operand: u8,
-) -> u8 {
-    if processor_flags.decimal_mode {
-        subtract_with_carry_bcd(processor_flags, accumulator, operand)
+pub fn subtract_with_carry(flags: &mut ProcessorFlags, accumulator: u8, operand: u8) -> u8 {
+    if flags.decimal_mode {
+        subtract_with_carry_bcd(flags, accumulator, operand)
     } else {
-        add_with_carry_non_bcd(processor_flags, accumulator, !operand)
+        add_with_carry_non_bcd(flags, accumulator, !operand)
     }
 }
 
-fn subtract_with_carry_bcd(
-    processor_flags: &mut ProcessorFlags,
-    accumulator: u8,
-    operand: u8,
-) -> u8 {
-    let borrow_in = 1 - processor_flags.carry as u8;
+fn subtract_with_carry_bcd(flags: &mut ProcessorFlags, accumulator: u8, operand: u8) -> u8 {
+    let borrow_in = 1 - flags.carry as u8;
 
     // calculate normally for flags
 
     let result = accumulator.wrapping_sub(operand);
     let result = result.wrapping_sub(borrow_in);
 
-    processor_flags.update_zero_negative(result);
-    processor_flags.overflow = subtract_with_carry_overflow(accumulator, result, operand);
+    flags.update_zero_negative(result);
+    flags.overflow = subtract_with_carry_overflow(accumulator, result, operand);
 
     // then calculate for BCD
 
@@ -149,7 +133,7 @@ fn subtract_with_carry_bcd(
 
     let (high_nibble, high_borrow_out) = wrap_nibble_down(high_nibble);
 
-    processor_flags.carry = high_borrow_out == 0;
+    flags.carry = high_borrow_out == 0;
 
     from_nibbles(high_nibble, low_nibble)
 }

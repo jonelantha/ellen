@@ -5,9 +5,9 @@ pub struct Registers {
     pub program_counter: u16,
     pub stack_pointer: u8,
     pub accumulator: u8,
-    pub x_index: u8,
-    pub y_index: u8,
-    pub processor_flags: ProcessorFlags,
+    pub x: u8,
+    pub y: u8,
+    pub flags: ProcessorFlags,
 }
 
 pub fn advance_program_counter(program_counter: &mut u16) {
