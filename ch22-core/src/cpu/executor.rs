@@ -1,4 +1,4 @@
-use crate::cycle_manager::*;
+use crate::bus::*;
 
 use super::registers::*;
 
@@ -17,25 +17,16 @@ use unary_ops::*;
 use AddressMode::*;
 use Instruction::*;
 
-pub fn interrupt<T: CycleManagerTrait>(
-    cycle_manager: &mut T,
-    registers: &mut Registers,
-    nmi: bool,
-) {
-    cycle_manager.phantom_read(registers.program_counter);
+pub fn interrupt<T: BusTrait>(bus: &mut T, registers: &mut Registers, nmi: bool) {
+    bus.phantom_read(registers.program_counter);
 
-    Break(false, 0, if nmi { NMI_VECTOR } else { IRQ_BRK_VECTOR })
-        .execute(cycle_manager, registers);
+    Break(false, 0, if nmi { NMI_VECTOR } else { IRQ_BRK_VECTOR }).execute(bus, registers);
 
-    cycle_manager.complete();
+    bus.complete();
 }
 
-pub fn execute<T: CycleManagerTrait>(
-    cycle_manager: &mut T,
-    registers: &mut Registers,
-    allow_untested_in_wild: bool,
-) {
-    let opcode = read_immediate(cycle_manager, &mut registers.program_counter);
+pub fn execute<T: BusTrait>(bus: &mut T, registers: &mut Registers, allow_untested_in_wild: bool) {
+    let opcode = read_immediate(bus, &mut registers.program_counter);
 
     if [0x35, 0x36, 0x41, 0x56, 0x5e, 0xe1].contains(&opcode) && !allow_untested_in_wild {
         panic!("untested opcode: {:02x}", opcode);
@@ -43,9 +34,9 @@ pub fn execute<T: CycleManagerTrait>(
 
     let instruction = decode(opcode, registers);
 
-    instruction.execute(cycle_manager, registers);
+    instruction.execute(bus, registers);
 
-    cycle_manager.complete();
+    bus.complete();
 }
 
 fn decode(
@@ -539,9 +530,9 @@ fn decode(
 }
 
 impl Instruction {
-    pub fn execute<T: CycleManagerTrait>(
+    pub fn execute<T: BusTrait>(
         &self,
-        cycle_manager: &mut T,
+        bus: &mut T,
         Registers {
             program_counter,
             accumulator,
@@ -553,179 +544,175 @@ impl Instruction {
     ) {
         match self {
             NopRead(address_mode) => {
-                address_mode.data(cycle_manager, program_counter);
+                address_mode.data(bus, program_counter);
             }
 
             Nop => {
-                cycle_manager.phantom_read(*program_counter);
+                bus.phantom_read(*program_counter);
             }
 
             Store(value, address_mode) => {
-                let address = address_mode.address(cycle_manager, program_counter);
+                let address = address_mode.address(bus, program_counter);
 
-                cycle_manager.write(address, *value, CycleOp::CheckInterrupt);
+                bus.write(address, *value, CycleOp::CheckInterrupt);
             }
 
             ReadModifyWrite(unary_op, address_mode) => {
-                let address = address_mode.address(cycle_manager, program_counter);
+                let address = address_mode.address(bus, program_counter);
 
-                let old_value = cycle_manager.read(address, CycleOp::Sync);
+                let old_value = bus.read(address, CycleOp::Sync);
 
-                cycle_manager.write(address, old_value, CycleOp::Sync);
+                bus.write(address, old_value, CycleOp::Sync);
 
                 let new_value = unary_op(processor_flags, old_value);
 
-                cycle_manager.write(address, new_value, CycleOp::Sync);
+                bus.write(address, new_value, CycleOp::Sync);
             }
 
             ReadModifyWriteWithAccumulator(unary_op, binary_op, address_mode) => {
-                let address = address_mode.address(cycle_manager, program_counter);
+                let address = address_mode.address(bus, program_counter);
 
-                let old_value = cycle_manager.read(address, CycleOp::Sync);
+                let old_value = bus.read(address, CycleOp::Sync);
 
-                cycle_manager.write(address, old_value, CycleOp::Sync);
+                bus.write(address, old_value, CycleOp::Sync);
 
                 let new_value = unary_op(processor_flags, old_value);
 
-                cycle_manager.write(address, new_value, CycleOp::Sync);
+                bus.write(address, new_value, CycleOp::Sync);
 
                 *accumulator = binary_op(processor_flags, *accumulator, new_value);
             }
 
             AccumulatorUnaryOp(unary_op) => {
-                cycle_manager.phantom_read(*program_counter);
+                bus.phantom_read(*program_counter);
 
                 *accumulator = unary_op(processor_flags, *accumulator);
             }
 
             XIndexUnaryOp(unary_op) => {
-                cycle_manager.phantom_read(*program_counter);
+                bus.phantom_read(*program_counter);
 
                 *x_index = unary_op(processor_flags, *x_index);
             }
 
             YIndexUnaryOp(unary_op) => {
-                cycle_manager.phantom_read(*program_counter);
+                bus.phantom_read(*program_counter);
 
                 *y_index = unary_op(processor_flags, *y_index);
             }
 
             AccumulatorBinaryOp(binary_op, address_mode) => {
-                let operand = address_mode.data(cycle_manager, program_counter);
+                let operand = address_mode.data(bus, program_counter);
 
                 *accumulator = binary_op(processor_flags, *accumulator, operand);
             }
 
             SetFlag(set_flag_fn, value) => {
-                cycle_manager.phantom_read(*program_counter);
+                bus.phantom_read(*program_counter);
 
                 set_flag_fn(processor_flags, *value);
             }
 
             Break(advance_return_address, additional_processor_flags, interrupt_vector) => {
-                cycle_manager.phantom_read(*program_counter);
+                bus.phantom_read(*program_counter);
 
                 if *advance_return_address {
                     advance_program_counter(program_counter);
                 }
 
-                push_16(cycle_manager, stack_pointer, *program_counter);
+                push_16(bus, stack_pointer, *program_counter);
 
                 push(
-                    cycle_manager,
+                    bus,
                     &mut *stack_pointer,
                     u8::from(*processor_flags) | additional_processor_flags,
                 );
 
                 processor_flags.interrupt_disable = true;
 
-                *program_counter = read_16(cycle_manager, *interrupt_vector, CycleOp::None);
+                *program_counter = read_16(bus, *interrupt_vector, CycleOp::None);
             }
 
             JumpToSubRoutine => {
-                let program_counter_low = read_immediate(cycle_manager, program_counter);
+                let program_counter_low = read_immediate(bus, program_counter);
 
-                phantom_stack_read(cycle_manager, *stack_pointer);
+                phantom_stack_read(bus, *stack_pointer);
 
-                push_16(cycle_manager, stack_pointer, *program_counter);
+                push_16(bus, stack_pointer, *program_counter);
 
-                let program_counter_high = read_immediate(cycle_manager, program_counter);
+                let program_counter_high = read_immediate(bus, program_counter);
 
                 *program_counter = u16::from_le_bytes([program_counter_low, program_counter_high]);
             }
 
             Jump(address_mode) => {
-                *program_counter = address_mode.address(cycle_manager, program_counter);
+                *program_counter = address_mode.address(bus, program_counter);
             }
 
             ReturnFromInterrupt => {
-                cycle_manager.phantom_read(*program_counter);
+                bus.phantom_read(*program_counter);
 
-                phantom_stack_read(cycle_manager, *stack_pointer);
+                phantom_stack_read(bus, *stack_pointer);
 
-                *processor_flags = pop(cycle_manager, stack_pointer).into();
+                *processor_flags = pop(bus, stack_pointer).into();
 
-                *program_counter = pop_16(cycle_manager, stack_pointer);
+                *program_counter = pop_16(bus, stack_pointer);
             }
 
             ReturnFromSubroutine => {
-                cycle_manager.phantom_read(*program_counter);
+                bus.phantom_read(*program_counter);
 
-                phantom_stack_read(cycle_manager, *stack_pointer);
+                phantom_stack_read(bus, *stack_pointer);
 
-                *program_counter = pop_16(cycle_manager, stack_pointer);
+                *program_counter = pop_16(bus, stack_pointer);
 
-                cycle_manager.phantom_read(*program_counter);
+                bus.phantom_read(*program_counter);
 
                 advance_program_counter(program_counter);
             }
 
             PullAccumulator => {
-                cycle_manager.phantom_read(*program_counter);
+                bus.phantom_read(*program_counter);
 
-                phantom_stack_read(cycle_manager, *stack_pointer);
+                phantom_stack_read(bus, *stack_pointer);
 
-                *accumulator = pop(cycle_manager, stack_pointer);
+                *accumulator = pop(bus, stack_pointer);
 
                 processor_flags.update_zero_negative(*accumulator);
             }
 
             PushAccumulator => {
-                cycle_manager.phantom_read(*program_counter);
+                bus.phantom_read(*program_counter);
 
-                push(cycle_manager, stack_pointer, *accumulator);
+                push(bus, stack_pointer, *accumulator);
             }
 
             PullProcessorFlags => {
-                cycle_manager.phantom_read(*program_counter);
+                bus.phantom_read(*program_counter);
 
-                phantom_stack_read(cycle_manager, *stack_pointer);
+                phantom_stack_read(bus, *stack_pointer);
 
-                *processor_flags = pop(cycle_manager, stack_pointer).into();
+                *processor_flags = pop(bus, stack_pointer).into();
             }
 
             PushProcessorFlags => {
-                cycle_manager.phantom_read(*program_counter);
+                bus.phantom_read(*program_counter);
 
-                push(
-                    cycle_manager,
-                    stack_pointer,
-                    u8::from(*processor_flags) | P_BREAK,
-                );
+                push(bus, stack_pointer, u8::from(*processor_flags) | P_BREAK);
             }
 
             Branch(condition) => {
                 if !condition {
-                    cycle_manager.phantom_read(*program_counter);
+                    bus.phantom_read(*program_counter);
 
                     advance_program_counter(program_counter);
                 } else {
-                    *program_counter = Relative.address(cycle_manager, program_counter);
+                    *program_counter = Relative.address(bus, program_counter);
                 }
             }
 
             Compare(register_value, address_mode) => {
-                let value = address_mode.data(cycle_manager, program_counter);
+                let value = address_mode.data(bus, program_counter);
 
                 processor_flags.carry = *register_value >= value;
                 processor_flags.zero = *register_value == value;
@@ -735,7 +722,7 @@ impl Instruction {
             }
 
             Load(set_register, address_mode) => {
-                let value = address_mode.data(cycle_manager, program_counter);
+                let value = address_mode.data(bus, program_counter);
 
                 set_register(stack_pointer, accumulator, x_index, y_index, value);
 
@@ -743,7 +730,7 @@ impl Instruction {
             }
 
             TransferRegister(value, set_register) => {
-                cycle_manager.phantom_read(*program_counter);
+                bus.phantom_read(*program_counter);
 
                 set_register(stack_pointer, accumulator, x_index, y_index, *value);
 
@@ -751,14 +738,13 @@ impl Instruction {
             }
 
             TransferRegisterNoFlags(value, set_register) => {
-                cycle_manager.phantom_read(*program_counter);
+                bus.phantom_read(*program_counter);
 
                 set_register(stack_pointer, accumulator, x_index, y_index, *value);
             }
 
             StoreHighAddressAndY(address_mode) => {
-                let (address, carried) =
-                    address_mode.address_with_carry(cycle_manager, program_counter);
+                let (address, carried) = address_mode.address_with_carry(bus, program_counter);
 
                 let [low, high] = address.to_le_bytes();
 
@@ -767,11 +753,11 @@ impl Instruction {
 
                     let address = u16::from_le_bytes([low, value]);
 
-                    cycle_manager.write(address, value, CycleOp::CheckInterrupt);
+                    bus.write(address, value, CycleOp::CheckInterrupt);
                 } else {
                     let value = *y_index & high.wrapping_add(1);
 
-                    cycle_manager.write(address, value, CycleOp::CheckInterrupt);
+                    bus.write(address, value, CycleOp::CheckInterrupt);
                 };
             }
         }
