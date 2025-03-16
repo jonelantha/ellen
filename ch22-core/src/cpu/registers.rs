@@ -14,6 +14,41 @@ pub fn advance_program_counter(program_counter: &mut u16) {
     *program_counter = program_counter.wrapping_add(1);
 }
 
+impl Registers {
+    pub fn get(&self, register_type: &RegisterType) -> u8 {
+        match register_type {
+            RegisterType::StackPointer => self.stack_pointer,
+            RegisterType::Accumulator => self.accumulator,
+            RegisterType::X => self.x,
+            RegisterType::Y => self.y,
+        }
+    }
+
+    pub fn set(&mut self, register_type: &RegisterType, value: u8) {
+        match register_type {
+            RegisterType::StackPointer => {
+                self.stack_pointer = value;
+            }
+            RegisterType::Accumulator => {
+                self.accumulator = value;
+            }
+            RegisterType::X => {
+                self.x = value;
+            }
+            RegisterType::Y => {
+                self.y = value;
+            }
+        }
+    }
+}
+
+pub enum RegisterType {
+    StackPointer,
+    Accumulator,
+    X,
+    Y,
+}
+
 #[derive(Default, PartialEq, Debug, Clone, Copy)]
 pub struct ProcessorFlags {
     pub carry: bool,
@@ -85,3 +120,21 @@ pub const P_BREAK: u8 = 0b00010000;
 pub const P_BIT_5: u8 = 0b00100000;
 pub const P_OVERFLOW: u8 = 0b01000000;
 pub const P_NEGATIVE: u8 = 0b10000000;
+
+pub type SetFlagFn = fn(&mut ProcessorFlags, bool);
+
+pub fn set_carry(flags: &mut ProcessorFlags, value: bool) {
+    flags.carry = value;
+}
+
+pub fn set_interrupt_disable(flags: &mut ProcessorFlags, value: bool) {
+    flags.interrupt_disable = value;
+}
+
+pub fn set_decimal_mode(flags: &mut ProcessorFlags, value: bool) {
+    flags.decimal_mode = value;
+}
+
+pub fn set_overflow(flags: &mut ProcessorFlags, value: bool) {
+    flags.overflow = value;
+}

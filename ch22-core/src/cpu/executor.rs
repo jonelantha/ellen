@@ -16,6 +16,7 @@ use unary_ops::*;
 
 use AddressMode::*;
 use Instruction::*;
+use RegisterType::*;
 
 pub fn interrupt<B: Bus>(bus: &mut B, registers: &mut Registers, nmi: bool) {
     bus.phantom_read(registers.program_counter);
@@ -66,7 +67,7 @@ fn decode(opcode: u8, registers: &Registers) -> Instruction {
         0x09 => AccumulatorBinaryOp(or, Immediate),
 
         // ASL A
-        0x0a => AccumulatorUnaryOp(shift_left),
+        0x0a => RegisterUnaryOp(shift_left, Accumulator),
 
         // ANC imm
         0x0b => AccumulatorBinaryOp(and_negative_carry, Immediate),
@@ -123,7 +124,7 @@ fn decode(opcode: u8, registers: &Registers) -> Instruction {
         0x29 => AccumulatorBinaryOp(and, Immediate),
 
         // ROL A
-        0x2a => AccumulatorUnaryOp(rotate_left),
+        0x2a => RegisterUnaryOp(rotate_left, Accumulator),
 
         // BIT abs
         0x2c => AccumulatorBinaryOp(bit_test, Absolute),
@@ -177,7 +178,7 @@ fn decode(opcode: u8, registers: &Registers) -> Instruction {
         0x49 => AccumulatorBinaryOp(xor, Immediate),
 
         // LSR A
-        0x4a => AccumulatorUnaryOp(shift_right),
+        0x4a => RegisterUnaryOp(shift_right, Accumulator),
 
         // ALR imm
         0x4b => AccumulatorBinaryOp(and_shift_right, Immediate),
@@ -234,7 +235,7 @@ fn decode(opcode: u8, registers: &Registers) -> Instruction {
         0x69 => AccumulatorBinaryOp(add_with_carry, Immediate),
 
         // ROR A
-        0x6a => AccumulatorUnaryOp(rotate_right),
+        0x6a => RegisterUnaryOp(rotate_right, Accumulator),
 
         // JMP (abs)
         0x6c => Jump(Indirect),
@@ -285,10 +286,10 @@ fn decode(opcode: u8, registers: &Registers) -> Instruction {
         0x87 => Store(registers.accumulator & registers.x, ZeroPage),
 
         // DEY
-        0x88 => YUnaryOp(decrement),
+        0x88 => RegisterUnaryOp(decrement, Y),
 
         // TXA
-        0x8a => TransferRegister(registers.x, set_accumulator),
+        0x8a => TransferRegister(registers.x, Accumulator),
 
         // STY abs
         0x8c => Store(registers.y, Absolute),
@@ -318,10 +319,10 @@ fn decode(opcode: u8, registers: &Registers) -> Instruction {
         0x99 => Store(registers.accumulator, AbsoluteIndexed(registers.y)),
 
         // TYA
-        0x98 => TransferRegister(registers.y, set_accumulator),
+        0x98 => TransferRegister(registers.y, Accumulator),
 
         // TXS
-        0x9a => TransferRegisterNoFlags(registers.x, set_stack_pointer),
+        0x9a => TransferRegisterNoFlags(registers.x, StackPointer),
 
         // SHY abs,X
         0x9c => StoreHighAddressAndY(AbsoluteIndexed(registers.x)),
@@ -330,73 +331,73 @@ fn decode(opcode: u8, registers: &Registers) -> Instruction {
         0x9d => Store(registers.accumulator, AbsoluteIndexed(registers.x)),
 
         // LDY imm
-        0xa0 => Load(set_y, Immediate),
+        0xa0 => Load(Y, Immediate),
 
         // LDA (zp,X)
-        0xa1 => Load(set_accumulator, IndexedIndirect(registers.x)),
+        0xa1 => Load(Accumulator, IndexedIndirect(registers.x)),
 
         // LDX imm
-        0xa2 => Load(set_x, Immediate),
+        0xa2 => Load(X, Immediate),
 
         // LDY zp
-        0xa4 => Load(set_y, ZeroPage),
+        0xa4 => Load(Y, ZeroPage),
 
         // LDA zp
-        0xa5 => Load(set_accumulator, ZeroPage),
+        0xa5 => Load(Accumulator, ZeroPage),
 
         // LDX zp
-        0xa6 => Load(set_x, ZeroPage),
+        0xa6 => Load(X, ZeroPage),
 
         // TAY
-        0xa8 => TransferRegister(registers.accumulator, set_y),
+        0xa8 => TransferRegister(registers.accumulator, Y),
 
         // LDA imm
-        0xa9 => Load(set_accumulator, Immediate),
+        0xa9 => Load(Accumulator, Immediate),
 
         // TXA
-        0xaa => TransferRegister(registers.accumulator, set_x),
+        0xaa => TransferRegister(registers.accumulator, X),
 
         // LDY abs
-        0xac => Load(set_y, Absolute),
+        0xac => Load(Y, Absolute),
 
         // LDA abs
-        0xad => Load(set_accumulator, Absolute),
+        0xad => Load(Accumulator, Absolute),
 
         // LDX abs
-        0xae => Load(set_x, Absolute),
+        0xae => Load(X, Absolute),
 
         // BCS rel
         0xb0 => Branch(registers.flags.carry),
 
         // LDA (zp),Y
-        0xb1 => Load(set_accumulator, IndirectIndexed(registers.y)),
+        0xb1 => Load(Accumulator, IndirectIndexed(registers.y)),
 
         // LDY zp,X
-        0xb4 => Load(set_y, ZeroPageIndexed(registers.x)),
+        0xb4 => Load(Y, ZeroPageIndexed(registers.x)),
 
         // LDA zp,X
-        0xb5 => Load(set_accumulator, ZeroPageIndexed(registers.x)),
+        0xb5 => Load(Accumulator, ZeroPageIndexed(registers.x)),
 
         // LDX zp,Y
-        0xb6 => Load(set_x, ZeroPageIndexed(registers.y)),
+        0xb6 => Load(X, ZeroPageIndexed(registers.y)),
 
         // CLV
         0xb8 => SetFlag(set_overflow, false),
 
         // LDA abs,Y
-        0xb9 => Load(set_accumulator, AbsoluteIndexed(registers.y)),
+        0xb9 => Load(Accumulator, AbsoluteIndexed(registers.y)),
 
         // TSX
-        0xba => TransferRegister(registers.stack_pointer, set_x),
+        0xba => TransferRegister(registers.stack_pointer, X),
 
         // LDY abs,X
-        0xbc => Load(set_y, AbsoluteIndexed(registers.x)),
+        0xbc => Load(Y, AbsoluteIndexed(registers.x)),
 
         // LDA abs,X
-        0xbd => Load(set_accumulator, AbsoluteIndexed(registers.x)),
+        0xbd => Load(Accumulator, AbsoluteIndexed(registers.x)),
 
         // LDX abs,Y
-        0xbe => Load(set_x, AbsoluteIndexed(registers.y)),
+        0xbe => Load(X, AbsoluteIndexed(registers.y)),
 
         // CPY imm
         0xc0 => Compare(registers.y, Immediate),
@@ -414,13 +415,13 @@ fn decode(opcode: u8, registers: &Registers) -> Instruction {
         0xc6 => ReadModifyWrite(decrement, ZeroPage),
 
         // INY
-        0xc8 => YUnaryOp(increment),
+        0xc8 => RegisterUnaryOp(increment, Y),
 
         // CMP abs
         0xc9 => Compare(registers.accumulator, Immediate),
 
         // DEX
-        0xca => XUnaryOp(decrement),
+        0xca => RegisterUnaryOp(decrement, X),
 
         // CPY abs
         0xcc => Compare(registers.y, Absolute),
@@ -474,7 +475,7 @@ fn decode(opcode: u8, registers: &Registers) -> Instruction {
         0xe6 => ReadModifyWrite(increment, ZeroPage),
 
         // INX
-        0xe8 => XUnaryOp(increment),
+        0xe8 => RegisterUnaryOp(increment, X),
 
         // SBC imm
         0xe9 => AccumulatorBinaryOp(subtract_with_carry, Immediate),
@@ -562,22 +563,14 @@ impl Instruction {
                 accumulator_binary_op(&mut registers.flags, &mut registers.accumulator, new_value);
             }
 
-            AccumulatorUnaryOp(unary_op) => {
+            RegisterUnaryOp(unary_op, register_type) => {
                 bus.phantom_read(registers.program_counter);
 
-                registers.accumulator = unary_op(&mut registers.flags, registers.accumulator);
-            }
+                let old_value = registers.get(register_type);
 
-            XUnaryOp(unary_op) => {
-                bus.phantom_read(registers.program_counter);
+                let new_value = unary_op(&mut registers.flags, old_value);
 
-                registers.x = unary_op(&mut registers.flags, registers.x);
-            }
-
-            YUnaryOp(unary_op) => {
-                bus.phantom_read(registers.program_counter);
-
-                registers.y = unary_op(&mut registers.flags, registers.y);
+                registers.set(register_type, new_value);
             }
 
             AccumulatorBinaryOp(accumulator_binary_op, address_mode) => {
@@ -715,26 +708,26 @@ impl Instruction {
                 registers.flags.update_negative(diff);
             }
 
-            Load(set_register, address_mode) => {
+            Load(register_type, address_mode) => {
                 let value = address_mode.data(bus, &mut registers.program_counter);
 
-                set_register(registers, value);
+                registers.set(register_type, value);
 
                 registers.flags.update_zero_negative(value);
             }
 
-            TransferRegister(value, set_register) => {
+            TransferRegister(value, register_type) => {
                 bus.phantom_read(registers.program_counter);
 
-                set_register(registers, *value);
+                registers.set(register_type, *value);
 
                 registers.flags.update_zero_negative(*value);
             }
 
-            TransferRegisterNoFlags(value, set_register) => {
+            TransferRegisterNoFlags(value, register_type) => {
                 bus.phantom_read(registers.program_counter);
 
-                set_register(registers, *value);
+                registers.set(register_type, *value);
             }
 
             StoreHighAddressAndY(address_mode) => {
@@ -765,9 +758,7 @@ enum Instruction {
     Store(u8, AddressMode),
     ReadModifyWrite(UnaryOpFn, AddressMode),
     ReadModifyWriteWithAccumulator(UnaryOpFn, AccumulatorBinaryOpFn, AddressMode),
-    AccumulatorUnaryOp(UnaryOpFn),
-    XUnaryOp(UnaryOpFn),
-    YUnaryOp(UnaryOpFn),
+    RegisterUnaryOp(UnaryOpFn, RegisterType),
     AccumulatorBinaryOp(AccumulatorBinaryOpFn, AddressMode),
     SetFlag(SetFlagFn, bool),
     Break(bool, u8, u16),
@@ -781,48 +772,12 @@ enum Instruction {
     PushProcessorFlags,
     Branch(bool),
     Compare(u8, AddressMode),
-    Load(SetRegisterFn, AddressMode),
-    TransferRegister(u8, SetRegisterFn),
-    TransferRegisterNoFlags(u8, SetRegisterFn),
+    Load(RegisterType, AddressMode),
+    TransferRegister(u8, RegisterType),
+    TransferRegisterNoFlags(u8, RegisterType),
     StoreHighAddressAndY(AddressMode),
 }
 
 pub const NMI_VECTOR: u16 = 0xfffa;
 pub const RESET_VECTOR: u16 = 0xfffc;
 pub const IRQ_BRK_VECTOR: u16 = 0xfffe;
-
-type SetRegisterFn = fn(registers: &mut Registers, u8);
-
-fn set_stack_pointer(registers: &mut Registers, value: u8) {
-    registers.stack_pointer = value;
-}
-
-fn set_accumulator(registers: &mut Registers, value: u8) {
-    registers.accumulator = value;
-}
-
-fn set_x(registers: &mut Registers, value: u8) {
-    registers.x = value;
-}
-
-fn set_y(registers: &mut Registers, value: u8) {
-    registers.y = value;
-}
-
-type SetFlagFn = fn(&mut ProcessorFlags, bool);
-
-fn set_carry(flags: &mut ProcessorFlags, value: bool) {
-    flags.carry = value;
-}
-
-fn set_interrupt_disable(flags: &mut ProcessorFlags, value: bool) {
-    flags.interrupt_disable = value;
-}
-
-fn set_decimal_mode(flags: &mut ProcessorFlags, value: bool) {
-    flags.decimal_mode = value;
-}
-
-fn set_overflow(flags: &mut ProcessorFlags, value: bool) {
-    flags.overflow = value;
-}
