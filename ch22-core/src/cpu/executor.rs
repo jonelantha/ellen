@@ -285,7 +285,7 @@ fn decode(opcode: u8, registers: &Registers) -> Instruction {
         0x87 => Store(registers.accumulator & registers.x, ZeroPage),
 
         // DEY
-        0x88 => YIndexUnaryOp(decrement),
+        0x88 => YUnaryOp(decrement),
 
         // TXA
         0x8a => TransferRegister(registers.x, set_accumulator),
@@ -414,13 +414,13 @@ fn decode(opcode: u8, registers: &Registers) -> Instruction {
         0xc6 => ReadModifyWrite(decrement, ZeroPage),
 
         // INY
-        0xc8 => YIndexUnaryOp(increment),
+        0xc8 => YUnaryOp(increment),
 
         // CMP abs
         0xc9 => Compare(registers.accumulator, Immediate),
 
         // DEX
-        0xca => XIndexUnaryOp(decrement),
+        0xca => XUnaryOp(decrement),
 
         // CPY abs
         0xcc => Compare(registers.y, Absolute),
@@ -474,7 +474,7 @@ fn decode(opcode: u8, registers: &Registers) -> Instruction {
         0xe6 => ReadModifyWrite(increment, ZeroPage),
 
         // INX
-        0xe8 => XIndexUnaryOp(increment),
+        0xe8 => XUnaryOp(increment),
 
         // SBC imm
         0xe9 => AccumulatorBinaryOp(subtract_with_carry, Immediate),
@@ -569,13 +569,13 @@ impl Instruction {
                 registers.accumulator = unary_op(&mut registers.flags, registers.accumulator);
             }
 
-            XIndexUnaryOp(unary_op) => {
+            XUnaryOp(unary_op) => {
                 bus.phantom_read(registers.program_counter);
 
                 registers.x = unary_op(&mut registers.flags, registers.x);
             }
 
-            YIndexUnaryOp(unary_op) => {
+            YUnaryOp(unary_op) => {
                 bus.phantom_read(registers.program_counter);
 
                 registers.y = unary_op(&mut registers.flags, registers.y);
@@ -760,8 +760,8 @@ enum Instruction {
     ReadModifyWrite(UnaryOp, AddressMode),
     ReadModifyWriteWithAccumulator(UnaryOp, BinaryOp, AddressMode),
     AccumulatorUnaryOp(UnaryOp),
-    XIndexUnaryOp(UnaryOp),
-    YIndexUnaryOp(UnaryOp),
+    XUnaryOp(UnaryOp),
+    YUnaryOp(UnaryOp),
     AccumulatorBinaryOp(BinaryOp, AddressMode),
     SetFlag(SetFlagFn, bool),
     Break(bool, u8, u16),
