@@ -2,6 +2,8 @@ use crate::cpu::{registers::ProcessorFlags, util::*};
 
 use super::unary_ops::shift_right;
 
+pub type BinaryOp = fn(&mut ProcessorFlags, u8, u8) -> u8;
+
 pub fn and(processor_flags: &mut ProcessorFlags, mut accumulator: u8, operand: u8) -> u8 {
     accumulator &= operand;
 

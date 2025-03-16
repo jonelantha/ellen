@@ -55,9 +55,7 @@ impl Ch22Cpu {
     pub fn handle_next_instruction(&mut self, memory: &mut Ch22Memory) -> bool {
         let mut cycle_manager = CycleManager::new(memory, &self.advance_cycles);
 
-        let mut executor = Executor::new(&mut cycle_manager, &mut self.registers);
-
-        executor.execute(false);
+        execute(&mut cycle_manager, &mut self.registers, false);
 
         self.registers.processor_flags.interrupt_disable
     }
@@ -65,9 +63,7 @@ impl Ch22Cpu {
     pub fn interrupt(&mut self, memory: &mut Ch22Memory, nmi: bool) -> bool {
         let mut cycle_manager = CycleManager::new(memory, &self.advance_cycles);
 
-        let mut executor = Executor::new(&mut cycle_manager, &mut self.registers);
-
-        executor.interrupt(nmi);
+        interrupt(&mut cycle_manager, &mut self.registers, nmi);
 
         self.registers.processor_flags.interrupt_disable
     }
