@@ -1,6 +1,6 @@
 use crate::cpu::registers::ProcessorFlags;
 
-pub type UnaryOp = fn(&mut ProcessorFlags, u8) -> u8;
+pub type UnaryOpFn = fn(&mut ProcessorFlags, u8) -> u8;
 
 pub fn shift_left(flags: &mut ProcessorFlags, old_value: u8) -> u8 {
     let new_value = old_value << 1;
