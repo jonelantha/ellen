@@ -68,9 +68,7 @@ fn interrupt_cycles_test(
 
     let mut cycle_manager_mock = CycleManagerMock::new(&initial_state.ram);
 
-    let mut executor = Executor::new(&mut cycle_manager_mock, &mut registers);
-
-    executor.interrupt(nmi);
+    interrupt(&mut cycle_manager_mock, &mut registers, nmi);
 
     assert_eq!(
         &cycle_manager_mock.cycles, expected_cycles,
