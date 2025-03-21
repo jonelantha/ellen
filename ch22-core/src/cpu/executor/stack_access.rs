@@ -1,4 +1,5 @@
 use crate::bus::*;
+use crate::word::*;
 
 pub struct StackAccess<'a, B: Bus> {
     bus: &'a mut B,
@@ -11,30 +12,32 @@ impl<'a, B: Bus> StackAccess<'a, B> {
     }
 
     pub fn phantom_read(&mut self) {
-        self.bus.phantom_read(0x100 + (*self.stack_pointer as u16));
+        self.bus.phantom_read(Word::stack_page(*self.stack_pointer));
     }
 
     pub fn push(&mut self, value: u8) {
         self.bus
-            .write(0x100 + (*self.stack_pointer as u16), value, CycleOp::None);
+            .write(Word::stack_page(*self.stack_pointer), value, CycleOp::None);
 
         *self.stack_pointer = self.stack_pointer.wrapping_sub(1);
     }
 
-    pub fn push_16(&mut self, value: u16) {
-        let [low, high] = value.to_le_bytes();
-        self.push(high);
-        self.push(low);
+    pub fn push_word(&mut self, value: Word) {
+        self.push(value.high);
+        self.push(value.low);
     }
 
     pub fn pop(&mut self) -> u8 {
         *self.stack_pointer = self.stack_pointer.wrapping_add(1);
 
         self.bus
-            .read(0x100 + (*self.stack_pointer as u16), CycleOp::None)
+            .read(Word::stack_page(*self.stack_pointer), CycleOp::None)
     }
 
-    pub fn pop_16(&mut self) -> u16 {
-        u16::from_le_bytes([self.pop(), self.pop()])
+    pub fn pop_word(&mut self) -> Word {
+        Word {
+            low: self.pop(),
+            high: self.pop(),
+        }
     }
 }

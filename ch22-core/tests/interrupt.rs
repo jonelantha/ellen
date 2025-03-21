@@ -58,7 +58,7 @@ fn interrupt_cycles_test(
     nmi: bool,
 ) {
     let mut registers = Registers {
-        program_counter: initial_state.pc,
+        program_counter: initial_state.pc.into(),
         stack_pointer: initial_state.s,
         accumulator: initial_state.a,
         x: initial_state.x,
@@ -75,7 +75,11 @@ fn interrupt_cycles_test(
         "cycles mismatch"
     );
 
-    assert_eq!(registers.program_counter, final_state.pc, "pc mismatch");
+    assert_eq!(
+        u16::from(registers.program_counter),
+        final_state.pc,
+        "pc mismatch"
+    );
     assert_eq!(registers.stack_pointer, final_state.s, "s mismatch");
     assert_eq!(registers.accumulator, final_state.a, "a mismatch");
     assert_eq!(registers.x, final_state.x, "x mismatch");
