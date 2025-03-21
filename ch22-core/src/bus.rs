@@ -1,7 +1,9 @@
+use crate::word::Word;
+
 pub trait Bus {
-    fn phantom_read(&mut self, address: u16);
-    fn read(&mut self, address: u16, op: CycleOp) -> u8;
-    fn write(&mut self, address: u16, value: u8, op: CycleOp);
+    fn phantom_read(&mut self, address: Word);
+    fn read(&mut self, address: Word, op: CycleOp) -> u8;
+    fn write(&mut self, address: Word, value: u8, op: CycleOp);
     fn complete(&self);
 }
 

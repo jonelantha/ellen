@@ -1,4 +1,5 @@
 use ch22_core::bus::*;
+use ch22_core::word::*;
 use serde::Deserialize;
 
 use std::collections::HashMap;
@@ -37,11 +38,13 @@ impl CycleManagerMock {
 }
 
 impl Bus for CycleManagerMock {
-    fn phantom_read(&mut self, address: u16) {
+    fn phantom_read(&mut self, address: Word) {
         self.read(address, CycleOp::None);
     }
 
-    fn read(&mut self, address: u16, op: CycleOp) -> u8 {
+    fn read(&mut self, address: Word, op: CycleOp) -> u8 {
+        let address: u16 = address.into();
+
         let value = *self
             .memory
             .get(&address)
@@ -54,7 +57,9 @@ impl Bus for CycleManagerMock {
         value
     }
 
-    fn write(&mut self, address: u16, value: u8, op: CycleOp) {
+    fn write(&mut self, address: Word, value: u8, op: CycleOp) {
+        let address: u16 = address.into();
+
         self.memory.insert(address, value);
 
         self.cycles.push((address, value, "write".to_owned()));

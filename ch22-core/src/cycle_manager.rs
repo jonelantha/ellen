@@ -1,5 +1,6 @@
 use crate::bus::*;
 use crate::memory::*;
+use crate::word::Word;
 
 pub struct CycleManager<'a> {
     cycles: u8,
@@ -21,24 +22,24 @@ impl<'a> CycleManager<'a> {
 }
 
 impl Bus for CycleManager<'_> {
-    fn phantom_read(&mut self, _address: u16) {
+    fn phantom_read(&mut self, _address: Word) {
         self.cycles += 1;
     }
 
-    fn read(&mut self, address: u16, op: CycleOp) -> u8 {
+    fn read(&mut self, address: Word, op: CycleOp) -> u8 {
         self.process_op(op);
 
-        let value = self.memory.read(address);
+        let value = self.memory.read(address.into());
 
         self.cycles += 1;
 
         value
     }
 
-    fn write(&mut self, address: u16, value: u8, op: CycleOp) {
+    fn write(&mut self, address: Word, value: u8, op: CycleOp) {
         self.process_op(op);
 
-        self.memory.write(address, value);
+        self.memory.write(address.into(), value);
 
         self.cycles += 1;
     }

@@ -7,6 +7,7 @@ use wasm_bindgen::prelude::*;
 use crate::cycle_manager::*;
 use crate::memory::*;
 use crate::utils;
+use crate::word::Word;
 
 pub mod executor;
 pub mod registers;
@@ -36,11 +37,12 @@ impl Ch22Cpu {
     }
 
     pub fn reset(&mut self, memory: &mut Ch22Memory) -> bool {
+        let vector: u16 = RESET_VECTOR.into();
         self.registers = Registers {
-            program_counter: u16::from_le_bytes([
-                memory.read(RESET_VECTOR),
-                memory.read(RESET_VECTOR + 1),
-            ]),
+            program_counter: Word {
+                low: memory.read(vector),
+                high: memory.read(vector + 1),
+            },
             stack_pointer: 0xff,
             flags: ProcessorFlags {
                 interrupt_disable: true,

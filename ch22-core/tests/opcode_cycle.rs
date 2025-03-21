@@ -37,7 +37,7 @@ fn opcode_cycle_tests_from_file() {
 
 fn opcode_cycle_test(_name: &str, initial_state: &CPUTestState, cycle_syncs: &Vec<String>) {
     let mut registers = Registers {
-        program_counter: initial_state.pc,
+        program_counter: initial_state.pc.into(),
         stack_pointer: initial_state.s,
         accumulator: initial_state.a,
         x: initial_state.x,

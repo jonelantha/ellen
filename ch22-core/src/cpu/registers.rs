@@ -1,8 +1,10 @@
+use crate::word::Word;
+
 use super::util::*;
 
 #[derive(Default)]
 pub struct Registers {
-    pub program_counter: u16,
+    pub program_counter: Word,
     pub stack_pointer: u8,
     pub accumulator: u8,
     pub x: u8,
@@ -10,8 +12,8 @@ pub struct Registers {
     pub flags: ProcessorFlags,
 }
 
-pub fn advance_program_counter(program_counter: &mut u16) {
-    *program_counter = program_counter.wrapping_add(1);
+pub fn advance_program_counter(program_counter: &mut Word) {
+    *program_counter = program_counter.increment();
 }
 
 impl Registers {
