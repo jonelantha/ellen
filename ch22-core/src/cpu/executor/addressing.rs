@@ -10,7 +10,7 @@ pub struct ImmediateAccess<'a, B: Bus> {
 }
 
 impl<'a, B: Bus> ImmediateAccess<'a, B> {
-    fn immediate_fetch(&mut self) -> u8 {
+    fn fetch(&mut self) -> u8 {
         let value = self.bus.read(*self.program_counter, CycleOp::None);
 
         advance_program_counter(self.program_counter);
@@ -18,10 +18,10 @@ impl<'a, B: Bus> ImmediateAccess<'a, B> {
         value
     }
 
-    fn immediate_fetch_word(&mut self) -> Word {
+    fn fetch_word(&mut self) -> Word {
         Word {
-            low: self.immediate_fetch(),
-            high: self.immediate_fetch(),
+            low: self.fetch(),
+            high: self.fetch(),
         }
     }
 }
@@ -41,20 +41,20 @@ impl<'a, B: Bus> AddressModeAccess<'a, B> {
         match address_mode {
             Immediate => panic!(),
 
-            ZeroPage => Word::zero_page(immediate_access.immediate_fetch()),
+            ZeroPage => Word::zero_page(immediate_access.fetch()),
 
             ZeroPageIndexed(index) => {
-                let base_address = Word::zero_page(immediate_access.immediate_fetch());
+                let base_address = Word::zero_page(immediate_access.fetch());
 
                 self.bus.phantom_read(base_address);
 
                 base_address.same_page_add(*index)
             }
 
-            Absolute => immediate_access.immediate_fetch_word(),
+            Absolute => immediate_access.fetch_word(),
 
             AbsoluteIndexed(index) => {
-                let base_address = immediate_access.immediate_fetch_word();
+                let base_address = immediate_access.fetch_word();
 
                 let (address, offset_result) = base_address.paged_add(*index);
 
@@ -68,7 +68,7 @@ impl<'a, B: Bus> AddressModeAccess<'a, B> {
             }
 
             Indirect => {
-                let base_address = immediate_access.immediate_fetch_word();
+                let base_address = immediate_access.fetch_word();
 
                 read_word(self.bus, base_address, CycleOp::None)
             }
@@ -96,7 +96,7 @@ impl<'a, B: Bus> AddressModeAccess<'a, B> {
             }
 
             Relative => {
-                let rel_address = immediate_access.immediate_fetch();
+                let rel_address = immediate_access.fetch();
 
                 self.phantom_immediate_read();
 
@@ -123,7 +123,7 @@ impl<'a, B: Bus> AddressModeAccess<'a, B> {
 
         match address_mode {
             AbsoluteIndexed(index) => {
-                let base_address = immediate_access.immediate_fetch_word();
+                let base_address = immediate_access.fetch_word();
 
                 let (address, offset_result) = base_address.paged_add(*index);
 
@@ -149,7 +149,7 @@ impl<'a, B: Bus> AddressModeAccess<'a, B> {
         };
 
         match address_mode {
-            Immediate => immediate_access.immediate_fetch(),
+            Immediate => immediate_access.fetch(),
 
             ZeroPage | ZeroPageIndexed(_) | Absolute | IndexedIndirect(_) | Indirect | Relative => {
                 let address = self.address(address_mode);
@@ -158,7 +158,7 @@ impl<'a, B: Bus> AddressModeAccess<'a, B> {
             }
 
             AbsoluteIndexed(index) => {
-                let base_address = immediate_access.immediate_fetch_word();
+                let base_address = immediate_access.fetch_word();
 
                 let (address, offset_result) = base_address.paged_add(*index);
 
