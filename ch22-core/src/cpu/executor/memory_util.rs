@@ -2,8 +2,8 @@ use crate::bus::*;
 use crate::cpu::registers::advance_program_counter;
 use crate::word::*;
 
-pub fn stack_phantom_read<B: Bus>(bus: &mut B, stack_pointer: &mut u8) {
-    bus.phantom_read(Word::stack_page(*stack_pointer));
+pub fn phantom_stack_read<B: Bus>(bus: &mut B, stack_pointer: u8) {
+    bus.phantom_read(Word::stack_page(stack_pointer));
 }
 
 pub fn push<B: Bus>(bus: &mut B, stack_pointer: &mut u8, value: u8) {
