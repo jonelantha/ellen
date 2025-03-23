@@ -522,7 +522,7 @@ impl Instruction {
     pub fn execute<B: Bus>(&self, bus: &mut B, registers: &mut Registers) {
         match self {
             NopRead(address_mode) => {
-                data(bus, &mut registers.program_counter, address_mode);
+                get_data(bus, &mut registers.program_counter, address_mode);
             }
 
             Nop => {
@@ -530,13 +530,13 @@ impl Instruction {
             }
 
             Store(value, address_mode) => {
-                let address = address(bus, &mut registers.program_counter, address_mode);
+                let address = get_address(bus, &mut registers.program_counter, address_mode);
 
                 bus.write(address, *value, CycleOp::CheckInterrupt);
             }
 
             ReadModifyWrite(unary_op, address_mode) => {
-                let address = address(bus, &mut registers.program_counter, address_mode);
+                let address = get_address(bus, &mut registers.program_counter, address_mode);
 
                 let old_value = bus.read(address, CycleOp::Sync);
 
@@ -548,7 +548,7 @@ impl Instruction {
             }
 
             ReadModifyWriteWithAccumulator(unary_op, accumulator_binary_op, address_mode) => {
-                let address = address(bus, &mut registers.program_counter, address_mode);
+                let address = get_address(bus, &mut registers.program_counter, address_mode);
 
                 let old_value = bus.read(address, CycleOp::Sync);
 
@@ -572,7 +572,7 @@ impl Instruction {
             }
 
             AccumulatorBinaryOp(accumulator_binary_op, address_mode) => {
-                let operand = data(bus, &mut registers.program_counter, address_mode);
+                let operand = get_data(bus, &mut registers.program_counter, address_mode);
 
                 accumulator_binary_op(&mut registers.flags, &mut registers.accumulator, operand);
             }
@@ -618,7 +618,7 @@ impl Instruction {
 
             Jump(address_mode) => {
                 registers.program_counter =
-                    address(bus, &mut registers.program_counter, address_mode);
+                    get_address(bus, &mut registers.program_counter, address_mode);
             }
 
             ReturnFromInterrupt => {
@@ -682,12 +682,12 @@ impl Instruction {
                     advance_program_counter(&mut registers.program_counter);
                 } else {
                     registers.program_counter =
-                        address(bus, &mut registers.program_counter, &Relative);
+                        get_address(bus, &mut registers.program_counter, &Relative);
                 }
             }
 
             Compare(register_value, address_mode) => {
-                let value = data(bus, &mut registers.program_counter, address_mode);
+                let value = get_data(bus, &mut registers.program_counter, address_mode);
 
                 registers.flags.carry = *register_value >= value;
                 registers.flags.zero = *register_value == value;
@@ -697,7 +697,7 @@ impl Instruction {
             }
 
             Load(register_type, address_mode) => {
-                let value = data(bus, &mut registers.program_counter, address_mode);
+                let value = get_data(bus, &mut registers.program_counter, address_mode);
 
                 registers.set(register_type, value);
 
