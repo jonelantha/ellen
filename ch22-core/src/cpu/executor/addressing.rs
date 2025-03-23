@@ -1,201 +1,153 @@
+use super::memory_util::*;
 use crate::bus::*;
-use crate::cpu::registers::*;
 use crate::word::*;
 
 use AddressMode::*;
 
-pub struct ImmediateAccess<'a, B: Bus> {
-    pub bus: &'a mut B,
-    pub program_counter: &'a mut Word,
-}
+pub fn address<B: Bus>(
+    bus: &mut B,
+    program_counter: &mut Word,
+    address_mode: &AddressMode,
+) -> Word {
+    match address_mode {
+        Immediate => panic!(),
 
-impl<'a, B: Bus> ImmediateAccess<'a, B> {
-    fn fetch(&mut self) -> u8 {
-        let value = self.bus.read(*self.program_counter, CycleOp::None);
+        ZeroPage => Word::zero_page(immediate_fetch(bus, program_counter)),
 
-        advance_program_counter(self.program_counter);
+        ZeroPageIndexed(index) => {
+            let base_address = Word::zero_page(immediate_fetch(bus, program_counter));
 
-        value
-    }
+            bus.phantom_read(base_address);
 
-    fn fetch_word(&mut self) -> Word {
-        Word {
-            low: self.fetch(),
-            high: self.fetch(),
+            base_address.same_page_add(*index)
+        }
+
+        Absolute => immediate_fetch_word(bus, program_counter),
+
+        AbsoluteIndexed(index) => {
+            let base_address = immediate_fetch_word(bus, program_counter);
+
+            let (address, offset_result) = base_address.paged_add(*index);
+
+            match offset_result {
+                OffsetResult::CrossedPage(intermediate) => bus.phantom_read(intermediate),
+
+                OffsetResult::SamePage => bus.phantom_read(address),
+            }
+
+            address
+        }
+
+        Indirect => {
+            let base_address = immediate_fetch_word(bus, program_counter);
+
+            read_word(bus, base_address, CycleOp::None)
+        }
+
+        IndexedIndirect(index) => {
+            let address = address(bus, program_counter, &ZeroPageIndexed(*index));
+
+            read_word(bus, address, CycleOp::None)
+        }
+
+        IndirectIndexed(index) => {
+            let zero_page_address = address(bus, program_counter, &ZeroPage);
+
+            let base_address = read_word(bus, zero_page_address, CycleOp::None);
+
+            let (address, offset_result) = base_address.paged_add(*index);
+
+            match offset_result {
+                OffsetResult::CrossedPage(intermediate) => bus.phantom_read(intermediate),
+
+                OffsetResult::SamePage => bus.phantom_read(address),
+            }
+
+            address
+        }
+
+        Relative => {
+            let rel_address = immediate_fetch(bus, program_counter);
+
+            bus.phantom_read(*program_counter);
+
+            let (address, offset_result) = if rel_address & 0x80 != 0 {
+                program_counter.paged_subtract(rel_address)
+            } else {
+                program_counter.paged_add(rel_address)
+            };
+
+            if let OffsetResult::CrossedPage(intermediate) = offset_result {
+                bus.phantom_read(intermediate);
+            }
+
+            address
         }
     }
 }
 
-pub struct AddressModeAccess<'a, B: Bus> {
-    pub bus: &'a mut B,
-    pub program_counter: &'a mut Word,
-}
+pub fn address_with_carry<B: Bus>(
+    bus: &mut B,
+    program_counter: &mut Word,
+    address_mode: &AddressMode,
+) -> (Word, bool) {
+    match address_mode {
+        AbsoluteIndexed(index) => {
+            let base_address = immediate_fetch_word(bus, program_counter);
 
-impl<'a, B: Bus> AddressModeAccess<'a, B> {
-    pub fn address(&mut self, address_mode: &AddressMode) -> Word {
-        let mut immediate_access = ImmediateAccess {
-            bus: self.bus,
-            program_counter: self.program_counter,
-        };
+            let (address, offset_result) = base_address.paged_add(*index);
 
-        match address_mode {
-            Immediate => panic!(),
+            if let OffsetResult::CrossedPage(intermediate) = offset_result {
+                bus.phantom_read(intermediate);
 
-            ZeroPage => Word::zero_page(immediate_access.fetch()),
+                (address, true)
+            } else {
+                bus.phantom_read(address);
 
-            ZeroPageIndexed(index) => {
-                let base_address = Word::zero_page(immediate_access.fetch());
-
-                self.bus.phantom_read(base_address);
-
-                base_address.same_page_add(*index)
-            }
-
-            Absolute => immediate_access.fetch_word(),
-
-            AbsoluteIndexed(index) => {
-                let base_address = immediate_access.fetch_word();
-
-                let (address, offset_result) = base_address.paged_add(*index);
-
-                match offset_result {
-                    OffsetResult::CrossedPage(intermediate) => self.bus.phantom_read(intermediate),
-
-                    OffsetResult::SamePage => self.bus.phantom_read(address),
-                }
-
-                address
-            }
-
-            Indirect => {
-                let base_address = immediate_access.fetch_word();
-
-                read_word(self.bus, base_address, CycleOp::None)
-            }
-
-            IndexedIndirect(index) => {
-                let address = self.address(&ZeroPageIndexed(*index));
-
-                read_word(self.bus, address, CycleOp::None)
-            }
-
-            IndirectIndexed(index) => {
-                let zero_page_address = self.address(&ZeroPage);
-
-                let base_address = read_word(self.bus, zero_page_address, CycleOp::None);
-
-                let (address, offset_result) = base_address.paged_add(*index);
-
-                match offset_result {
-                    OffsetResult::CrossedPage(intermediate) => self.bus.phantom_read(intermediate),
-
-                    OffsetResult::SamePage => self.bus.phantom_read(address),
-                }
-
-                address
-            }
-
-            Relative => {
-                let rel_address = immediate_access.fetch();
-
-                self.phantom_immediate_read();
-
-                let (address, offset_result) = if rel_address & 0x80 != 0 {
-                    self.program_counter.paged_subtract(rel_address)
-                } else {
-                    self.program_counter.paged_add(rel_address)
-                };
-
-                if let OffsetResult::CrossedPage(intermediate) = offset_result {
-                    self.bus.phantom_read(intermediate);
-                }
-
-                address
+                (address, false)
             }
         }
-    }
 
-    pub fn address_with_carry(&mut self, address_mode: &AddressMode) -> (Word, bool) {
-        let mut immediate_access = ImmediateAccess {
-            bus: self.bus,
-            program_counter: self.program_counter,
-        };
-
-        match address_mode {
-            AbsoluteIndexed(index) => {
-                let base_address = immediate_access.fetch_word();
-
-                let (address, offset_result) = base_address.paged_add(*index);
-
-                if let OffsetResult::CrossedPage(intermediate) = offset_result {
-                    self.bus.phantom_read(intermediate);
-
-                    (address, true)
-                } else {
-                    self.bus.phantom_read(address);
-
-                    (address, false)
-                }
-            }
-
-            _ => panic!(),
-        }
-    }
-
-    pub fn data(&mut self, address_mode: &AddressMode) -> u8 {
-        let mut immediate_access = ImmediateAccess {
-            bus: self.bus,
-            program_counter: self.program_counter,
-        };
-
-        match address_mode {
-            Immediate => immediate_access.fetch(),
-
-            ZeroPage | ZeroPageIndexed(_) | Absolute | IndexedIndirect(_) | Indirect | Relative => {
-                let address = self.address(address_mode);
-
-                self.bus.read(address, CycleOp::CheckInterrupt)
-            }
-
-            AbsoluteIndexed(index) => {
-                let base_address = immediate_access.fetch_word();
-
-                let (address, offset_result) = base_address.paged_add(*index);
-
-                if let OffsetResult::CrossedPage(intermediate) = offset_result {
-                    self.bus.phantom_read(intermediate);
-                }
-
-                self.bus.read(address, CycleOp::CheckInterrupt)
-            }
-
-            IndirectIndexed(index) => {
-                let zero_page_address = self.address(&ZeroPage);
-
-                let base_address = read_word(self.bus, zero_page_address, CycleOp::None);
-
-                let (address, offset_result) = base_address.paged_add(*index);
-
-                if let OffsetResult::CrossedPage(intermediate) = offset_result {
-                    self.bus.phantom_read(intermediate);
-                }
-
-                self.bus.read(address, CycleOp::CheckInterrupt)
-            }
-        }
-    }
-
-    pub fn phantom_immediate_read(&mut self) {
-        self.bus.phantom_read(*self.program_counter);
+        _ => panic!(),
     }
 }
 
-pub fn read_immediate<B: Bus>(bus: &mut B, program_counter: &mut Word) -> u8 {
-    let value = bus.read(*program_counter, CycleOp::None);
+pub fn data<B: Bus>(bus: &mut B, program_counter: &mut Word, address_mode: &AddressMode) -> u8 {
+    match address_mode {
+        Immediate => immediate_fetch(bus, program_counter),
 
-    advance_program_counter(program_counter);
+        ZeroPage | ZeroPageIndexed(_) | Absolute | IndexedIndirect(_) | Indirect | Relative => {
+            let address = address(bus, program_counter, address_mode);
 
-    value
+            bus.read(address, CycleOp::CheckInterrupt)
+        }
+
+        AbsoluteIndexed(index) => {
+            let base_address = immediate_fetch_word(bus, program_counter);
+
+            let (address, offset_result) = base_address.paged_add(*index);
+
+            if let OffsetResult::CrossedPage(intermediate) = offset_result {
+                bus.phantom_read(intermediate);
+            }
+
+            bus.read(address, CycleOp::CheckInterrupt)
+        }
+
+        IndirectIndexed(index) => {
+            let zero_page_address = address(bus, program_counter, &ZeroPage);
+
+            let base_address = read_word(bus, zero_page_address, CycleOp::None);
+
+            let (address, offset_result) = base_address.paged_add(*index);
+
+            if let OffsetResult::CrossedPage(intermediate) = offset_result {
+                bus.phantom_read(intermediate);
+            }
+
+            bus.read(address, CycleOp::CheckInterrupt)
+        }
+    }
 }
 
 pub enum AddressMode {
@@ -208,11 +160,4 @@ pub enum AddressMode {
     IndexedIndirect(u8),
     IndirectIndexed(u8),
     Relative,
-}
-
-pub fn read_word<B: Bus>(bus: &mut B, address: Word, op: CycleOp) -> Word {
-    Word {
-        low: bus.read(address, op),
-        high: bus.read(address.same_page_add(1), op),
-    }
 }
