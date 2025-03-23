@@ -2,7 +2,6 @@ use executor::*;
 use js_sys::Function;
 use registers::*;
 use wasm_bindgen::prelude::*;
-//use web_sys::console;
 
 use crate::cycle_manager::*;
 use crate::memory::*;

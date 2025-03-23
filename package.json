@@ -4,7 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "build": "wasm-pack build ch22-core --target web",
+    "build-release": "wasm-pack build ch22-core --target web",
+    "build-dev": "npm run build-release -- --features console_error_panic_hook",
     "clippy": "cd ch22-core && cargo clippy && cargo clippy --tests",
     "test": "cd ch22-core && cargo test"
   },
