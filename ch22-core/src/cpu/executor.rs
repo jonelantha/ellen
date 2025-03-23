@@ -583,11 +583,11 @@ impl Instruction {
                 set_flag_fn(&mut registers.flags, *value);
             }
 
-            Break(advance_return_address, additional_flags, interrupt_vector) => {
+            Break(increment_return_address, additional_flags, interrupt_vector) => {
                 bus.phantom_read(registers.program_counter);
 
-                if *advance_return_address {
-                    advance_program_counter(&mut registers.program_counter);
+                if *increment_return_address {
+                    registers.program_counter.increment();
                 }
 
                 push_word(bus, &mut registers.stack_pointer, registers.program_counter);
@@ -637,7 +637,7 @@ impl Instruction {
 
                 bus.phantom_read(registers.program_counter);
 
-                advance_program_counter(&mut registers.program_counter);
+                registers.program_counter.increment();
             }
 
             PullAccumulator => {
@@ -676,7 +676,7 @@ impl Instruction {
                 if !condition {
                     bus.phantom_read(registers.program_counter);
 
-                    advance_program_counter(&mut registers.program_counter);
+                    registers.program_counter.increment();
                 } else {
                     registers.program_counter =
                         get_address(bus, &mut registers.program_counter, &Relative);
