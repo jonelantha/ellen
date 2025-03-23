@@ -38,11 +38,9 @@ impl Ch22Cpu {
 
     pub fn reset(&mut self, memory: &mut Ch22Memory) -> bool {
         let vector: u16 = RESET_VECTOR.into();
+
         self.registers = Registers {
-            program_counter: Word {
-                low: memory.read(vector),
-                high: memory.read(vector + 1),
-            },
+            program_counter: Word(memory.read(vector), memory.read(vector + 1)),
             stack_pointer: 0xff,
             flags: ProcessorFlags {
                 interrupt_disable: true,

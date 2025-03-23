@@ -610,10 +610,7 @@ impl Instruction {
 
                 let new_program_counter_high = immediate_fetch(bus, &mut registers.program_counter);
 
-                registers.program_counter = Word {
-                    low: new_program_counter_low,
-                    high: new_program_counter_high,
-                };
+                registers.program_counter = Word(new_program_counter_low, new_program_counter_high);
             }
 
             Jump(address_mode) => {
@@ -722,12 +719,12 @@ impl Instruction {
                 let (address, carried) =
                     address_with_carry(bus, &mut registers.program_counter, address_mode);
 
-                let Word { low, high } = address;
+                let Word(low, high) = address;
 
                 if carried {
                     let value = registers.y & high;
 
-                    let address = Word { low, high: value };
+                    let address = Word(low, value);
 
                     bus.write(address, value, CycleOp::CheckInterrupt);
                 } else {
@@ -766,15 +763,6 @@ enum Instruction {
     StoreHighAddressAndY(AddressMode),
 }
 
-pub const NMI_VECTOR: Word = Word {
-    high: 0xff,
-    low: 0xfa,
-};
-pub const RESET_VECTOR: Word = Word {
-    high: 0xff,
-    low: 0xfc,
-};
-pub const IRQ_BRK_VECTOR: Word = Word {
-    high: 0xff,
-    low: 0xfe,
-};
+pub const NMI_VECTOR: Word = Word(0xfa, 0xff);
+pub const RESET_VECTOR: Word = Word(0xfc, 0xff);
+pub const IRQ_BRK_VECTOR: Word = Word(0xfe, 0xff);
