@@ -602,17 +602,17 @@ impl Instruction {
             }
 
             JumpToSubRoutine => {
-                let program_counter_low = immediate_fetch(bus, &mut registers.program_counter);
+                let new_program_counter_low = immediate_fetch(bus, &mut registers.program_counter);
 
-                stack_phantom_read(bus, &mut registers.stack_pointer);
+                phantom_stack_read(bus, registers.stack_pointer);
 
                 push_word(bus, &mut registers.stack_pointer, registers.program_counter);
 
-                let program_counter_high = immediate_fetch(bus, &mut registers.program_counter);
+                let new_program_counter_high = immediate_fetch(bus, &mut registers.program_counter);
 
                 registers.program_counter = Word {
-                    low: program_counter_low,
-                    high: program_counter_high,
+                    low: new_program_counter_low,
+                    high: new_program_counter_high,
                 };
             }
 
@@ -624,7 +624,7 @@ impl Instruction {
             ReturnFromInterrupt => {
                 bus.phantom_read(registers.program_counter);
 
-                stack_phantom_read(bus, &mut registers.stack_pointer);
+                phantom_stack_read(bus, registers.stack_pointer);
 
                 registers.flags = pop(bus, &mut registers.stack_pointer).into();
 
@@ -634,7 +634,7 @@ impl Instruction {
             ReturnFromSubroutine => {
                 bus.phantom_read(registers.program_counter);
 
-                stack_phantom_read(bus, &mut registers.stack_pointer);
+                phantom_stack_read(bus, registers.stack_pointer);
 
                 registers.program_counter = pop_word(bus, &mut registers.stack_pointer);
 
@@ -646,7 +646,7 @@ impl Instruction {
             PullAccumulator => {
                 bus.phantom_read(registers.program_counter);
 
-                stack_phantom_read(bus, &mut registers.stack_pointer);
+                phantom_stack_read(bus, registers.stack_pointer);
 
                 registers.accumulator = pop(bus, &mut registers.stack_pointer);
 
@@ -662,7 +662,7 @@ impl Instruction {
             PullProcessorFlags => {
                 bus.phantom_read(registers.program_counter);
 
-                stack_phantom_read(bus, &mut registers.stack_pointer);
+                phantom_stack_read(bus, registers.stack_pointer);
 
                 registers.flags = pop(bus, &mut registers.stack_pointer).into();
             }
