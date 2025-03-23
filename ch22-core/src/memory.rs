@@ -7,7 +7,7 @@ const RAM_SIZE: usize = 0x10000;
 
 #[wasm_bindgen]
 pub struct Ch22Memory {
-    whole_ram: [u8; RAM_SIZE],
+    ram: [u8; RAM_SIZE],
     js_read_fallback: Function,
     js_write_fallback: Function,
 }
@@ -18,17 +18,17 @@ impl Ch22Memory {
         utils::set_panic_hook();
 
         Ch22Memory {
-            whole_ram: [0; RAM_SIZE],
+            ram: [0; RAM_SIZE],
             js_read_fallback,
             js_write_fallback,
         }
     }
 
-    pub fn whole_ram_start(&self) -> *const u8 {
-        self.whole_ram.as_ptr()
+    pub fn ram_start(&self) -> *const u8 {
+        self.ram.as_ptr()
     }
 
-    pub fn whole_ram_size(&self) -> usize {
+    pub fn ram_size(&self) -> usize {
         RAM_SIZE
     }
 }
@@ -36,17 +36,17 @@ impl Ch22Memory {
 impl Ch22Memory {
     pub fn read(&self, address: u16) -> u8 {
         match address {
-            ..0x8000 => self.whole_ram[address as usize],
+            ..0x8000 => self.ram[address as usize],
             0x8000..0xc000 => self.js_read_fallback(address),
-            0xc000..0xfc00 => self.whole_ram[address as usize],
+            0xc000..0xfc00 => self.ram[address as usize],
             0xfc00..0xff00 => self.js_read_fallback(address),
-            0xff00.. => self.whole_ram[address as usize],
+            0xff00.. => self.ram[address as usize],
         }
     }
 
     pub fn write(&mut self, address: u16, value: u8) {
         match address {
-            ..0x8000 => self.whole_ram[address as usize] = value,
+            ..0x8000 => self.ram[address as usize] = value,
             0x8000..0xc000 => (),
             _ => self.js_write_fallback(address, value),
         }
