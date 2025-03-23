@@ -4,12 +4,12 @@ use crate::word::*;
 
 mod accumulator_binary_ops;
 mod addressing;
-mod stack_access;
+mod memory_util;
 mod unary_ops;
 
 use accumulator_binary_ops::*;
 use addressing::*;
-use stack_access::*;
+use memory_util::*;
 use unary_ops::*;
 
 use AddressMode::*;
@@ -25,7 +25,7 @@ pub fn interrupt<B: Bus>(bus: &mut B, registers: &mut Registers, nmi: bool) {
 }
 
 pub fn execute<B: Bus>(bus: &mut B, registers: &mut Registers, allow_untested_in_wild: bool) {
-    let opcode = read_immediate(bus, &mut registers.program_counter);
+    let opcode = immediate_fetch(bus, &mut registers.program_counter);
 
     if [0x35, 0x36, 0x41, 0x56, 0x5e, 0xe1].contains(&opcode) && !allow_untested_in_wild {
         panic!("untested opcode: {:02x}", opcode);
@@ -520,28 +520,23 @@ fn decode(opcode: u8, registers: &Registers) -> Instruction {
 
 impl Instruction {
     pub fn execute<B: Bus>(&self, bus: &mut B, registers: &mut Registers) {
-        let mut address_mode_access = AddressModeAccess {
-            bus,
-            program_counter: &mut registers.program_counter,
-        };
-
         match self {
             NopRead(address_mode) => {
-                address_mode_access.data(address_mode);
+                data(bus, &mut registers.program_counter, address_mode);
             }
 
             Nop => {
-                address_mode_access.phantom_immediate_read();
+                bus.phantom_read(registers.program_counter);
             }
 
             Store(value, address_mode) => {
-                let address = address_mode_access.address(address_mode);
+                let address = address(bus, &mut registers.program_counter, address_mode);
 
                 bus.write(address, *value, CycleOp::CheckInterrupt);
             }
 
             ReadModifyWrite(unary_op, address_mode) => {
-                let address = address_mode_access.address(address_mode);
+                let address = address(bus, &mut registers.program_counter, address_mode);
 
                 let old_value = bus.read(address, CycleOp::Sync);
 
@@ -553,7 +548,7 @@ impl Instruction {
             }
 
             ReadModifyWriteWithAccumulator(unary_op, accumulator_binary_op, address_mode) => {
-                let address = address_mode_access.address(address_mode);
+                let address = address(bus, &mut registers.program_counter, address_mode);
 
                 let old_value = bus.read(address, CycleOp::Sync);
 
@@ -567,7 +562,7 @@ impl Instruction {
             }
 
             RegisterUnaryOp(unary_op, register_type) => {
-                address_mode_access.phantom_immediate_read();
+                bus.phantom_read(registers.program_counter);
 
                 let old_value = registers.get(register_type);
 
@@ -577,29 +572,29 @@ impl Instruction {
             }
 
             AccumulatorBinaryOp(accumulator_binary_op, address_mode) => {
-                let operand = address_mode_access.data(address_mode);
+                let operand = data(bus, &mut registers.program_counter, address_mode);
 
                 accumulator_binary_op(&mut registers.flags, &mut registers.accumulator, operand);
             }
 
             SetFlag(set_flag_fn, value) => {
-                address_mode_access.phantom_immediate_read();
+                bus.phantom_read(registers.program_counter);
 
                 set_flag_fn(&mut registers.flags, *value);
             }
 
             Break(advance_return_address, additional_flags, interrupt_vector) => {
-                address_mode_access.phantom_immediate_read();
+                bus.phantom_read(registers.program_counter);
 
                 if *advance_return_address {
                     advance_program_counter(&mut registers.program_counter);
                 }
 
-                let mut stack = StackAccess::new(bus, &mut registers.stack_pointer);
+                push_word(bus, &mut registers.stack_pointer, registers.program_counter);
 
-                stack.push_word(registers.program_counter);
+                let flags = u8::from(registers.flags) | additional_flags;
 
-                stack.push(u8::from(registers.flags) | additional_flags);
+                push(bus, &mut registers.stack_pointer, flags);
 
                 registers.flags.interrupt_disable = true;
 
@@ -607,15 +602,13 @@ impl Instruction {
             }
 
             JumpToSubRoutine => {
-                let program_counter_low = read_immediate(bus, &mut registers.program_counter);
+                let program_counter_low = immediate_fetch(bus, &mut registers.program_counter);
 
-                let mut stack = StackAccess::new(bus, &mut registers.stack_pointer);
+                stack_phantom_read(bus, &mut registers.stack_pointer);
 
-                stack.phantom_read();
+                push_word(bus, &mut registers.stack_pointer, registers.program_counter);
 
-                stack.push_word(registers.program_counter);
-
-                let program_counter_high = read_immediate(bus, &mut registers.program_counter);
+                let program_counter_high = immediate_fetch(bus, &mut registers.program_counter);
 
                 registers.program_counter = Word {
                     low: program_counter_low,
@@ -624,29 +617,26 @@ impl Instruction {
             }
 
             Jump(address_mode) => {
-                registers.program_counter = address_mode_access.address(address_mode);
+                registers.program_counter =
+                    address(bus, &mut registers.program_counter, address_mode);
             }
 
             ReturnFromInterrupt => {
-                address_mode_access.phantom_immediate_read();
+                bus.phantom_read(registers.program_counter);
 
-                let mut stack = StackAccess::new(bus, &mut registers.stack_pointer);
+                stack_phantom_read(bus, &mut registers.stack_pointer);
 
-                stack.phantom_read();
+                registers.flags = pop(bus, &mut registers.stack_pointer).into();
 
-                registers.flags = stack.pop().into();
-
-                registers.program_counter = stack.pop_word();
+                registers.program_counter = pop_word(bus, &mut registers.stack_pointer);
             }
 
             ReturnFromSubroutine => {
-                address_mode_access.phantom_immediate_read();
+                bus.phantom_read(registers.program_counter);
 
-                let mut stack = StackAccess::new(bus, &mut registers.stack_pointer);
+                stack_phantom_read(bus, &mut registers.stack_pointer);
 
-                stack.phantom_read();
-
-                registers.program_counter = stack.pop_word();
+                registers.program_counter = pop_word(bus, &mut registers.stack_pointer);
 
                 bus.phantom_read(registers.program_counter);
 
@@ -654,55 +644,50 @@ impl Instruction {
             }
 
             PullAccumulator => {
-                address_mode_access.phantom_immediate_read();
+                bus.phantom_read(registers.program_counter);
 
-                let mut stack = StackAccess::new(bus, &mut registers.stack_pointer);
+                stack_phantom_read(bus, &mut registers.stack_pointer);
 
-                stack.phantom_read();
-
-                registers.accumulator = stack.pop();
+                registers.accumulator = pop(bus, &mut registers.stack_pointer);
 
                 registers.flags.update_zero_negative(registers.accumulator);
             }
 
             PushAccumulator => {
-                address_mode_access.phantom_immediate_read();
+                bus.phantom_read(registers.program_counter);
 
-                let mut stack = StackAccess::new(bus, &mut registers.stack_pointer);
-
-                stack.push(registers.accumulator);
+                push(bus, &mut registers.stack_pointer, registers.accumulator);
             }
 
             PullProcessorFlags => {
-                address_mode_access.phantom_immediate_read();
+                bus.phantom_read(registers.program_counter);
 
-                let mut stack = StackAccess::new(bus, &mut registers.stack_pointer);
+                stack_phantom_read(bus, &mut registers.stack_pointer);
 
-                stack.phantom_read();
-
-                registers.flags = stack.pop().into();
+                registers.flags = pop(bus, &mut registers.stack_pointer).into();
             }
 
             PushProcessorFlags => {
-                address_mode_access.phantom_immediate_read();
+                bus.phantom_read(registers.program_counter);
 
-                let mut stack = StackAccess::new(bus, &mut registers.stack_pointer);
+                let flags = u8::from(registers.flags) | P_BREAK;
 
-                stack.push(u8::from(registers.flags) | P_BREAK);
+                push(bus, &mut registers.stack_pointer, flags);
             }
 
             Branch(condition) => {
                 if !condition {
-                    address_mode_access.phantom_immediate_read();
+                    bus.phantom_read(registers.program_counter);
 
                     advance_program_counter(&mut registers.program_counter);
                 } else {
-                    registers.program_counter = address_mode_access.address(&Relative);
+                    registers.program_counter =
+                        address(bus, &mut registers.program_counter, &Relative);
                 }
             }
 
             Compare(register_value, address_mode) => {
-                let value = address_mode_access.data(address_mode);
+                let value = data(bus, &mut registers.program_counter, address_mode);
 
                 registers.flags.carry = *register_value >= value;
                 registers.flags.zero = *register_value == value;
@@ -712,7 +697,7 @@ impl Instruction {
             }
 
             Load(register_type, address_mode) => {
-                let value = address_mode_access.data(address_mode);
+                let value = data(bus, &mut registers.program_counter, address_mode);
 
                 registers.set(register_type, value);
 
@@ -720,7 +705,7 @@ impl Instruction {
             }
 
             TransferRegister(value, register_type) => {
-                address_mode_access.phantom_immediate_read();
+                bus.phantom_read(registers.program_counter);
 
                 registers.set(register_type, *value);
 
@@ -728,13 +713,14 @@ impl Instruction {
             }
 
             TransferRegisterNoFlags(value, register_type) => {
-                address_mode_access.phantom_immediate_read();
+                bus.phantom_read(registers.program_counter);
 
                 registers.set(register_type, *value);
             }
 
             StoreHighAddressAndY(address_mode) => {
-                let (address, carried) = address_mode_access.address_with_carry(address_mode);
+                let (address, carried) =
+                    address_with_carry(bus, &mut registers.program_counter, address_mode);
 
                 let Word { low, high } = address;
 
