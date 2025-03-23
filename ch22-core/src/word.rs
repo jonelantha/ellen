@@ -63,15 +63,12 @@ impl Word {
         }
     }
 
-    pub fn increment(&self) -> Self {
-        let Word(low, high) = *self;
-
-        let (low, carried) = low.overflowing_add(1);
+    pub fn increment(&mut self) {
+        let carried;
+        (self.0, carried) = self.0.overflowing_add(1);
 
         if carried {
-            Word(low, high.wrapping_add(1))
-        } else {
-            Word(low, high)
+            self.1 = self.1.wrapping_add(1);
         }
     }
 }

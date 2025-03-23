@@ -1,5 +1,4 @@
 use crate::bus::*;
-use crate::cpu::registers::advance_program_counter;
 use crate::word::*;
 
 pub fn phantom_stack_read<B: Bus>(bus: &mut B, stack_pointer: u8) {
@@ -30,7 +29,7 @@ pub fn pop_word<B: Bus>(bus: &mut B, stack_pointer: &mut u8) -> Word {
 pub fn immediate_fetch<B: Bus>(bus: &mut B, program_counter: &mut Word) -> u8 {
     let value = bus.read(*program_counter, CycleOp::None);
 
-    advance_program_counter(program_counter);
+    program_counter.increment();
 
     value
 }

@@ -12,10 +12,6 @@ pub struct Registers {
     pub flags: ProcessorFlags,
 }
 
-pub fn advance_program_counter(program_counter: &mut Word) {
-    *program_counter = program_counter.increment();
-}
-
 impl Registers {
     pub fn get(&self, register_type: &RegisterType) -> u8 {
         match register_type {
