@@ -4,7 +4,7 @@ use crate::word::*;
 
 use AddressMode::*;
 
-pub fn address<B: Bus>(
+pub fn get_address<B: Bus>(
     bus: &mut B,
     program_counter: &mut Word,
     address_mode: &AddressMode,
@@ -45,13 +45,13 @@ pub fn address<B: Bus>(
         }
 
         IndexedIndirect(index) => {
-            let address = address(bus, program_counter, &ZeroPageIndexed(*index));
+            let address = get_address(bus, program_counter, &ZeroPageIndexed(*index));
 
             read_word(bus, address, CycleOp::None)
         }
 
         IndirectIndexed(index) => {
-            let zero_page_address = address(bus, program_counter, &ZeroPage);
+            let zero_page_address = get_address(bus, program_counter, &ZeroPage);
 
             let base_address = read_word(bus, zero_page_address, CycleOp::None);
 
@@ -112,12 +112,12 @@ pub fn address_with_carry<B: Bus>(
     }
 }
 
-pub fn data<B: Bus>(bus: &mut B, program_counter: &mut Word, address_mode: &AddressMode) -> u8 {
+pub fn get_data<B: Bus>(bus: &mut B, program_counter: &mut Word, address_mode: &AddressMode) -> u8 {
     match address_mode {
         Immediate => immediate_fetch(bus, program_counter),
 
         ZeroPage | ZeroPageIndexed(_) | Absolute | IndexedIndirect(_) | Indirect | Relative => {
-            let address = address(bus, program_counter, address_mode);
+            let address = get_address(bus, program_counter, address_mode);
 
             bus.read(address, CycleOp::CheckInterrupt)
         }
@@ -135,7 +135,7 @@ pub fn data<B: Bus>(bus: &mut B, program_counter: &mut Word, address_mode: &Addr
         }
 
         IndirectIndexed(index) => {
-            let zero_page_address = address(bus, program_counter, &ZeroPage);
+            let zero_page_address = get_address(bus, program_counter, &ZeroPage);
 
             let base_address = read_word(bus, zero_page_address, CycleOp::None);
 
