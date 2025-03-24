@@ -11,6 +11,10 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
+          sparse-checkout: |
+            /*
+            !/ch22-core/tests/single_step_tests_65x02/*/
+          sparse-checkout-cone-mode: false
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
