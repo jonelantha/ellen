@@ -11,9 +11,10 @@ jobs:
         uses: actions/checkout@v4
       - name: Checkout
         uses: actions/checkout@v4
-        repository: SingleStepTests/65x02
-        path: ch22-core/tests/single_step_tests_65x02
-        sparse-checkout: 6502
+        with:
+          repository: SingleStepTests/65x02
+          path: ch22-core/tests/single_step_tests_65x02
+          sparse-checkout: 6502
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
