@@ -1,0 +1,4 @@
+[submodule "ch22-core/tests/single_step_tests_65x02"]
+	path = ch22-core/tests/single_step_tests_65x02
+	url = https://github.com/SingleStepTests/65x02
+	shallow = true
