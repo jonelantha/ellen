@@ -34,39 +34,49 @@ impl Ch22Memory {
 }
 
 impl Ch22Memory {
-    pub fn read(&self, address: u16) -> u8 {
+    pub fn read(&self, address: u16, cycles: u8) -> u8 {
         match address {
             ..0x8000 => self.ram[address as usize],
-            0x8000..0xc000 => self.js_read_fallback(address),
+            0x8000..0xc000 => self.js_read_fallback(address, cycles),
             0xc000..0xfc00 => self.ram[address as usize],
-            0xfc00..0xff00 => self.js_read_fallback(address),
+            0xfc00..0xff00 => self.js_read_fallback(address, cycles),
             0xff00.. => self.ram[address as usize],
         }
     }
 
-    pub fn write(&mut self, address: u16, value: u8) {
+    pub fn write(&mut self, address: u16, value: u8, cycles: u8) -> bool {
         match address {
-            ..0x8000 => self.ram[address as usize] = value,
-            0x8000..0xc000 => (),
-            _ => self.js_write_fallback(address, value),
+            ..0x8000 => {
+                self.ram[address as usize] = value;
+                false
+            }
+            0x8000..0xc000 => false,
+            _ => self.js_write_fallback(address, value, cycles),
         }
     }
 
-    fn js_read_fallback(&self, address: u16) -> u8 {
+    fn js_read_fallback(&self, address: u16, cycles: u8) -> u8 {
         self.js_read_fallback
-            .call1(&JsValue::NULL, &JsValue::from(address))
+            .call2(
+                &JsValue::NULL,
+                &JsValue::from(address),
+                &JsValue::from(cycles),
+            )
             .expect("js_read_fallback error")
             .as_f64()
             .expect("js_read_fallback error") as u8
     }
 
-    fn js_write_fallback(&self, address: u16, value: u8) {
+    fn js_write_fallback(&self, address: u16, value: u8, cycles: u8) -> bool {
         self.js_write_fallback
-            .call2(
+            .call3(
                 &JsValue::NULL,
                 &JsValue::from(address),
                 &JsValue::from(value),
+                &JsValue::from(cycles),
             )
-            .expect("js_write_fallback error");
+            .expect("js_write_fallback error")
+            .as_bool()
+            .expect("js_write_fallback error")
     }
 }

@@ -1,4 +1,6 @@
-use ch22_core::bus::*;
+use ch22_core::cpu::interrupt_state::*;
+use ch22_core::cpu::registers::Registers;
+use ch22_core::cpu_io::*;
 use ch22_core::word::*;
 use serde::Deserialize;
 
@@ -15,14 +17,65 @@ pub struct CPUTestState {
     pub ram: Vec<(u16, u8)>,
 }
 
-pub struct CycleManagerMock {
+impl From<&CPUTestState> for Registers {
+    fn from(test_state: &CPUTestState) -> Self {
+        Registers {
+            program_counter: test_state.pc.into(),
+            stack_pointer: test_state.s,
+            accumulator: test_state.a,
+            x: test_state.x,
+            y: test_state.y,
+            flags: test_state.p.into(),
+        }
+    }
+}
+
+#[allow(dead_code)]
+pub type CPUCycles = Vec<(u16, u8, String)>;
+
+#[derive(Deserialize)]
+pub struct TestInterruptOnOff {
+    pub on: u8,
+    pub off: u8,
+}
+
+pub type TestInterruptOnOffList = Vec<TestInterruptOnOff>;
+
+#[derive(Deserialize)]
+pub struct InterruptTestState {
+    pub previous_nmi: bool,
+    pub interrupt_due: String,
+}
+
+impl From<&InterruptTestState> for InterruptState {
+    fn from(test_state: &InterruptTestState) -> Self {
+        InterruptState {
+            previous_nmi: test_state.previous_nmi,
+            interrupt_due: match test_state.interrupt_due.as_str() {
+                "nmi" => InterruptType::NMI,
+                "irq" => InterruptType::IRQ,
+                _ => InterruptType::None,
+            },
+        }
+    }
+}
+
+pub struct CycleManagerMock<'a> {
     memory: HashMap<u16, u8>,
+    irq_on_off_list: &'a Option<TestInterruptOnOffList>,
+    nmi_on_off_list: &'a Option<TestInterruptOnOffList>,
+    cycle_check_nmi: bool,
+    cycle_check_irq: bool,
     pub cycles: Vec<(u16, u8, String)>,
     pub cycle_syncs: Vec<String>,
 }
 
-impl CycleManagerMock {
-    pub fn new(initial_ram: &Vec<(u16, u8)>) -> CycleManagerMock {
+impl<'a> CycleManagerMock<'a> {
+    pub fn new(
+        initial_ram: &Vec<(u16, u8)>,
+        irq_on_off_list: &'a Option<TestInterruptOnOffList>,
+        nmi_on_off_list: &'a Option<TestInterruptOnOffList>,
+    ) -> CycleManagerMock<'a> {
         let mut memory = HashMap::new();
 
         for ram_location in initial_ram {
@@ -31,18 +84,22 @@ impl CycleManagerMock {
 
         CycleManagerMock {
             memory,
+            irq_on_off_list,
+            nmi_on_off_list,
+            cycle_check_nmi: false,
+            cycle_check_irq: false,
             cycles: Vec::new(),
             cycle_syncs: Vec::new(),
         }
     }
 }
 
-impl Bus for CycleManagerMock {
+impl<'a> CpuIO for CycleManagerMock<'a> {
     fn phantom_read(&mut self, address: Word) {
-        self.read(address, CycleOp::None);
+        self.read(address);
     }
 
-    fn read(&mut self, address: Word, op: CycleOp) -> u8 {
+    fn read(&mut self, address: Word) -> u8 {
         let address: u16 = address.into();
 
         let value = *self
@@ -52,29 +109,60 @@ impl Bus for CycleManagerMock {
 
         self.cycles.push((address, value, "read".to_owned()));
 
-        self.cycle_syncs.push(get_sync_status_text(op));
+        self.cycle_syncs.push(get_sync_status_text(
+            self.cycle_check_nmi,
+            self.cycle_check_irq,
+        ));
+
+        self.cycle_check_nmi = false;
 
         value
     }
 
-    fn write(&mut self, address: Word, value: u8, op: CycleOp) {
+    fn write(&mut self, address: Word, value: u8) {
         let address: u16 = address.into();
 
         self.memory.insert(address, value);
 
         self.cycles.push((address, value, "write".to_owned()));
 
-        self.cycle_syncs.push(get_sync_status_text(op));
+        self.cycle_syncs.push(get_sync_status_text(
+            self.cycle_check_nmi,
+            self.cycle_check_irq,
+        ));
+
+        self.cycle_check_nmi = false;
     }
 
-    fn complete(&self) {}
+    fn get_irq_nmi(&mut self, interrupt_disable: bool) -> (bool, bool) {
+        self.cycle_check_nmi = true;
+        self.cycle_check_irq = !interrupt_disable;
+
+        let current_cycle = self.cycles.len() as u8;
+
+        let irq = is_in_on_off_range(self.irq_on_off_list, current_cycle);
+        let nmi = is_in_on_off_range(self.nmi_on_off_list, current_cycle);
+
+        (irq, nmi)
+    }
+
+    fn complete(&mut self) {}
 }
 
-fn get_sync_status_text(op: CycleOp) -> String {
-    match op {
-        CycleOp::CheckInterrupt => "sync+check_interrupt",
-        CycleOp::Sync => "sync",
-        CycleOp::None => "",
+fn is_in_on_off_range(on_off_list: &Option<TestInterruptOnOffList>, cycle: u8) -> bool {
+    if let Some(list) = on_off_list {
+        list.iter()
+            .any(|range| cycle >= range.on && cycle < range.off)
+    } else {
+        false
+    }
+}
+
+fn get_sync_status_text(check_nmi: bool, check_irq: bool) -> String {
+    match (check_nmi, check_irq) {
+        (true, true) => "check_nmi+irq",
+        (true, false) => "check_nmi",
+        _ => "",
     }
     .to_string()
 }
