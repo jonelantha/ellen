@@ -21,8 +21,8 @@ struct InterruptTestParams {
 
 #[test]
 fn interrupt_tests_from_file() {
-    let data = fs::read_to_string(format!("./tests/test_cases/interrupt.json"))
-        .expect("Unable to read file");
+    let data =
+        fs::read_to_string("./tests/test_cases/interrupt.json").expect("Unable to read file");
 
     let test_params: Vec<InterruptTestParams> =
         serde_json::from_str(&data).expect("JSON was not well-formatted");
@@ -30,7 +30,6 @@ fn interrupt_tests_from_file() {
     for test_param in &test_params {
         let panics = std::panic::catch_unwind(|| {
             interrupt_cycles_test(
-                &test_param.name,
                 &test_param.initial,
                 &test_param.initial_interrupt_state,
                 &test_param.irq,
@@ -48,7 +47,6 @@ fn interrupt_tests_from_file() {
 }
 
 fn interrupt_cycles_test(
-    _name: &str,
     initial_state: &CPUTestState,
     initial_interrupt_state: &InterruptTestState,
     irq_on_off: &Option<TestInterruptOnOffList>,

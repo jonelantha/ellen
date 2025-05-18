@@ -94,7 +94,7 @@ impl<'a> CycleManagerMock<'a> {
     }
 }
 
-impl<'a> CpuIO for CycleManagerMock<'a> {
+impl CpuIO for CycleManagerMock<'_> {
     fn phantom_read(&mut self, address: Word) {
         self.read(address);
     }
