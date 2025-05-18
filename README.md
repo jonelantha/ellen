@@ -39,12 +39,14 @@ function readMem(address: number): number {
   return 0;
 }
 
-function writeMem(address: number, value: number) {
+function writeMem(address: number, value: number): boolean {
   /**
    * custom callback for memory writes in this space:
    * 0x8000 - 0xc000
+   *
+   * return true if write requires a clock phase 2 operation
    */
-  return 0;
+  return false;
 }
 
 const ch22Memory = Ch22Memory.new(readMem, writeMem);
@@ -65,16 +67,25 @@ const memory = new Uint8Array(
 ```js
 import { Ch22Cpu } from "./ch22-core/pkg";
 
-function advanceCycles(cycles: number, checkInterrupt: boolean) {
+function checkInterrupt(instructionCpuCycles: number): number {
   /**
-   * Custom callback for syncing cycles 'generated' from the processor
+   * Custom callback for checking interrupts
    * parameters:
-   *   `cycles` - number of cycles to move the clock forward
-   *   `checkInterrupt` - whether to check IO for possible interrupts
+   *   `instructionCpuCycles` - number of cpu cycles since the start of the instruction
+   * returns:
+   *   bitfield: 0x01 = IRQ, 0x02 = NMI
    */
 }
 
-const cpu = Ch22Cpu.new(advanceCycles);
+function doPhase2(instructionCpuCycles: number) {
+  /**
+   * Custom callback for executing clock phase 2 operations
+   * parameters:
+   *   `instructionCpuCycles` - number of cpu cycles since the start of the instruction
+   */
+}
+
+const cpu = Ch22Cpu.new(checkInterrupt, doPhase2);
 
 /**
  * reset cpu (requires memory access to read reset vector)
@@ -82,21 +93,10 @@ const cpu = Ch22Cpu.new(advanceCycles);
 cpu.reset(ch22Memory);
 
 /**
- * execute the next instruction
- * returns a boolean for the state of the processor interrupt disable flag
+ * execute the next instruction or interrupt
+ * returns number of cpu cycles executed for the instruction
  */
-const interruptDisable = cpu.handle_next_instruction(ch22Memory);
-
-/**
- * handle a triggered interrupt (interrupt detection is handled in js code)
- * effectively process the BRK instruction
- * the boolean parameter is for the type of interrupt:
- * - false = IRQ
- * - true = NMI
- * returns a boolean for the state of the processor interrupt disable flag
- */
-const interruptDisable = cpu.interrupt(ch22Memory, false);
-
+const cycleCount = cpu.handle_next_instruction(ch22Memory);
 ```
 
 ## 🧪 Running tests

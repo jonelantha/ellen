@@ -1,5 +1,6 @@
+use super::interrupt_state::*;
 use super::registers::*;
-use crate::bus::*;
+use crate::cpu_io::*;
 use crate::word::*;
 
 mod accumulator_binary_ops;
@@ -16,32 +17,44 @@ use AddressMode::*;
 use Instruction::*;
 use RegisterType::*;
 
-pub fn interrupt<B: Bus>(bus: &mut B, registers: &mut Registers, nmi: bool) {
-    bus.phantom_read(registers.program_counter);
+pub fn execute<IO: CpuIO>(
+    io: &mut IO,
+    registers: &mut Registers,
+    interrupt_state: &mut InterruptState,
+    allow_untested_in_wild: bool,
+) {
+    let instruction = get_next_instruction(io, registers, interrupt_state, allow_untested_in_wild);
 
-    Break(false, 0, if nmi { NMI_VECTOR } else { IRQ_BRK_VECTOR }).execute(bus, registers);
+    instruction.execute(io, registers, interrupt_state);
 
-    bus.complete();
+    io.complete();
 }
 
-pub fn execute<B: Bus>(bus: &mut B, registers: &mut Registers, allow_untested_in_wild: bool) {
-    let opcode = immediate_fetch(bus, &mut registers.program_counter);
+fn get_next_instruction<IO: CpuIO>(
+    io: &mut IO,
+    registers: &mut Registers,
+    interrupt_state: &mut InterruptState,
+    allow_untested_in_wild: bool,
+) -> Instruction {
+    if interrupt_state.interrupt_due == InterruptType::None {
+        let opcode = immediate_fetch(io, &mut registers.program_counter);
 
-    if [0x35, 0x36, 0x41, 0x56, 0x5e, 0xe1].contains(&opcode) && !allow_untested_in_wild {
-        panic!("untested opcode: {:02x}", opcode);
+        if [0x36, 0x41, 0x56, 0x5e, 0xe1].contains(&opcode) && !allow_untested_in_wild {
+            panic!("untested opcode: {:02x}", opcode);
+        }
+
+        decode(opcode, registers)
+    } else {
+        io.phantom_read(registers.program_counter);
+
+        Break(false)
     }
-
-    let instruction = decode(opcode, registers);
-
-    instruction.execute(bus, registers);
-
-    bus.complete();
 }
 
 fn decode(opcode: u8, registers: &Registers) -> Instruction {
     match opcode {
         // BRK
-        0x00 => Break(true, P_BREAK, IRQ_BRK_VECTOR),
+        0x00 => Break(true),
 
         // ORA (zp,X)
         0x01 => AccumulatorBinaryOp(or, IndexedIndirect(registers.x)),
@@ -519,50 +532,71 @@ fn decode(opcode: u8, registers: &Registers) -> Instruction {
 }
 
 impl Instruction {
-    pub fn execute<B: Bus>(&self, bus: &mut B, registers: &mut Registers) {
+    pub fn execute<IO: CpuIO>(
+        &self,
+        io: &mut IO,
+        registers: &mut Registers,
+        interrupt_state: &mut InterruptState,
+    ) {
         match self {
             NopRead(address_mode) => {
-                get_data(bus, &mut registers.program_counter, address_mode);
+                get_data_with_interrupt_check(
+                    io,
+                    &mut registers.program_counter,
+                    address_mode,
+                    registers.flags.interrupt_disable,
+                    interrupt_state,
+                );
             }
 
             Nop => {
-                bus.phantom_read(registers.program_counter);
+                update_interrupt_state(interrupt_state, io, registers.flags.interrupt_disable);
+
+                io.phantom_read(registers.program_counter);
             }
 
             Store(value, address_mode) => {
-                let address = get_address(bus, &mut registers.program_counter, address_mode);
+                let address = get_address(io, &mut registers.program_counter, address_mode);
 
-                bus.write(address, *value, CycleOp::CheckInterrupt);
+                update_interrupt_state(interrupt_state, io, registers.flags.interrupt_disable);
+
+                io.write(address, *value);
             }
 
             ReadModifyWrite(unary_op, address_mode) => {
-                let address = get_address(bus, &mut registers.program_counter, address_mode);
+                let address = get_address(io, &mut registers.program_counter, address_mode);
 
-                let old_value = bus.read(address, CycleOp::Sync);
+                let old_value = io.read(address);
 
-                bus.write(address, old_value, CycleOp::Sync);
+                io.write(address, old_value);
 
                 let new_value = unary_op(&mut registers.flags, old_value);
 
-                bus.write(address, new_value, CycleOp::Sync);
+                update_interrupt_state(interrupt_state, io, registers.flags.interrupt_disable);
+
+                io.write(address, new_value);
             }
 
             ReadModifyWriteWithAccumulator(unary_op, accumulator_binary_op, address_mode) => {
-                let address = get_address(bus, &mut registers.program_counter, address_mode);
+                let address = get_address(io, &mut registers.program_counter, address_mode);
 
-                let old_value = bus.read(address, CycleOp::Sync);
+                let old_value = io.read(address);
 
-                bus.write(address, old_value, CycleOp::Sync);
+                io.write(address, old_value);
 
                 let new_value = unary_op(&mut registers.flags, old_value);
 
-                bus.write(address, new_value, CycleOp::Sync);
+                update_interrupt_state(interrupt_state, io, registers.flags.interrupt_disable);
+
+                io.write(address, new_value);
 
                 accumulator_binary_op(&mut registers.flags, &mut registers.accumulator, new_value);
             }
 
             RegisterUnaryOp(unary_op, register_type) => {
-                bus.phantom_read(registers.program_counter);
+                update_interrupt_state(interrupt_state, io, registers.flags.interrupt_disable);
+
+                io.phantom_read(registers.program_counter);
 
                 let old_value = registers.get(register_type);
 
@@ -572,119 +606,171 @@ impl Instruction {
             }
 
             AccumulatorBinaryOp(accumulator_binary_op, address_mode) => {
-                let operand = get_data(bus, &mut registers.program_counter, address_mode);
+                let operand = get_data_with_interrupt_check(
+                    io,
+                    &mut registers.program_counter,
+                    address_mode,
+                    registers.flags.interrupt_disable,
+                    interrupt_state,
+                );
 
                 accumulator_binary_op(&mut registers.flags, &mut registers.accumulator, operand);
             }
 
             SetFlag(set_flag_fn, value) => {
-                bus.phantom_read(registers.program_counter);
+                update_interrupt_state(interrupt_state, io, registers.flags.interrupt_disable);
+
+                io.phantom_read(registers.program_counter);
 
                 set_flag_fn(&mut registers.flags, *value);
             }
 
-            Break(increment_return_address, additional_flags, interrupt_vector) => {
-                bus.phantom_read(registers.program_counter);
+            Break(from_opcode) => {
+                io.phantom_read(registers.program_counter);
 
-                if *increment_return_address {
+                if *from_opcode {
                     registers.program_counter.increment();
                 }
 
-                push_word(bus, &mut registers.stack_pointer, registers.program_counter);
+                push_word(io, &mut registers.stack_pointer, registers.program_counter);
 
-                let flags = u8::from(registers.flags) | additional_flags;
+                let flags = u8::from(registers.flags) | (if *from_opcode { P_BREAK } else { 0 });
 
-                push(bus, &mut registers.stack_pointer, flags);
+                update_interrupt_state(interrupt_state, io, registers.flags.interrupt_disable);
+
+                push(io, &mut registers.stack_pointer, flags);
 
                 registers.flags.interrupt_disable = true;
 
-                registers.program_counter = read_word(bus, *interrupt_vector, CycleOp::None);
+                let vector = match interrupt_state.interrupt_due {
+                    InterruptType::NMI => NMI_VECTOR,
+                    _ => IRQ_BRK_VECTOR,
+                };
+
+                interrupt_state.interrupt_due = InterruptType::None;
+
+                registers.program_counter = read_word(io, vector);
             }
 
             JumpToSubRoutine => {
-                let new_program_counter_low = immediate_fetch(bus, &mut registers.program_counter);
+                let new_program_counter_low = immediate_fetch(io, &mut registers.program_counter);
 
-                phantom_stack_read(bus, registers.stack_pointer);
+                phantom_stack_read(io, registers.stack_pointer);
 
-                push_word(bus, &mut registers.stack_pointer, registers.program_counter);
+                push_word(io, &mut registers.stack_pointer, registers.program_counter);
 
-                let new_program_counter_high = immediate_fetch(bus, &mut registers.program_counter);
+                update_interrupt_state(interrupt_state, io, registers.flags.interrupt_disable);
+
+                let new_program_counter_high = immediate_fetch(io, &mut registers.program_counter);
 
                 registers.program_counter = Word(new_program_counter_low, new_program_counter_high);
             }
 
             Jump(address_mode) => {
-                registers.program_counter =
-                    get_address(bus, &mut registers.program_counter, address_mode);
+                registers.program_counter = get_address_with_interrupt_check(
+                    io,
+                    &mut registers.program_counter,
+                    address_mode,
+                    registers.flags.interrupt_disable,
+                    interrupt_state,
+                );
             }
 
             ReturnFromInterrupt => {
-                bus.phantom_read(registers.program_counter);
+                io.phantom_read(registers.program_counter);
 
-                phantom_stack_read(bus, registers.stack_pointer);
+                phantom_stack_read(io, registers.stack_pointer);
 
-                registers.flags = pop(bus, &mut registers.stack_pointer).into();
+                registers.flags = pop(io, &mut registers.stack_pointer).into();
 
-                registers.program_counter = pop_word(bus, &mut registers.stack_pointer);
+                registers.program_counter = pop_word_with_interrupt_check(
+                    io,
+                    &mut registers.stack_pointer,
+                    registers.flags.interrupt_disable,
+                    interrupt_state,
+                );
             }
 
             ReturnFromSubroutine => {
-                bus.phantom_read(registers.program_counter);
+                io.phantom_read(registers.program_counter);
 
-                phantom_stack_read(bus, registers.stack_pointer);
+                phantom_stack_read(io, registers.stack_pointer);
 
-                registers.program_counter = pop_word(bus, &mut registers.stack_pointer);
+                registers.program_counter = pop_word(io, &mut registers.stack_pointer);
 
-                bus.phantom_read(registers.program_counter);
+                update_interrupt_state(interrupt_state, io, registers.flags.interrupt_disable);
+
+                io.phantom_read(registers.program_counter);
 
                 registers.program_counter.increment();
             }
 
             PullAccumulator => {
-                bus.phantom_read(registers.program_counter);
+                io.phantom_read(registers.program_counter);
 
-                phantom_stack_read(bus, registers.stack_pointer);
+                phantom_stack_read(io, registers.stack_pointer);
 
-                registers.accumulator = pop(bus, &mut registers.stack_pointer);
+                update_interrupt_state(interrupt_state, io, registers.flags.interrupt_disable);
+
+                registers.accumulator = pop(io, &mut registers.stack_pointer);
 
                 registers.flags.update_zero_negative(registers.accumulator);
             }
 
             PushAccumulator => {
-                bus.phantom_read(registers.program_counter);
+                io.phantom_read(registers.program_counter);
 
-                push(bus, &mut registers.stack_pointer, registers.accumulator);
+                update_interrupt_state(interrupt_state, io, registers.flags.interrupt_disable);
+
+                push(io, &mut registers.stack_pointer, registers.accumulator);
             }
 
             PullProcessorFlags => {
-                bus.phantom_read(registers.program_counter);
+                io.phantom_read(registers.program_counter);
 
-                phantom_stack_read(bus, registers.stack_pointer);
+                phantom_stack_read(io, registers.stack_pointer);
 
-                registers.flags = pop(bus, &mut registers.stack_pointer).into();
+                update_interrupt_state(interrupt_state, io, registers.flags.interrupt_disable);
+
+                registers.flags = pop(io, &mut registers.stack_pointer).into();
             }
 
             PushProcessorFlags => {
-                bus.phantom_read(registers.program_counter);
+                io.phantom_read(registers.program_counter);
 
                 let flags = u8::from(registers.flags) | P_BREAK;
 
-                push(bus, &mut registers.stack_pointer, flags);
+                update_interrupt_state(interrupt_state, io, registers.flags.interrupt_disable);
+
+                push(io, &mut registers.stack_pointer, flags);
             }
 
             Branch(condition) => {
+                update_interrupt_state(interrupt_state, io, registers.flags.interrupt_disable);
+
                 if !condition {
-                    bus.phantom_read(registers.program_counter);
+                    io.phantom_read(registers.program_counter);
 
                     registers.program_counter.increment();
                 } else {
-                    registers.program_counter =
-                        get_address(bus, &mut registers.program_counter, &Relative);
+                    registers.program_counter = get_address_with_interrupt_check(
+                        io,
+                        &mut registers.program_counter,
+                        &Relative,
+                        registers.flags.interrupt_disable,
+                        interrupt_state,
+                    );
                 }
             }
 
             Compare(register_value, address_mode) => {
-                let value = get_data(bus, &mut registers.program_counter, address_mode);
+                let value = get_data_with_interrupt_check(
+                    io,
+                    &mut registers.program_counter,
+                    address_mode,
+                    registers.flags.interrupt_disable,
+                    interrupt_state,
+                );
 
                 registers.flags.carry = *register_value >= value;
                 registers.flags.zero = *register_value == value;
@@ -694,7 +780,13 @@ impl Instruction {
             }
 
             Load(register_type, address_mode) => {
-                let value = get_data(bus, &mut registers.program_counter, address_mode);
+                let value = get_data_with_interrupt_check(
+                    io,
+                    &mut registers.program_counter,
+                    address_mode,
+                    registers.flags.interrupt_disable,
+                    interrupt_state,
+                );
 
                 registers.set(register_type, value);
 
@@ -702,7 +794,9 @@ impl Instruction {
             }
 
             TransferRegister(value, register_type) => {
-                bus.phantom_read(registers.program_counter);
+                update_interrupt_state(interrupt_state, io, registers.flags.interrupt_disable);
+
+                io.phantom_read(registers.program_counter);
 
                 registers.set(register_type, *value);
 
@@ -710,14 +804,18 @@ impl Instruction {
             }
 
             TransferRegisterNoFlags(value, register_type) => {
-                bus.phantom_read(registers.program_counter);
+                update_interrupt_state(interrupt_state, io, registers.flags.interrupt_disable);
+
+                io.phantom_read(registers.program_counter);
 
                 registers.set(register_type, *value);
             }
 
             StoreHighAddressAndY(address_mode) => {
                 let (address, carried) =
-                    address_with_carry(bus, &mut registers.program_counter, address_mode);
+                    address_with_carry(io, &mut registers.program_counter, address_mode);
+
+                update_interrupt_state(interrupt_state, io, registers.flags.interrupt_disable);
 
                 let Word(low, high) = address;
 
@@ -726,11 +824,11 @@ impl Instruction {
 
                     let address = Word(low, value);
 
-                    bus.write(address, value, CycleOp::CheckInterrupt);
+                    io.write(address, value);
                 } else {
                     let value = registers.y & high.wrapping_add(1);
 
-                    bus.write(address, value, CycleOp::CheckInterrupt);
+                    io.write(address, value);
                 };
             }
         }
@@ -746,7 +844,7 @@ enum Instruction {
     RegisterUnaryOp(UnaryOpFn, RegisterType),
     AccumulatorBinaryOp(AccumulatorBinaryOpFn, AddressMode),
     SetFlag(SetFlagFn, bool),
-    Break(bool, u8, Word),
+    Break(bool),
     JumpToSubRoutine,
     Jump(AddressMode),
     ReturnFromInterrupt,

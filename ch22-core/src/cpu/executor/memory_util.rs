@@ -1,49 +1,92 @@
-use crate::bus::*;
+use crate::cpu::interrupt_state::*;
+use crate::cpu_io::*;
 use crate::word::*;
 
-pub fn phantom_stack_read<B: Bus>(bus: &mut B, stack_pointer: u8) {
-    bus.phantom_read(Word::stack_page(stack_pointer));
+pub fn phantom_stack_read<IO: CpuIO>(io: &mut IO, stack_pointer: u8) {
+    io.phantom_read(Word::stack_page(stack_pointer));
 }
 
-pub fn push<B: Bus>(bus: &mut B, stack_pointer: &mut u8, value: u8) {
-    bus.write(Word::stack_page(*stack_pointer), value, CycleOp::None);
+pub fn push<IO: CpuIO>(io: &mut IO, stack_pointer: &mut u8, value: u8) {
+    io.write(Word::stack_page(*stack_pointer), value);
 
     *stack_pointer = stack_pointer.wrapping_sub(1);
 }
 
-pub fn push_word<B: Bus>(bus: &mut B, stack_pointer: &mut u8, Word(low, high): Word) {
-    push(bus, stack_pointer, high);
-    push(bus, stack_pointer, low);
+pub fn push_word<IO: CpuIO>(io: &mut IO, stack_pointer: &mut u8, Word(low, high): Word) {
+    push(io, stack_pointer, high);
+    push(io, stack_pointer, low);
 }
 
-pub fn pop<B: Bus>(bus: &mut B, stack_pointer: &mut u8) -> u8 {
+pub fn pop<IO: CpuIO>(io: &mut IO, stack_pointer: &mut u8) -> u8 {
     *stack_pointer = stack_pointer.wrapping_add(1);
 
-    bus.read(Word::stack_page(*stack_pointer), CycleOp::None)
+    io.read(Word::stack_page(*stack_pointer))
 }
 
-pub fn pop_word<B: Bus>(bus: &mut B, stack_pointer: &mut u8) -> Word {
-    Word(pop(bus, stack_pointer), pop(bus, stack_pointer))
+pub fn pop_word<IO: CpuIO>(io: &mut IO, stack_pointer: &mut u8) -> Word {
+    Word(pop(io, stack_pointer), pop(io, stack_pointer))
 }
 
-pub fn immediate_fetch<B: Bus>(bus: &mut B, program_counter: &mut Word) -> u8 {
-    let value = bus.read(*program_counter, CycleOp::None);
+pub fn pop_word_with_interrupt_check<IO: CpuIO>(
+    io: &mut IO,
+    stack_pointer: &mut u8,
+    interrupt_disable: bool,
+    interrupt_state: &mut InterruptState,
+) -> Word {
+    let low = pop(io, stack_pointer);
+
+    update_interrupt_state(interrupt_state, io, interrupt_disable);
+
+    let high = pop(io, stack_pointer);
+
+    Word(low, high)
+}
+
+pub fn immediate_fetch<IO: CpuIO>(io: &mut IO, program_counter: &mut Word) -> u8 {
+    let value = io.read(*program_counter);
 
     program_counter.increment();
 
     value
 }
 
-pub fn immediate_fetch_word<B: Bus>(bus: &mut B, program_counter: &mut Word) -> Word {
+pub fn immediate_fetch_word<IO: CpuIO>(io: &mut IO, program_counter: &mut Word) -> Word {
     Word(
-        immediate_fetch(bus, program_counter),
-        immediate_fetch(bus, program_counter),
+        immediate_fetch(io, program_counter),
+        immediate_fetch(io, program_counter),
     )
 }
 
-pub fn read_word<B: Bus>(bus: &mut B, address: Word, op: CycleOp) -> Word {
-    Word(
-        bus.read(address, op),
-        bus.read(address.same_page_add(1), op),
-    )
+pub fn immediate_fetch_word_with_interrupt_check<IO: CpuIO>(
+    io: &mut IO,
+    program_counter: &mut Word,
+    interrupt_disable: bool,
+    interrupt_state: &mut InterruptState,
+) -> Word {
+    let low = immediate_fetch(io, program_counter);
+
+    update_interrupt_state(interrupt_state, io, interrupt_disable);
+
+    let high = immediate_fetch(io, program_counter);
+
+    Word(low, high)
+}
+
+pub fn read_word<IO: CpuIO>(io: &mut IO, address: Word) -> Word {
+    Word(io.read(address), io.read(address.same_page_add(1)))
+}
+
+pub fn read_word_with_interrupt_check<IO: CpuIO>(
+    io: &mut IO,
+    address: Word,
+    interrupt_disable: bool,
+    interrupt_state: &mut InterruptState,
+) -> Word {
+    let low = io.read(address);
+
+    update_interrupt_state(interrupt_state, io, interrupt_disable);
+
+    let high = io.read(address.same_page_add(1));
+
+    Word(low, high)
 }

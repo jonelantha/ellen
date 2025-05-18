@@ -1,34 +1,28 @@
 mod util;
 
 use ch22_core::cpu::executor::*;
+use ch22_core::cpu::interrupt_state::*;
 use ch22_core::cpu::registers::*;
 use serde::Deserialize;
 use std::fs;
-use util::{CPUTestState, CycleManagerMock};
-
-type CPUCycles = Vec<(u16, u8, String)>;
+use util::*;
 
 #[derive(Deserialize)]
 struct InterruptTestParams {
     name: String,
     initial: CPUTestState,
+    initial_interrupt_state: InterruptTestState,
+    irq: Option<TestInterruptOnOffList>,
+    nmi: Option<TestInterruptOnOffList>,
     r#final: CPUTestState,
-    cycles: CPUCycles,
+    final_interrupt_state: InterruptTestState,
+    cycles: Option<CPUCycles>,
 }
 
 #[test]
-fn _irq_cycles_test() {
-    interrupt_tests_from_file("irq", false);
-}
-
-#[test]
-fn _nmi_cycles_test() {
-    interrupt_tests_from_file("nmi", true);
-}
-
-fn interrupt_tests_from_file(file: &str, nmi: bool) {
-    let data =
-        fs::read_to_string(format!("./tests/test_cases/{file}.json")).expect("Unable to read file");
+fn interrupt_tests_from_file() {
+    let data = fs::read_to_string(format!("./tests/test_cases/interrupt.json"))
+        .expect("Unable to read file");
 
     let test_params: Vec<InterruptTestParams> =
         serde_json::from_str(&data).expect("JSON was not well-formatted");
@@ -38,9 +32,12 @@ fn interrupt_tests_from_file(file: &str, nmi: bool) {
             interrupt_cycles_test(
                 &test_param.name,
                 &test_param.initial,
+                &test_param.initial_interrupt_state,
+                &test_param.irq,
+                &test_param.nmi,
                 &test_param.r#final,
+                &test_param.final_interrupt_state,
                 &test_param.cycles,
-                nmi,
             )
         });
 
@@ -53,27 +50,32 @@ fn interrupt_tests_from_file(file: &str, nmi: bool) {
 fn interrupt_cycles_test(
     _name: &str,
     initial_state: &CPUTestState,
+    initial_interrupt_state: &InterruptTestState,
+    irq_on_off: &Option<TestInterruptOnOffList>,
+    nmi_on_off: &Option<TestInterruptOnOffList>,
     final_state: &CPUTestState,
-    expected_cycles: &CPUCycles,
-    nmi: bool,
+    final_interrupt_state: &InterruptTestState,
+    expected_cycles: &Option<CPUCycles>,
 ) {
-    let mut registers = Registers {
-        program_counter: initial_state.pc.into(),
-        stack_pointer: initial_state.s,
-        accumulator: initial_state.a,
-        x: initial_state.x,
-        y: initial_state.y,
-        flags: initial_state.p.into(),
-    };
+    let mut registers: Registers = initial_state.into();
 
-    let mut cycle_manager_mock = CycleManagerMock::new(&initial_state.ram);
+    let mut interrupt_state: InterruptState = initial_interrupt_state.into();
 
-    interrupt(&mut cycle_manager_mock, &mut registers, nmi);
+    let mut cycle_manager_mock = CycleManagerMock::new(&initial_state.ram, irq_on_off, nmi_on_off);
 
-    assert_eq!(
-        &cycle_manager_mock.cycles, expected_cycles,
-        "cycles mismatch"
+    execute(
+        &mut cycle_manager_mock,
+        &mut registers,
+        &mut interrupt_state,
+        true,
     );
+
+    if let Some(expected_cycles) = expected_cycles {
+        assert_eq!(
+            &cycle_manager_mock.cycles, expected_cycles,
+            "cycles mismatch"
+        );
+    }
 
     assert_eq!(
         u16::from(registers.program_counter),
@@ -89,5 +91,11 @@ fn interrupt_cycles_test(
         registers.flags,
         ProcessorFlags::from(final_state.p),
         "p mismatch"
+    );
+
+    assert_eq!(
+        interrupt_state,
+        InterruptState::from(final_interrupt_state),
+        "interrupt_state mismatch"
     );
 }

@@ -1,12 +1,11 @@
 mod util;
 
 use ch22_core::cpu::executor::*;
+use ch22_core::cpu::interrupt_state::*;
 use ch22_core::cpu::registers::*;
 use serde::Deserialize;
 use std::fs;
-use util::{CPUTestState, CycleManagerMock};
-
-type CPUCycles = Vec<(u16, u8, String)>;
+use util::*;
 
 #[derive(Deserialize)]
 struct SingleStepTestParams {
@@ -839,18 +838,17 @@ fn opcode_single_step_test(
     expected_cycles: &CPUCycles,
     ignore_break: bool,
 ) {
-    let mut registers = Registers {
-        program_counter: initial_state.pc.into(),
-        stack_pointer: initial_state.s,
-        accumulator: initial_state.a,
-        x: initial_state.x,
-        y: initial_state.y,
-        flags: initial_state.p.into(),
-    };
+    let mut registers = initial_state.into();
+    let mut interrupt_state = InterruptState::default();
 
-    let mut cycle_manager_mock = CycleManagerMock::new(&initial_state.ram);
+    let mut cycle_manager_mock = CycleManagerMock::new(&initial_state.ram, &None, &None);
 
-    execute(&mut cycle_manager_mock, &mut registers, true);
+    execute(
+        &mut cycle_manager_mock,
+        &mut registers,
+        &mut interrupt_state,
+        true,
+    );
 
     assert_eq!(
         &cycle_manager_mock.cycles, expected_cycles,

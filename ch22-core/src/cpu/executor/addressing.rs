@@ -1,75 +1,101 @@
 use super::memory_util::*;
-use crate::bus::*;
+use crate::cpu::interrupt_state::*;
+use crate::cpu_io::*;
 use crate::word::*;
 
 use AddressMode::*;
 
-pub fn get_address<B: Bus>(
-    bus: &mut B,
+pub fn get_address<IO: CpuIO>(
+    io: &mut IO,
     program_counter: &mut Word,
     address_mode: &AddressMode,
 ) -> Word {
     match address_mode {
         Immediate => panic!(),
 
-        ZeroPage => Word::zero_page(immediate_fetch(bus, program_counter)),
+        ZeroPage => Word::zero_page(immediate_fetch(io, program_counter)),
 
         ZeroPageIndexed(index) => {
-            let base_address = Word::zero_page(immediate_fetch(bus, program_counter));
+            let base_address = Word::zero_page(immediate_fetch(io, program_counter));
 
-            bus.phantom_read(base_address);
+            io.phantom_read(base_address);
 
             base_address.same_page_add(*index)
         }
 
-        Absolute => immediate_fetch_word(bus, program_counter),
+        Absolute => immediate_fetch_word(io, program_counter),
 
         AbsoluteIndexed(index) => {
-            let base_address = immediate_fetch_word(bus, program_counter);
+            let base_address = immediate_fetch_word(io, program_counter);
 
             let (address, offset_result) = base_address.paged_add(*index);
 
             match offset_result {
-                OffsetResult::CrossedPage(intermediate) => bus.phantom_read(intermediate),
+                OffsetResult::CrossedPage(intermediate) => io.phantom_read(intermediate),
 
-                OffsetResult::SamePage => bus.phantom_read(address),
+                OffsetResult::SamePage => io.phantom_read(address),
             }
 
             address
         }
 
         Indirect => {
-            let base_address = immediate_fetch_word(bus, program_counter);
+            let base_address = immediate_fetch_word(io, program_counter);
 
-            read_word(bus, base_address, CycleOp::None)
+            read_word(io, base_address)
         }
 
         IndexedIndirect(index) => {
-            let address = get_address(bus, program_counter, &ZeroPageIndexed(*index));
+            let address = get_address(io, program_counter, &ZeroPageIndexed(*index));
 
-            read_word(bus, address, CycleOp::None)
+            read_word(io, address)
         }
 
         IndirectIndexed(index) => {
-            let zero_page_address = get_address(bus, program_counter, &ZeroPage);
+            let zero_page_address = get_address(io, program_counter, &ZeroPage);
 
-            let base_address = read_word(bus, zero_page_address, CycleOp::None);
+            let base_address = read_word(io, zero_page_address);
 
             let (address, offset_result) = base_address.paged_add(*index);
 
             match offset_result {
-                OffsetResult::CrossedPage(intermediate) => bus.phantom_read(intermediate),
+                OffsetResult::CrossedPage(intermediate) => io.phantom_read(intermediate),
 
-                OffsetResult::SamePage => bus.phantom_read(address),
+                OffsetResult::SamePage => io.phantom_read(address),
             }
 
             address
         }
 
-        Relative => {
-            let rel_address = immediate_fetch(bus, program_counter);
+        _ => panic!(),
+    }
+}
 
-            bus.phantom_read(*program_counter);
+pub fn get_address_with_interrupt_check<IO: CpuIO>(
+    io: &mut IO,
+    program_counter: &mut Word,
+    address_mode: &AddressMode,
+    interrupt_disable: bool,
+    interrupt_state: &mut InterruptState,
+) -> Word {
+    match address_mode {
+        Absolute => immediate_fetch_word_with_interrupt_check(
+            io,
+            program_counter,
+            interrupt_disable,
+            interrupt_state,
+        ),
+
+        Indirect => {
+            let base_address = immediate_fetch_word(io, program_counter);
+
+            read_word_with_interrupt_check(io, base_address, interrupt_disable, interrupt_state)
+        }
+
+        Relative => {
+            let rel_address = immediate_fetch(io, program_counter);
+
+            io.phantom_read(*program_counter);
 
             let (address, offset_result) = if rel_address & 0x80 != 0 {
                 program_counter.paged_subtract(rel_address)
@@ -78,31 +104,35 @@ pub fn get_address<B: Bus>(
             };
 
             if let OffsetResult::CrossedPage(intermediate) = offset_result {
-                bus.phantom_read(intermediate);
+                update_interrupt_state(interrupt_state, io, interrupt_disable);
+
+                io.phantom_read(intermediate);
             }
 
             address
         }
+
+        _ => panic!(),
     }
 }
 
-pub fn address_with_carry<B: Bus>(
-    bus: &mut B,
+pub fn address_with_carry<IO: CpuIO>(
+    io: &mut IO,
     program_counter: &mut Word,
     address_mode: &AddressMode,
 ) -> (Word, bool) {
     match address_mode {
         AbsoluteIndexed(index) => {
-            let base_address = immediate_fetch_word(bus, program_counter);
+            let base_address = immediate_fetch_word(io, program_counter);
 
             let (address, offset_result) = base_address.paged_add(*index);
 
             if let OffsetResult::CrossedPage(intermediate) = offset_result {
-                bus.phantom_read(intermediate);
+                io.phantom_read(intermediate);
 
                 (address, true)
             } else {
-                bus.phantom_read(address);
+                io.phantom_read(address);
 
                 (address, false)
             }
@@ -112,41 +142,59 @@ pub fn address_with_carry<B: Bus>(
     }
 }
 
-pub fn get_data<B: Bus>(bus: &mut B, program_counter: &mut Word, address_mode: &AddressMode) -> u8 {
+pub fn get_data_with_interrupt_check<IO: CpuIO>(
+    io: &mut IO,
+    program_counter: &mut Word,
+    address_mode: &AddressMode,
+    interrupt_disable: bool,
+    interrupt_state: &mut InterruptState,
+) -> u8 {
     match address_mode {
-        Immediate => immediate_fetch(bus, program_counter),
+        Immediate => {
+            update_interrupt_state(interrupt_state, io, interrupt_disable);
 
-        ZeroPage | ZeroPageIndexed(_) | Absolute | IndexedIndirect(_) | Indirect | Relative => {
-            let address = get_address(bus, program_counter, address_mode);
+            immediate_fetch(io, program_counter)
+        }
 
-            bus.read(address, CycleOp::CheckInterrupt)
+        ZeroPage | ZeroPageIndexed(_) | Absolute | IndexedIndirect(_) | Indirect => {
+            let address = get_address(io, program_counter, address_mode);
+
+            update_interrupt_state(interrupt_state, io, interrupt_disable);
+
+            io.read(address)
         }
 
         AbsoluteIndexed(index) => {
-            let base_address = immediate_fetch_word(bus, program_counter);
+            let base_address = immediate_fetch_word(io, program_counter);
 
             let (address, offset_result) = base_address.paged_add(*index);
 
             if let OffsetResult::CrossedPage(intermediate) = offset_result {
-                bus.phantom_read(intermediate);
+                io.phantom_read(intermediate);
             }
 
-            bus.read(address, CycleOp::CheckInterrupt)
+            update_interrupt_state(interrupt_state, io, interrupt_disable);
+
+            io.read(address)
         }
 
         IndirectIndexed(index) => {
-            let zero_page_address = get_address(bus, program_counter, &ZeroPage);
+            let zero_page_address = get_address(io, program_counter, &ZeroPage);
 
-            let base_address = read_word(bus, zero_page_address, CycleOp::None);
+            let base_address = read_word(io, zero_page_address);
 
             let (address, offset_result) = base_address.paged_add(*index);
 
             if let OffsetResult::CrossedPage(intermediate) = offset_result {
-                bus.phantom_read(intermediate);
+                io.phantom_read(intermediate);
             }
 
-            bus.read(address, CycleOp::CheckInterrupt)
+            update_interrupt_state(interrupt_state, io, interrupt_disable);
+
+            io.read(address)
         }
+
+        _ => panic!(),
     }
 }
 
