@@ -11,7 +11,6 @@ pub struct CycleManager {
     get_irq_nmi: Box<dyn Fn(u32) -> (bool, bool)>,
     do_phase_2: Box<dyn Fn(u32)>,
     wrap_counts: Box<dyn Fn(u32)>,
-    is_first: bool,
 }
 
 impl CycleManager {
@@ -28,18 +27,17 @@ impl CycleManager {
             do_phase_2,
             wrap_counts,
             needs_phase_2: false,
-            is_first: true,
         }
     }
 }
 
 impl CpuIO for CycleManager {
     fn phantom_read(&mut self, _address: Word) {
-        self.cycle_end();
+        self.end_previous_cycle();
     }
 
     fn read(&mut self, address: Word) -> u8 {
-        self.cycle_end();
+        self.end_previous_cycle();
 
         let is_io = self.memory.is_io(address.into());
 
@@ -57,7 +55,7 @@ impl CpuIO for CycleManager {
     }
 
     fn write(&mut self, address: Word, value: u8) {
-        self.cycle_end();
+        self.end_previous_cycle();
 
         let is_io = self.memory.is_io(address.into());
 
@@ -82,12 +80,7 @@ impl CpuIO for CycleManager {
 }
 
 impl CycleManager {
-    fn cycle_end(&mut self) {
-        if self.is_first {
-            self.is_first = false;
-            return;
-        };
-
+    fn end_previous_cycle(&mut self) {
         if self.needs_phase_2 {
             (self.do_phase_2)(self.machine_cycles);
             self.needs_phase_2 = false;
