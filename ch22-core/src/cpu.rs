@@ -1,8 +1,6 @@
 use executor::*;
 use interrupt_due_state::*;
-use js_sys::Function;
 use registers::*;
-use wasm_bindgen::prelude::*;
 
 use crate::cycle_manager::*;
 use crate::memory::*;
@@ -16,7 +14,6 @@ pub mod util;
 
 const CYCLE_COUNT_WRAP: u32 = 0x3FFFFFFF;
 
-#[wasm_bindgen]
 pub struct Ch22Cpu {
     get_irq_nmi: Box<dyn Fn(u32) -> (bool, bool)>,
     do_phase_2: Box<dyn Fn(u32)>,
@@ -26,38 +23,13 @@ pub struct Ch22Cpu {
     machine_cycles: u32,
 }
 
-#[wasm_bindgen]
 impl Ch22Cpu {
     pub fn new(
-        js_get_irq_nmi: Function,
-        js_do_phase_2: Function,
-        js_wrap_counts: Function,
+        get_irq_nmi: Box<dyn Fn(u32) -> (bool, bool)>,
+        do_phase_2: Box<dyn Fn(u32)>,
+        wrap_counts: Box<dyn Fn(u32)>,
     ) -> Ch22Cpu {
         utils::set_panic_hook();
-
-        let get_irq_nmi = Box::new(move |machine_cycles: u32| {
-            let flags = js_get_irq_nmi
-                .call1(&JsValue::NULL, &machine_cycles.into())
-                .expect("js_get_irq_nmi error")
-                .as_f64()
-                .expect("js_get_irq_nmi error") as u8;
-
-            // irq, nmi
-            (flags & 1 != 0, flags & 2 != 0)
-        });
-
-        let do_phase_2 = Box::new(move |machine_cycles: u32| {
-            js_do_phase_2
-                .call1(&JsValue::NULL, &machine_cycles.into())
-                .expect("js_do_phase_2 error");
-        });
-
-        let wrap_counts = Box::new(move |wrap: u32| {
-            js_wrap_counts
-                .call1(&JsValue::NULL, &wrap.into())
-                .expect("js_wrap_counts error");
-        });
-        //
 
         Ch22Cpu {
             machine_cycles: 0,
