@@ -4,6 +4,7 @@ use wasm_bindgen::prelude::*;
 use crate::cpu::*;
 use crate::cycle_manager::*;
 use crate::memory::*;
+use crate::utils;
 
 #[wasm_bindgen]
 pub struct Ch22System {
@@ -21,6 +22,8 @@ impl Ch22System {
         js_read_fallback: Function,
         js_write_fallback: Function,
     ) -> Ch22System {
+        utils::set_panic_hook();
+
         let get_irq_nmi = Box::new(move |machine_cycles: u32| {
             let flags = js_get_irq_nmi
                 .call1(&JsValue::NULL, &machine_cycles.into())

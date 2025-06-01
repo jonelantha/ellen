@@ -1,5 +1,3 @@
-use crate::utils;
-
 const RAM_SIZE: usize = 0x10000;
 
 pub struct Ch22Memory {
@@ -15,8 +13,6 @@ impl Ch22Memory {
         read_fallback: Box<dyn Fn(u16, u32) -> u8>,
         write_fallback: Box<dyn Fn(u16, u8, u32) -> bool>,
     ) -> Ch22Memory {
-        utils::set_panic_hook();
-
         Ch22Memory {
             ram: [0; RAM_SIZE],
             is_io,
