@@ -27,8 +27,6 @@ pub fn execute<IO: CpuIO>(
         get_next_instruction(io, registers, interrupt_due_state, allow_untested_in_wild);
 
     instruction.execute(io, registers, interrupt_due_state);
-
-    io.complete();
 }
 
 fn get_next_instruction<IO: CpuIO>(

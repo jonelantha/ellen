@@ -145,8 +145,6 @@ impl CpuIO for CycleManagerMock<'_> {
 
         (irq, nmi)
     }
-
-    fn complete(&mut self) {}
 }
 
 fn is_in_on_off_range(on_off_list: &Option<TestInterruptOnOffList>, cycle: u8) -> bool {

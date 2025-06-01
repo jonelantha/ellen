@@ -1,12 +1,14 @@
 use js_sys::Function;
 use wasm_bindgen::prelude::*;
 
-use crate::{cpu::Ch22Cpu, memory::Ch22Memory};
+use crate::cpu::*;
+use crate::cycle_manager::*;
+use crate::memory::*;
 
 #[wasm_bindgen]
 pub struct Ch22System {
     cpu: Ch22Cpu,
-    memory: Ch22Memory,
+    cycle_manager: CycleManager,
 }
 
 #[wasm_bindgen]
@@ -73,25 +75,37 @@ impl Ch22System {
             },
         );
 
+        let cycle_manager = CycleManager::new(
+            Ch22Memory::new(is_io, read_fallback, write_fallback),
+            get_irq_nmi,
+            do_phase_2,
+            wrap_counts,
+        );
+
         Ch22System {
-            cpu: Ch22Cpu::new(get_irq_nmi, do_phase_2, wrap_counts),
-            memory: Ch22Memory::new(is_io, read_fallback, write_fallback),
+            cpu: Ch22Cpu::new(),
+            cycle_manager,
         }
     }
 
     pub fn ram_start(&self) -> *const u8 {
-        self.memory.ram_start()
+        self.cycle_manager.memory.ram_start()
     }
 
     pub fn ram_size(&self) -> usize {
-        self.memory.ram_size()
+        self.cycle_manager.memory.ram_size()
     }
 
     pub fn reset(&mut self) {
-        self.cpu.reset(&mut self.memory);
+        self.cpu.reset(
+            self.cycle_manager.machine_cycles,
+            &mut self.cycle_manager.memory,
+        );
     }
 
     pub fn handle_next_instruction(&mut self) -> u32 {
-        self.cpu.handle_next_instruction(&mut self.memory)
+        self.cpu.handle_next_instruction(&mut self.cycle_manager);
+
+        self.cycle_manager.machine_cycles
     }
 }
