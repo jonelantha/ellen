@@ -1,23 +1,17 @@
+use crate::device::Ch22Device;
+
 const RAM_SIZE: usize = 0x10000;
 
 pub struct Ch22Memory {
     ram: [u8; RAM_SIZE],
-    is_io: Box<dyn Fn(u16) -> bool>,
     read_fallback: Box<dyn Fn(u16, u32) -> u8>,
-    write_fallback: Box<dyn Fn(u16, u8, u32) -> bool>,
 }
 
 impl Ch22Memory {
-    pub fn new(
-        is_io: Box<dyn Fn(u16) -> bool>,
-        read_fallback: Box<dyn Fn(u16, u32) -> u8>,
-        write_fallback: Box<dyn Fn(u16, u8, u32) -> bool>,
-    ) -> Ch22Memory {
+    pub fn new(read_fallback: Box<dyn Fn(u16, u32) -> u8>) -> Ch22Memory {
         Ch22Memory {
             ram: [0; RAM_SIZE],
-            is_io,
             read_fallback,
-            write_fallback,
         }
     }
 
@@ -28,8 +22,10 @@ impl Ch22Memory {
     pub fn ram_size(&self) -> usize {
         RAM_SIZE
     }
+}
 
-    pub fn read(&self, address: u16, machine_cycles: u32) -> u8 {
+impl Ch22Device for Ch22Memory {
+    fn read(&mut self, address: u16, machine_cycles: u32) -> u8 {
         match address {
             ..0x8000 => self.ram[address as usize],
             0x8000..0xc000 => (self.read_fallback)(address, machine_cycles),
@@ -39,21 +35,17 @@ impl Ch22Memory {
         }
     }
 
-    pub fn is_io(&self, address: u16) -> bool {
-        match address {
-            0xfc00..0xff00 => (self.is_io)(address),
-            _ => false,
-        }
+    fn is_slow(&self, _address: u16) -> bool {
+        false
     }
 
-    pub fn write(&mut self, address: u16, value: u8, machine_cycles: u32) -> bool {
-        match address {
-            ..0x8000 => {
-                self.ram[address as usize] = value;
-                false
-            }
-            0x8000..0xc000 => false,
-            _ => (self.write_fallback)(address, value, machine_cycles),
+    fn write(&mut self, address: u16, value: u8, _machine_cycles: u32) -> bool {
+        if let ..0x8000 = address {
+            self.ram[address as usize] = value
         }
+
+        false
     }
+
+    fn phase_2(&mut self, _machine_cycles: u32) {}
 }

@@ -3,6 +3,7 @@ use interrupt_due_state::*;
 use registers::*;
 
 use crate::cpu_io::CpuIO;
+use crate::device::*;
 use crate::memory::*;
 use crate::utils;
 use crate::word::Word;
@@ -12,6 +13,7 @@ pub mod interrupt_due_state;
 pub mod registers;
 pub mod util;
 
+#[derive(Default)]
 pub struct Ch22Cpu {
     registers: Registers,
     interrupt_due_state: InterruptDueState,
@@ -21,10 +23,7 @@ impl Ch22Cpu {
     pub fn new() -> Ch22Cpu {
         utils::set_panic_hook();
 
-        Ch22Cpu {
-            registers: Registers::default(),
-            interrupt_due_state: InterruptDueState::default(),
-        }
+        Ch22Cpu::default()
     }
 
     pub fn reset(&mut self, machine_cycles: u32, memory: &mut Ch22Memory) {
