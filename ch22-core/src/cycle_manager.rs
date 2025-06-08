@@ -9,7 +9,7 @@ use crate::word::Word;
 const CYCLE_WRAP: u32 = 0x3FFFFFFF;
 
 pub struct CycleManager {
-    pub machine_cycles: u32,
+    pub cycles: u32,
     needs_phase_2: Option<u16>,
     get_irq_nmi: Box<dyn Fn(u32) -> (bool, bool)>,
     wrap_counts: Box<dyn Fn(u32)>,
@@ -23,7 +23,7 @@ impl CycleManager {
         wrap_counts: Box<dyn Fn(u32)>,
     ) -> Self {
         CycleManager {
-            machine_cycles: 0,
+            cycles: 0,
             get_irq_nmi,
             wrap_counts,
             needs_phase_2: None,
@@ -46,14 +46,14 @@ impl CpuIO for CycleManager {
 
         let is_slow = device.is_slow(address);
 
-        if is_slow && self.machine_cycles & 1 != 0 {
-            self.machine_cycles += 1;
+        if is_slow && self.cycles & 1 != 0 {
+            self.cycles += 1;
         }
 
-        let value = device.read(address, self.machine_cycles);
+        let value = device.read(address, self.cycles);
 
         if is_slow {
-            self.machine_cycles += 1;
+            self.cycles += 1;
         }
 
         value
@@ -68,21 +68,21 @@ impl CpuIO for CycleManager {
 
         let is_slow = device.is_slow(address);
 
-        if is_slow && self.machine_cycles & 1 != 0 {
-            self.machine_cycles += 1;
+        if is_slow && self.cycles & 1 != 0 {
+            self.cycles += 1;
         }
 
-        if device.write(address, value, self.machine_cycles) {
+        if device.write(address, value, self.cycles) {
             self.needs_phase_2 = Some(address);
         }
 
         if is_slow {
-            self.machine_cycles += 1;
+            self.cycles += 1;
         }
     }
 
     fn get_irq_nmi(&mut self, interrupt_disable: bool) -> (bool, bool) {
-        let (irq, nmi) = (self.get_irq_nmi)(self.machine_cycles);
+        let (irq, nmi) = (self.get_irq_nmi)(self.cycles);
 
         (irq & !interrupt_disable, nmi)
     }
@@ -93,16 +93,16 @@ impl CycleManager {
         if let Some(address) = self.needs_phase_2 {
             let device = self.device_list.get_device(address);
 
-            device.phase_2(self.machine_cycles);
+            device.phase_2(self.cycles);
 
             self.needs_phase_2 = None;
         }
 
-        self.machine_cycles += 1;
+        self.cycles += 1;
 
-        if self.machine_cycles > CYCLE_WRAP {
+        if self.cycles > CYCLE_WRAP {
             (self.wrap_counts)(CYCLE_WRAP);
-            self.machine_cycles -= CYCLE_WRAP;
+            self.cycles -= CYCLE_WRAP;
         }
     }
 }

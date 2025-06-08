@@ -25,12 +25,12 @@ impl Ch22Memory {
 }
 
 impl Ch22Device for Ch22Memory {
-    fn read(&mut self, address: u16, machine_cycles: u32) -> u8 {
+    fn read(&mut self, address: u16, cycles: u32) -> u8 {
         match address {
             ..0x8000 => self.ram[address as usize],
-            0x8000..0xc000 => (self.read_fallback)(address, machine_cycles),
+            0x8000..0xc000 => (self.read_fallback)(address, cycles),
             0xc000..0xfc00 => self.ram[address as usize],
-            0xfc00..0xff00 => (self.read_fallback)(address, machine_cycles),
+            0xfc00..0xff00 => (self.read_fallback)(address, cycles),
             0xff00.. => self.ram[address as usize],
         }
     }
@@ -39,7 +39,7 @@ impl Ch22Device for Ch22Memory {
         false
     }
 
-    fn write(&mut self, address: u16, value: u8, _machine_cycles: u32) -> bool {
+    fn write(&mut self, address: u16, value: u8, _cycles: u32) -> bool {
         if let ..0x8000 = address {
             self.ram[address as usize] = value
         }
@@ -47,5 +47,5 @@ impl Ch22Device for Ch22Memory {
         false
     }
 
-    fn phase_2(&mut self, _machine_cycles: u32) {}
+    fn phase_2(&mut self, _cycles: u32) {}
 }

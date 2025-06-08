@@ -17,29 +17,29 @@ impl JsCh22Device {
         js_phase_2: Option<Function>,
         is_slow: bool,
     ) -> JsCh22Device {
-        let read = Box::new(move |address: u16, machine_cycles: u32| {
+        let read = Box::new(move |address: u16, cycles: u32| {
             js_read
-                .call2(&JsValue::NULL, &address.into(), &machine_cycles.into())
+                .call2(&JsValue::NULL, &address.into(), &cycles.into())
                 .expect("js_read error")
                 .as_f64()
                 .expect("js_read error") as u8
         });
 
-        let write = Box::new(move |address: u16, value: u8, machine_cycles: u32| {
+        let write = Box::new(move |address: u16, value: u8, cycles: u32| {
             js_write
                 .call3(
                     &JsValue::NULL,
                     &address.into(),
                     &value.into(),
-                    &machine_cycles.into(),
+                    &cycles.into(),
                 )
                 .expect("js_write error");
         });
 
         let phase_2 = js_phase_2.map(|js_phase_2| {
-            Box::new(move |machine_cycles: u32| {
+            Box::new(move |cycles: u32| {
                 js_phase_2
-                    .call1(&JsValue::NULL, &machine_cycles.into())
+                    .call1(&JsValue::NULL, &cycles.into())
                     .expect("js_phase_2 error");
             }) as Box<dyn Fn(u32)>
         });
@@ -54,19 +54,19 @@ impl JsCh22Device {
 }
 
 impl Ch22Device for JsCh22Device {
-    fn read(&mut self, address: u16, machine_cycles: u32) -> u8 {
-        (self.read)(address, machine_cycles)
+    fn read(&mut self, address: u16, cycles: u32) -> u8 {
+        (self.read)(address, cycles)
     }
 
-    fn write(&mut self, address: u16, value: u8, machine_cycles: u32) -> bool {
-        (self.write)(address, value, machine_cycles);
+    fn write(&mut self, address: u16, value: u8, cycles: u32) -> bool {
+        (self.write)(address, value, cycles);
 
         self.phase_2.is_some()
     }
 
-    fn phase_2(&mut self, machine_cycles: u32) {
+    fn phase_2(&mut self, cycles: u32) {
         if let Some(phase_2) = &self.phase_2 {
-            (phase_2)(machine_cycles);
+            (phase_2)(cycles);
         }
     }
 

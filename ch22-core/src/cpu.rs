@@ -26,14 +26,11 @@ impl Ch22Cpu {
         Ch22Cpu::default()
     }
 
-    pub fn reset(&mut self, machine_cycles: u32, memory: &mut Ch22Memory) {
+    pub fn reset(&mut self, cycles: u32, memory: &mut Ch22Memory) {
         let vector: u16 = RESET_VECTOR.into();
 
         self.registers = Registers {
-            program_counter: Word(
-                memory.read(vector, machine_cycles),
-                memory.read(vector + 1, machine_cycles),
-            ),
+            program_counter: Word(memory.read(vector, cycles), memory.read(vector + 1, cycles)),
             stack_pointer: 0xff,
             flags: ProcessorFlags {
                 interrupt_disable: true,

@@ -22,9 +22,9 @@ impl Ch22System {
     ) -> Ch22System {
         utils::set_panic_hook();
 
-        let get_irq_nmi = Box::new(move |machine_cycles: u32| {
+        let get_irq_nmi = Box::new(move |cycles: u32| {
             let flags = js_get_irq_nmi
-                .call1(&JsValue::NULL, &machine_cycles.into())
+                .call1(&JsValue::NULL, &cycles.into())
                 .expect("js_get_irq_nmi error")
                 .as_f64()
                 .expect("js_get_irq_nmi error") as u8;
@@ -39,9 +39,9 @@ impl Ch22System {
                 .expect("js_wrap_counts error");
         });
 
-        let read_fallback = Box::new(move |address: u16, machine_cycles: u32| -> u8 {
+        let read_fallback = Box::new(move |address: u16, cycles: u32| -> u8 {
             js_read_fallback
-                .call2(&JsValue::NULL, &address.into(), &machine_cycles.into())
+                .call2(&JsValue::NULL, &address.into(), &cycles.into())
                 .expect("js_read_fallback error")
                 .as_f64()
                 .expect("js_read_fallback error") as u8
@@ -66,7 +66,7 @@ impl Ch22System {
 
     pub fn reset(&mut self) {
         self.cpu.reset(
-            self.cycle_manager.machine_cycles,
+            self.cycle_manager.cycles,
             &mut self.cycle_manager.device_list.memory,
         );
     }
@@ -74,7 +74,7 @@ impl Ch22System {
     pub fn handle_next_instruction(&mut self) -> u32 {
         self.cpu.handle_next_instruction(&mut self.cycle_manager);
 
-        self.cycle_manager.machine_cycles
+        self.cycle_manager.cycles
     }
 
     pub fn add_device_js(
