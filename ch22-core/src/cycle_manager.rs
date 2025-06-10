@@ -1,9 +1,9 @@
-use std::collections::HashMap;
-use std::ops::RangeInclusive;
-
 use crate::cpu_io::*;
-use crate::device::*;
-use crate::memory::*;
+use crate::device::device::*;
+use crate::device::io_space::*;
+use crate::device::paged_rom::*;
+use crate::device::ram::*;
+use crate::device::rom::Ch22Rom;
 use crate::word::Word;
 
 const CYCLE_WRAP: u32 = 0x3FFFFFFF;
@@ -18,7 +18,10 @@ pub struct CycleManager {
 
 impl CycleManager {
     pub fn new(
-        memory: Ch22Memory,
+        ram: Ch22Ram,
+        paged_rom: Ch22PagedRom,
+        io_space: Ch22IOSpace,
+        rom: Ch22Rom,
         get_irq_nmi: Box<dyn Fn(u32) -> (bool, bool)>,
         wrap_counts: Box<dyn Fn(u32)>,
     ) -> Self {
@@ -27,7 +30,7 @@ impl CycleManager {
             get_irq_nmi,
             wrap_counts,
             needs_phase_2: None,
-            device_list: DeviceList::new(memory),
+            device_list: DeviceList::new(ram, paged_rom, io_space, rom),
         }
     }
 }
@@ -93,7 +96,7 @@ impl CycleManager {
         if let Some(address) = self.needs_phase_2 {
             let device = self.device_list.get_device(address);
 
-            device.phase_2(self.cycles);
+            device.phase_2(address, self.cycles);
 
             self.needs_phase_2 = None;
         }
@@ -108,39 +111,29 @@ impl CycleManager {
 }
 
 pub struct DeviceList {
-    next_device_id: u8,
-    devices: HashMap<u8, Box<dyn Ch22Device>>,
-    address_to_device_id: HashMap<u16, u8>,
-    pub memory: Ch22Memory,
+    pub ram: Ch22Ram,
+    pub paged_rom: Ch22PagedRom,
+    io_space: Ch22IOSpace,
+    pub rom: Ch22Rom,
 }
 
 impl DeviceList {
-    pub fn new(memory: Ch22Memory) -> Self {
+    pub fn new(ram: Ch22Ram, paged_rom: Ch22PagedRom, io_space: Ch22IOSpace, rom: Ch22Rom) -> Self {
         DeviceList {
-            next_device_id: 0,
-            devices: HashMap::new(),
-            address_to_device_id: HashMap::new(),
-            memory,
+            ram,
+            paged_rom,
+            io_space,
+            rom,
         }
-    }
-
-    pub fn add_device(&mut self, addresses: RangeInclusive<u16>, device: Box<dyn Ch22Device>) {
-        let device_id = self.next_device_id;
-
-        self.devices.insert(device_id, device);
-
-        for address in addresses {
-            self.address_to_device_id.insert(address, device_id);
-        }
-
-        self.next_device_id += 1;
     }
 
     fn get_device(&mut self, address: u16) -> &mut dyn Ch22Device {
-        let Some(device_id) = self.address_to_device_id.get(&address) else {
-            return &mut self.memory;
-        };
-
-        self.devices.get_mut(device_id).unwrap().as_mut()
+        match address {
+            ..0x8000 => &mut self.ram,
+            0x8000..0xc000 => &mut self.paged_rom,
+            0xc000..0xfc00 => &mut self.rom,
+            0xfc00..0xff00 => &mut self.io_space,
+            0xff00.. => &mut self.rom,
+        }
     }
 }

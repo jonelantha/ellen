@@ -3,8 +3,6 @@ use interrupt_due_state::*;
 use registers::*;
 
 use crate::cpu_io::CpuIO;
-use crate::device::*;
-use crate::memory::*;
 use crate::utils;
 use crate::word::Word;
 
@@ -26,11 +24,12 @@ impl Ch22Cpu {
         Ch22Cpu::default()
     }
 
-    pub fn reset(&mut self, cycles: u32, memory: &mut Ch22Memory) {
-        let vector: u16 = RESET_VECTOR.into();
-
+    pub fn reset<IO: CpuIO>(&mut self, io: &mut IO) {
         self.registers = Registers {
-            program_counter: Word(memory.read(vector, cycles), memory.read(vector + 1, cycles)),
+            program_counter: Word(
+                io.read(RESET_VECTOR),
+                io.read(RESET_VECTOR.same_page_add(1)),
+            ),
             stack_pointer: 0xff,
             flags: ProcessorFlags {
                 interrupt_disable: true,

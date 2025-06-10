@@ -1,7 +1,7 @@
 use js_sys::Function;
 use wasm_bindgen::JsValue;
 
-use crate::device::Ch22Device;
+use super::device::Ch22Device;
 
 pub struct JsCh22Device {
     read: Box<dyn Fn(u16, u32) -> u8>,
@@ -64,7 +64,7 @@ impl Ch22Device for JsCh22Device {
         self.phase_2.is_some()
     }
 
-    fn phase_2(&mut self, cycles: u32) {
+    fn phase_2(&mut self, _address: u16, cycles: u32) {
         if let Some(phase_2) = &self.phase_2 {
             (phase_2)(cycles);
         }

@@ -3,8 +3,10 @@ use wasm_bindgen::prelude::*;
 
 use crate::cpu::*;
 use crate::cycle_manager::*;
-use crate::js_device::*;
-use crate::memory::*;
+use crate::device::io_space::*;
+use crate::device::paged_rom::*;
+use crate::device::ram::*;
+use crate::device::rom::*;
 use crate::utils;
 
 #[wasm_bindgen]
@@ -16,9 +18,12 @@ pub struct Ch22System {
 #[wasm_bindgen]
 impl Ch22System {
     pub fn new(
+        ram: Ch22Ram,
+        paged_rom: Ch22PagedRom,
+        io_space: Ch22IOSpace,
+        rom: Ch22Rom,
         js_get_irq_nmi: Function,
         js_wrap_counts: Function,
-        js_read_fallback: Function,
     ) -> Ch22System {
         utils::set_panic_hook();
 
@@ -39,16 +44,8 @@ impl Ch22System {
                 .expect("js_wrap_counts error");
         });
 
-        let read_fallback = Box::new(move |address: u16, cycles: u32| -> u8 {
-            js_read_fallback
-                .call2(&JsValue::NULL, &address.into(), &cycles.into())
-                .expect("js_read_fallback error")
-                .as_f64()
-                .expect("js_read_fallback error") as u8
-        });
-
         let cycle_manager =
-            CycleManager::new(Ch22Memory::new(read_fallback), get_irq_nmi, wrap_counts);
+            CycleManager::new(ram, paged_rom, io_space, rom, get_irq_nmi, wrap_counts);
 
         Ch22System {
             cpu: Ch22Cpu::new(),
@@ -57,43 +54,20 @@ impl Ch22System {
     }
 
     pub fn ram_start(&self) -> *const u8 {
-        self.cycle_manager.device_list.memory.ram_start()
+        self.cycle_manager.device_list.ram.ram_start()
     }
 
     pub fn ram_size(&self) -> usize {
-        self.cycle_manager.device_list.memory.ram_size()
+        self.cycle_manager.device_list.ram.ram_size()
     }
 
     pub fn reset(&mut self) {
-        self.cpu.reset(
-            self.cycle_manager.cycles,
-            &mut self.cycle_manager.device_list.memory,
-        );
+        self.cpu.reset(&mut self.cycle_manager);
     }
 
     pub fn handle_next_instruction(&mut self) -> u32 {
         self.cpu.handle_next_instruction(&mut self.cycle_manager);
 
         self.cycle_manager.cycles
-    }
-
-    pub fn add_device_js(
-        &mut self,
-        start_address: u16,
-        end_address: u16,
-        js_read: Function,
-        js_write: Function,
-        js_write_phase_2: Option<Function>,
-        is_slow: bool,
-    ) {
-        self.cycle_manager.device_list.add_device(
-            start_address..=end_address,
-            Box::new(JsCh22Device::new(
-                js_read,
-                js_write,
-                js_write_phase_2,
-                is_slow,
-            )),
-        )
     }
 }
