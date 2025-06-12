@@ -1,7 +1,9 @@
 use js_sys::Function;
 use wasm_bindgen::JsValue;
 
-use super::device::Ch22Device;
+use crate::word::Word;
+
+use super::io_device::Ch22IODevice;
 
 pub struct JsCh22Device {
     read: Box<dyn Fn(u16, u32) -> u8>,
@@ -53,24 +55,24 @@ impl JsCh22Device {
     }
 }
 
-impl Ch22Device for JsCh22Device {
-    fn read(&mut self, address: u16, cycles: u32) -> u8 {
-        (self.read)(address, cycles)
+impl Ch22IODevice for JsCh22Device {
+    fn read(&mut self, address: Word, cycles: u32) -> u8 {
+        (self.read)(address.into(), cycles)
     }
 
-    fn write(&mut self, address: u16, value: u8, cycles: u32) -> bool {
-        (self.write)(address, value, cycles);
+    fn write(&mut self, address: Word, value: u8, cycles: u32) -> bool {
+        (self.write)(address.into(), value, cycles);
 
         self.phase_2.is_some()
     }
 
-    fn phase_2(&mut self, _address: u16, cycles: u32) {
+    fn phase_2(&mut self, _address: Word, cycles: u32) {
         if let Some(phase_2) = &self.phase_2 {
             (phase_2)(cycles);
         }
     }
 
-    fn is_slow(&self, _address: u16) -> bool {
+    fn is_slow(&self) -> bool {
         self.is_slow
     }
 }

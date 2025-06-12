@@ -3,10 +3,7 @@ use wasm_bindgen::prelude::*;
 
 use crate::cpu::*;
 use crate::cycle_manager::*;
-use crate::device::io_space::*;
-use crate::device::paged_rom::*;
-use crate::device::ram::*;
-use crate::device::rom::*;
+use crate::device_map::DeviceMap;
 use crate::utils;
 
 #[wasm_bindgen]
@@ -17,14 +14,7 @@ pub struct Ch22System {
 
 #[wasm_bindgen]
 impl Ch22System {
-    pub fn new(
-        ram: Ch22Ram,
-        paged_rom: Ch22PagedRom,
-        io_space: Ch22IOSpace,
-        rom: Ch22Rom,
-        js_get_irq_nmi: Function,
-        js_wrap_counts: Function,
-    ) -> Ch22System {
+    pub fn new(js_get_irq_nmi: Function, js_wrap_counts: Function) -> Ch22System {
         utils::set_panic_hook();
 
         let get_irq_nmi = Box::new(move |cycles: u32| {
@@ -44,8 +34,9 @@ impl Ch22System {
                 .expect("js_wrap_counts error");
         });
 
-        let cycle_manager =
-            CycleManager::new(ram, paged_rom, io_space, rom, get_irq_nmi, wrap_counts);
+        let device_map = DeviceMap::new();
+
+        let cycle_manager = CycleManager::new(device_map, get_irq_nmi, wrap_counts);
 
         Ch22System {
             cpu: Ch22Cpu::new(),
@@ -53,12 +44,39 @@ impl Ch22System {
         }
     }
 
+    pub fn load_os_rom(&mut self, data: &[u8]) {
+        self.cycle_manager.device_map.os_rom.load(data);
+    }
+
+    pub fn load_paged_rom(&mut self, bank: u8, data: &[u8]) {
+        self.cycle_manager.device_map.paged_rom.load(bank, data);
+    }
+
+    pub fn add_device_js(
+        &mut self,
+        start_address: u16,
+        end_address: u16,
+        js_read: Function,
+        js_write: Function,
+        is_slow: bool,
+        js_write_phase_2: Option<Function>,
+    ) {
+        self.cycle_manager.device_map.io_space.add_device_js(
+            start_address,
+            end_address,
+            js_read,
+            js_write,
+            is_slow,
+            js_write_phase_2,
+        );
+    }
+
     pub fn ram_start(&self) -> *const u8 {
-        self.cycle_manager.device_list.ram.ram_start()
+        self.cycle_manager.device_map.ram.ram_start()
     }
 
     pub fn ram_size(&self) -> usize {
-        self.cycle_manager.device_list.ram.ram_size()
+        self.cycle_manager.device_map.ram.ram_size()
     }
 
     pub fn reset(&mut self) {

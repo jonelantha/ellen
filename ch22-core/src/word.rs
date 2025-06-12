@@ -1,10 +1,16 @@
 /// low, high
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Copy, Default, Hash, Eq, PartialEq)]
 pub struct Word(pub u8, pub u8);
 
 impl From<Word> for u16 {
     fn from(Word(low, high): Word) -> Self {
         u16::from_le_bytes([low, high])
+    }
+}
+
+impl From<Word> for usize {
+    fn from(Word(low, high): Word) -> Self {
+        u16::from_le_bytes([low, high]) as usize
     }
 }
 
