@@ -1,12 +1,9 @@
 use std::{collections::HashMap, ops::RangeInclusive};
 
-use js_sys::Function;
-
 use crate::word::Word;
 
 use super::device::Ch22Device;
 use super::io_device::Ch22IODevice;
-use super::js_device::*;
 
 pub struct Ch22IOSpace {
     next_device_id: u8,
@@ -21,26 +18,6 @@ impl Ch22IOSpace {
             devices: HashMap::new(),
             address_to_device_id: HashMap::new(),
         }
-    }
-
-    pub fn add_device_js(
-        &mut self,
-        start_address: u16,
-        end_address: u16,
-        js_read: Function,
-        js_write: Function,
-        is_slow: bool,
-        js_write_phase_2: Option<Function>,
-    ) {
-        self.add_device(
-            start_address..=end_address,
-            Box::new(JsCh22Device::new(
-                js_read,
-                js_write,
-                js_write_phase_2,
-                is_slow,
-            )),
-        )
     }
 
     pub fn add_device(&mut self, addresses: RangeInclusive<u16>, device: Box<dyn Ch22IODevice>) {
@@ -61,6 +38,12 @@ impl Ch22IOSpace {
         } else {
             None
         }
+    }
+
+    pub fn get_nmi(&mut self, cycles: u32) -> bool {
+        self.devices
+            .values_mut()
+            .any(|device| device.get_nmi(cycles))
     }
 }
 

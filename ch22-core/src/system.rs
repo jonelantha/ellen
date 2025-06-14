@@ -4,6 +4,8 @@ use wasm_bindgen::prelude::*;
 use crate::cpu::*;
 use crate::cycle_manager::*;
 use crate::device_map::DeviceMap;
+use crate::devices::js_device::*;
+use crate::devices::js_device_ext::*;
 use crate::utils;
 
 #[wasm_bindgen]
@@ -18,14 +20,11 @@ impl Ch22System {
         utils::set_panic_hook();
 
         let get_irq_nmi = Box::new(move |cycles: u32| {
-            let flags = js_get_irq_nmi
+            js_get_irq_nmi
                 .call1(&JsValue::NULL, &cycles.into())
                 .expect("js_get_irq_nmi error")
-                .as_f64()
-                .expect("js_get_irq_nmi error") as u8;
-
-            // irq, nmi
-            (flags & 1 != 0, flags & 2 != 0)
+                .try_into()
+                .expect("js_get_irq_nmi error")
         });
 
         let wrap_counts = Box::new(move |wrap: u32| {
@@ -61,14 +60,37 @@ impl Ch22System {
         is_slow: bool,
         js_write_phase_2: Option<Function>,
     ) {
-        self.cycle_manager.device_map.io_space.add_device_js(
-            start_address,
-            end_address,
-            js_read,
-            js_write,
-            is_slow,
-            js_write_phase_2,
+        self.cycle_manager.device_map.io_space.add_device(
+            start_address..=end_address,
+            Box::new(JsCh22Device::new(
+                js_read,
+                js_write,
+                js_write_phase_2,
+                is_slow,
+            )),
         );
+    }
+
+    pub fn add_device_js_ext(
+        &mut self,
+        start_address: u16,
+        end_address: u16,
+        js_read: Function,
+        js_write: Function,
+        js_handle_trigger: Function,
+        is_slow: bool,
+        js_write_phase_2: Option<Function>,
+    ) {
+        self.cycle_manager.device_map.io_space.add_device(
+            start_address..=end_address,
+            Box::new(JsCh22DeviceExt::new(
+                js_read,
+                js_write,
+                js_handle_trigger,
+                js_write_phase_2,
+                is_slow,
+            )),
+        )
     }
 
     pub fn ram_start(&self) -> *const u8 {

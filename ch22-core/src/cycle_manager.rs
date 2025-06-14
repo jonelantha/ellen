@@ -7,7 +7,7 @@ const CYCLE_WRAP: u32 = 0x3FFFFFFF;
 pub struct CycleManager {
     pub cycles: u32,
     needs_phase_2: Option<Word>,
-    get_irq_nmi: Box<dyn Fn(u32) -> (bool, bool)>,
+    get_irq_nmi: Box<dyn Fn(u32) -> u64>,
     wrap_counts: Box<dyn Fn(u32)>,
     pub device_map: DeviceMap,
 }
@@ -15,7 +15,7 @@ pub struct CycleManager {
 impl CycleManager {
     pub fn new(
         device_map: DeviceMap,
-        get_irq_nmi: Box<dyn Fn(u32) -> (bool, bool)>,
+        get_irq_nmi: Box<dyn Fn(u32) -> u64>,
         wrap_counts: Box<dyn Fn(u32)>,
     ) -> Self {
         CycleManager {
@@ -55,7 +55,11 @@ impl CpuIO for CycleManager {
     }
 
     fn get_irq_nmi(&mut self, interrupt_disable: bool) -> (bool, bool) {
-        let (irq, nmi) = (self.get_irq_nmi)(self.cycles);
+        let nmi = self.device_map.io_space.get_nmi(self.cycles);
+
+        let value = (self.get_irq_nmi)(self.cycles);
+
+        let irq = (value & 0x1) != 0;
 
         (irq & !interrupt_disable, nmi)
     }

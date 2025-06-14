@@ -68,4 +68,8 @@ impl Ch22IODevice for Ch22RomSelect {
     }
 
     fn phase_2(&mut self, _address: Word, _cycles: u32) {}
+
+    fn get_nmi(&mut self, _cycles: u32) -> bool {
+        false
+    }
 }
