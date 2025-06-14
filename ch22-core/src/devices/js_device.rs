@@ -76,7 +76,7 @@ impl Ch22IODevice for JsCh22Device {
         self.is_slow
     }
 
-    fn get_nmi(&mut self, _cycles: u32) -> bool {
-        false
+    fn get_interrupt(&mut self, _cycles: u32) -> u16 {
+        0
     }
 }

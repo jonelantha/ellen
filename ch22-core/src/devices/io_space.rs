@@ -40,10 +40,10 @@ impl Ch22IOSpace {
         }
     }
 
-    pub fn get_nmi(&mut self, cycles: u32) -> bool {
-        self.devices
-            .values_mut()
-            .any(|device| device.get_nmi(cycles))
+    pub fn get_interrupt(&mut self, cycles: u32) -> u16 {
+        self.devices.values_mut().fold(0, |accumulator, device| {
+            accumulator | device.get_interrupt(cycles)
+        })
     }
 }
 
