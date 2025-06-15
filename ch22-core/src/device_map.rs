@@ -19,7 +19,10 @@ impl DeviceMap {
         let os_rom = Ch22Rom::new(0xc000);
         let paged_rom = Ch22PagedRom::new(0x8000);
 
-        io_space.add_device(0xfe30..=0xfe33, Box::new(paged_rom.get_rom_select()));
+        io_space.add_device(
+            &[0xfe30, 0xfe31, 0xfe32, 0xfe33],
+            Box::new(paged_rom.get_rom_select()),
+        );
 
         DeviceMap {
             ram,

@@ -1,4 +1,4 @@
-use std::{collections::HashMap, ops::RangeInclusive};
+use std::collections::HashMap;
 
 use crate::word::Word;
 
@@ -20,13 +20,14 @@ impl Ch22IOSpace {
         }
     }
 
-    pub fn add_device(&mut self, addresses: RangeInclusive<u16>, device: Box<dyn Ch22IODevice>) {
+    pub fn add_device(&mut self, addresses: &[u16], device: Box<dyn Ch22IODevice>) {
         let device_id = self.next_device_id;
 
         self.devices.insert(device_id, device);
 
         for address in addresses {
-            self.address_to_device_id.insert(address.into(), device_id);
+            self.address_to_device_id
+                .insert((*address).into(), device_id);
         }
 
         self.next_device_id += 1;

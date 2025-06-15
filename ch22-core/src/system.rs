@@ -53,15 +53,14 @@ impl Ch22System {
 
     pub fn add_device_js(
         &mut self,
-        start_address: u16,
-        end_address: u16,
+        addresses: &[u16],
         js_read: Function,
         js_write: Function,
         is_slow: bool,
         js_write_phase_2: Option<Function>,
     ) {
         self.cycle_manager.device_map.io_space.add_device(
-            start_address..=end_address,
+            addresses,
             Box::new(JsCh22Device::new(
                 js_read,
                 js_write,
@@ -73,8 +72,7 @@ impl Ch22System {
 
     pub fn add_device_js_ext(
         &mut self,
-        start_address: u16,
-        end_address: u16,
+        addresses: &[u16],
         js_read: Function,
         js_write: Function,
         js_handle_trigger: Function,
@@ -82,7 +80,7 @@ impl Ch22System {
         js_write_phase_2: Option<Function>,
     ) {
         self.cycle_manager.device_map.io_space.add_device(
-            start_address..=end_address,
+            addresses,
             Box::new(JsCh22DeviceExt::new(
                 js_read,
                 js_write,
