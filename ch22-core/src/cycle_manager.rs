@@ -55,14 +55,16 @@ impl CpuIO for CycleManager {
     }
 
     fn get_irq_nmi(&mut self, interrupt_disable: bool) -> (bool, bool) {
-        let interrupt = self.device_map.io_space.get_interrupt(self.cycles);
-        let nmi = (interrupt & 0xff) != 0;
+        let interrupt_flags = self.device_map.io_space.get_interrupt(self.cycles);
 
-        let value = (self.get_irq_nmi)(self.cycles);
+        let nmi = (interrupt_flags & 0x0f) != 0;
+        let irq = (interrupt_flags & 0xf0) != 0;
 
-        let irq = (value & 0x1) != 0;
+        let old_interrupt_flags = (self.get_irq_nmi)(self.cycles);
 
-        (irq & !interrupt_disable, nmi)
+        let old_irq = (old_interrupt_flags & 0xf0) != 0;
+
+        ((irq | old_irq) & !interrupt_disable, nmi)
     }
 }
 

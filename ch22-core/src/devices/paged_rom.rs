@@ -53,7 +53,7 @@ pub struct Ch22RomSelect {
 }
 
 impl Ch22IODevice for Ch22RomSelect {
-    fn read(&mut self, _address: Word, _cycles: u32) -> u8 {
+    fn read(&mut self, _address: Word, _cycles: u32, _interrupt: &mut u8) -> u8 {
         self.active_rom.get() as u8
     }
 
@@ -61,15 +61,13 @@ impl Ch22IODevice for Ch22RomSelect {
         false
     }
 
-    fn write(&mut self, _address: Word, value: u8, _cycles: u32) -> bool {
+    fn write(&mut self, _address: Word, value: u8, _cycles: u32, _interrupt: &mut u8) -> bool {
         self.active_rom.set(value as usize);
 
         false
     }
 
-    fn phase_2(&mut self, _address: Word, _cycles: u32) {}
+    fn phase_2(&mut self, _address: Word, _cycles: u32, _interrupt: &mut u8) {}
 
-    fn get_interrupt(&mut self, _cycles: u32) -> u16 {
-        0
-    }
+    fn sync(&mut self, _cycles: u32, _interrupt: &mut u8) {}
 }

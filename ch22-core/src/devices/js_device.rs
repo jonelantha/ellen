@@ -56,17 +56,17 @@ impl JsCh22Device {
 }
 
 impl Ch22IODevice for JsCh22Device {
-    fn read(&mut self, address: Word, cycles: u32) -> u8 {
+    fn read(&mut self, address: Word, cycles: u32, _interrupt: &mut u8) -> u8 {
         (self.read)(address.into(), cycles)
     }
 
-    fn write(&mut self, address: Word, value: u8, cycles: u32) -> bool {
+    fn write(&mut self, address: Word, value: u8, cycles: u32, _interrupt: &mut u8) -> bool {
         (self.write)(address.into(), value, cycles);
 
         self.phase_2.is_some()
     }
 
-    fn phase_2(&mut self, _address: Word, cycles: u32) {
+    fn phase_2(&mut self, _address: Word, cycles: u32, _interrupt: &mut u8) {
         if let Some(phase_2) = &self.phase_2 {
             (phase_2)(cycles);
         }
@@ -76,7 +76,5 @@ impl Ch22IODevice for JsCh22Device {
         self.is_slow
     }
 
-    fn get_interrupt(&mut self, _cycles: u32) -> u16 {
-        0
-    }
+    fn sync(&mut self, _cycles: u32, _interrupt: &mut u8) {}
 }
