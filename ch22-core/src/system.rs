@@ -93,8 +93,10 @@ impl Ch22System {
         self.cpu.reset(&mut self.cycle_manager);
     }
 
-    pub fn handle_next_instruction(&mut self) -> u32 {
-        self.cpu.handle_next_instruction(&mut self.cycle_manager);
+    pub fn run(&mut self, until: u32) -> u32 {
+        while self.cycle_manager.cycles < until {
+            self.cpu.handle_next_instruction(&mut self.cycle_manager);
+        }
 
         self.cycle_manager.cycles
     }
