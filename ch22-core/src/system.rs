@@ -108,4 +108,11 @@ impl Ch22System {
 
         self.cycle_manager.cycles
     }
+
+    pub fn set_interrupt(&mut self, mask: u8, interrupts: u8) {
+        self.cycle_manager
+            .device_map
+            .io_space
+            .set_interrupt(mask, interrupts);
+    }
 }

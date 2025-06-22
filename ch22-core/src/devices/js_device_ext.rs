@@ -9,7 +9,7 @@ pub struct JsCh22DeviceExt {
     read: Box<dyn Fn(u16, u32) -> u64>,
     write: Box<dyn Fn(u16, u8, u32) -> u64>,
     handle_trigger: Box<dyn Fn(u32) -> u64>,
-    phase_2: Option<Box<dyn Fn(u32)>>,
+    phase_2: Option<Box<dyn Fn(u32) -> u64>>,
     is_slow: bool,
     trigger: Option<u32>,
 }
@@ -47,8 +47,10 @@ impl JsCh22DeviceExt {
             Box::new(move |cycles: u32| {
                 js_phase_2
                     .call1(&JsValue::NULL, &cycles.into())
-                    .expect("js_phase_2 error");
-            }) as Box<dyn Fn(u32)>
+                    .expect("js_phase_2 error")
+                    .try_into()
+                    .expect("js_handle_trigger error")
+            }) as Box<dyn Fn(u32) -> u64>
         });
 
         let handle_trigger = Box::new(move |cycles: u32| {
@@ -83,9 +85,9 @@ impl Ch22IODevice for JsCh22DeviceExt {
         self.phase_2.is_some()
     }
 
-    fn phase_2(&mut self, _address: Word, cycles: u32, _interrupt: &mut u8) {
+    fn phase_2(&mut self, _address: Word, cycles: u32, interrupt: &mut u8) {
         if let Some(phase_2) = &self.phase_2 {
-            (phase_2)(cycles);
+            self.set_js_device_params(interrupt, (phase_2)(cycles));
         }
     }
 

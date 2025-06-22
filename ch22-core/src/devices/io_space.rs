@@ -30,6 +30,10 @@ impl Ch22IOSpace {
 
         self.interrupt
     }
+
+    pub fn set_interrupt(&mut self, mask: u8, interrupt_flags: u8) {
+        self.interrupt = (self.interrupt & !mask) | (interrupt_flags & mask);
+    }
 }
 
 impl Ch22Device for Ch22IOSpace {
