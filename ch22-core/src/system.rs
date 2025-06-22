@@ -16,16 +16,8 @@ pub struct Ch22System {
 
 #[wasm_bindgen]
 impl Ch22System {
-    pub fn new(js_get_irq_nmi: Function, js_wrap_counts: Function) -> Ch22System {
+    pub fn new(js_wrap_counts: Function) -> Ch22System {
         utils::set_panic_hook();
-
-        let get_irq_nmi = Box::new(move |cycles: u32| {
-            js_get_irq_nmi
-                .call1(&JsValue::NULL, &cycles.into())
-                .expect("js_get_irq_nmi error")
-                .try_into()
-                .expect("js_get_irq_nmi error")
-        });
 
         let wrap_counts = Box::new(move |wrap: u32| {
             js_wrap_counts
@@ -35,7 +27,7 @@ impl Ch22System {
 
         let device_map = DeviceMap::new();
 
-        let cycle_manager = CycleManager::new(device_map, get_irq_nmi, wrap_counts);
+        let cycle_manager = CycleManager::new(device_map, wrap_counts);
 
         Ch22System {
             cpu: Ch22Cpu::new(),
