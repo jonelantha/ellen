@@ -58,7 +58,7 @@ impl Ch22System {
         js_write: Function,
         is_slow: bool,
         js_write_phase_2: Option<Function>,
-    ) {
+    ) -> u8 {
         self.cycle_manager.device_map.io_space.add_device(
             addresses,
             Box::new(JsCh22Device::new(
@@ -67,7 +67,7 @@ impl Ch22System {
                 js_write_phase_2,
                 is_slow,
             )),
-        );
+        )
     }
 
     pub fn add_device_js_ext(
@@ -78,7 +78,7 @@ impl Ch22System {
         js_handle_trigger: Function,
         is_slow: bool,
         js_write_phase_2: Option<Function>,
-    ) {
+    ) -> u8 {
         self.cycle_manager.device_map.io_space.add_device(
             addresses,
             Box::new(JsCh22DeviceExt::new(
@@ -114,5 +114,12 @@ impl Ch22System {
             .device_map
             .io_space
             .set_interrupt(mask, interrupts);
+    }
+
+    pub fn set_device_trigger(&mut self, device_id: u8, trigger: Option<u32>) {
+        self.cycle_manager
+            .device_map
+            .io_space
+            .set_device_trigger(device_id, trigger);
     }
 }

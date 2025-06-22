@@ -102,6 +102,10 @@ impl Ch22IODevice for JsCh22DeviceExt {
             }
         }
     }
+
+    fn set_trigger(&mut self, trigger: Option<u32>) {
+        self.trigger = trigger;
+    }
 }
 
 impl JsCh22DeviceExt {

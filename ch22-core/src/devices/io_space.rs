@@ -19,8 +19,8 @@ impl Ch22IOSpace {
         }
     }
 
-    pub fn add_device(&mut self, addresses: &[u16], device: Box<dyn Ch22IODevice>) {
-        self.devices.add_device(addresses, device);
+    pub fn add_device(&mut self, addresses: &[u16], device: Box<dyn Ch22IODevice>) -> u8 {
+        self.devices.add_device(addresses, device)
     }
 
     pub fn get_interrupt(&mut self, cycles: u32) -> u8 {
@@ -33,6 +33,12 @@ impl Ch22IOSpace {
 
     pub fn set_interrupt(&mut self, mask: u8, interrupt_flags: u8) {
         self.interrupt = (self.interrupt & !mask) | (interrupt_flags & mask);
+    }
+
+    pub fn set_device_trigger(&mut self, device_id: u8, trigger: Option<u32>) {
+        self.devices
+            .get_device_by_id(device_id)
+            .set_trigger(trigger);
     }
 }
 
@@ -92,7 +98,7 @@ struct DeviceList {
 }
 
 impl DeviceList {
-    pub fn add_device(&mut self, addresses: &[u16], device: Box<dyn Ch22IODevice>) {
+    pub fn add_device(&mut self, addresses: &[u16], device: Box<dyn Ch22IODevice>) -> u8 {
         let device_id = self.next_device_id;
 
         self.devices.insert(device_id, device);
@@ -103,6 +109,12 @@ impl DeviceList {
         }
 
         self.next_device_id += 1;
+
+        device_id
+    }
+
+    fn get_device_by_id(&mut self, device_id: u8) -> &mut dyn Ch22IODevice {
+        self.devices.get_mut(&device_id).unwrap().as_mut()
     }
 
     fn get_device_mut(&mut self, address: Word) -> Option<&mut dyn Ch22IODevice> {
