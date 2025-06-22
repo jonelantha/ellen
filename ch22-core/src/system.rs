@@ -5,7 +5,7 @@ use crate::cpu::*;
 use crate::cycle_manager::*;
 use crate::device_map::DeviceMap;
 use crate::devices::constant_device::*;
-use crate::devices::js_device_ext::*;
+use crate::devices::js_device::*;
 use crate::utils;
 
 #[wasm_bindgen]
@@ -60,7 +60,7 @@ impl Ch22System {
         )
     }
 
-    pub fn add_device_js_ext(
+    pub fn add_device_js(
         &mut self,
         addresses: &[u16],
         js_read: Function,
@@ -71,7 +71,7 @@ impl Ch22System {
     ) -> u8 {
         self.cycle_manager.device_map.io_space.add_device(
             addresses,
-            Box::new(JsCh22DeviceExt::new(
+            Box::new(JsCh22Device::new(
                 js_read,
                 js_write,
                 js_handle_trigger,

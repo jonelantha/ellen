@@ -5,7 +5,7 @@ use crate::word::Word;
 
 use super::io_device::Ch22IODevice;
 
-pub struct JsCh22DeviceExt {
+pub struct JsCh22Device {
     read: Box<dyn Fn(u16, u32) -> u64>,
     write: Box<dyn Fn(u16, u8, u32) -> u64>,
     handle_trigger: Box<dyn Fn(u32) -> u64>,
@@ -14,7 +14,7 @@ pub struct JsCh22DeviceExt {
     trigger: Option<u32>,
 }
 
-impl JsCh22DeviceExt {
+impl JsCh22Device {
     pub fn new(
         js_read: Function,
         js_write: Function,
@@ -61,7 +61,7 @@ impl JsCh22DeviceExt {
                 .expect("js_handle_trigger error")
         });
 
-        JsCh22DeviceExt {
+        JsCh22Device {
             read,
             write,
             handle_trigger,
@@ -72,7 +72,7 @@ impl JsCh22DeviceExt {
     }
 }
 
-impl Ch22IODevice for JsCh22DeviceExt {
+impl Ch22IODevice for JsCh22Device {
     fn read(&mut self, address: Word, cycles: u32, interrupt: &mut u8) -> u8 {
         let value = self.set_js_device_params(interrupt, (self.read)(address.into(), cycles));
 
@@ -108,7 +108,7 @@ impl Ch22IODevice for JsCh22DeviceExt {
     }
 }
 
-impl JsCh22DeviceExt {
+impl JsCh22Device {
     // trig trig trig trig intmask intval flags value
 
     fn set_js_device_params(&mut self, interrupt: &mut u8, params_and_value: u64) -> u8 {
