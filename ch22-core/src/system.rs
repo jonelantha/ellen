@@ -4,6 +4,7 @@ use wasm_bindgen::prelude::*;
 use crate::cpu::*;
 use crate::cycle_manager::*;
 use crate::device_map::DeviceMap;
+use crate::devices::constant_device::*;
 use crate::devices::js_device::*;
 use crate::devices::js_device_ext::*;
 use crate::utils;
@@ -41,6 +42,23 @@ impl Ch22System {
 
     pub fn load_paged_rom(&mut self, bank: u8, data: &[u8]) {
         self.cycle_manager.device_map.paged_rom.load(bank, data);
+    }
+
+    pub fn add_constant_device(
+        &mut self,
+        addresses: &[u16],
+        read_value: u8,
+        is_slow: bool,
+        panic_on_write: bool,
+    ) -> u8 {
+        self.cycle_manager.device_map.io_space.add_device(
+            addresses,
+            Box::new(Ch22ConstantDevice {
+                read_value,
+                is_slow,
+                panic_on_write,
+            }),
+        )
     }
 
     pub fn add_device_js(
