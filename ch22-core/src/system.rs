@@ -5,7 +5,6 @@ use crate::cpu::*;
 use crate::cycle_manager::*;
 use crate::device_map::DeviceMap;
 use crate::devices::constant_device::*;
-use crate::devices::js_device::*;
 use crate::devices::js_device_ext::*;
 use crate::utils;
 
@@ -58,25 +57,6 @@ impl Ch22System {
                 is_slow,
                 panic_on_write,
             }),
-        )
-    }
-
-    pub fn add_device_js(
-        &mut self,
-        addresses: &[u16],
-        js_read: Function,
-        js_write: Function,
-        is_slow: bool,
-        js_write_phase_2: Option<Function>,
-    ) -> u8 {
-        self.cycle_manager.device_map.io_space.add_device(
-            addresses,
-            Box::new(JsCh22Device::new(
-                js_read,
-                js_write,
-                js_write_phase_2,
-                is_slow,
-            )),
         )
     }
 
