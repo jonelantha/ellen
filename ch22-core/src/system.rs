@@ -66,8 +66,7 @@ impl Ch22System {
         js_read: Function,
         js_write: Function,
         js_handle_trigger: Function,
-        is_slow: bool,
-        js_write_phase_2: Option<Function>,
+        flags: u8,
     ) -> u8 {
         self.cycle_manager.device_map.io_space.add_device(
             addresses,
@@ -75,8 +74,7 @@ impl Ch22System {
                 js_read,
                 js_write,
                 js_handle_trigger,
-                js_write_phase_2,
-                is_slow,
+                flags,
             )),
         )
     }

@@ -5,13 +5,16 @@ use crate::word::Word;
 
 use super::io_device::Ch22IODevice;
 
+const JS_DEVICE_SLOW: u8 = 0b00000001;
+const JS_DEVICE_PHASE_2_WRITE: u8 = 0b00000010;
+
 pub struct JsCh22Device {
     read: Box<dyn Fn(u16, u32) -> u64>,
     write: Box<dyn Fn(u16, u8, u32) -> u64>,
     handle_trigger: Box<dyn Fn(u32) -> u64>,
-    phase_2: Option<Box<dyn Fn(u32) -> u64>>,
-    is_slow: bool,
+    flags: u8,
     trigger: Option<u32>,
+    phase_2_data: Option<(Word, u8)>,
 }
 
 impl JsCh22Device {
@@ -19,8 +22,7 @@ impl JsCh22Device {
         js_read: Function,
         js_write: Function,
         js_handle_trigger: Function,
-        js_phase_2: Option<Function>,
-        is_slow: bool,
+        flags: u8,
     ) -> Self {
         let read = Box::new(move |address: u16, cycles: u32| {
             js_read
@@ -43,16 +45,6 @@ impl JsCh22Device {
                 .expect("js_write error")
         });
 
-        let phase_2 = js_phase_2.map(|js_phase_2| {
-            Box::new(move |cycles: u32| {
-                js_phase_2
-                    .call1(&JsValue::NULL, &cycles.into())
-                    .expect("js_phase_2 error")
-                    .try_into()
-                    .expect("js_handle_trigger error")
-            }) as Box<dyn Fn(u32) -> u64>
-        });
-
         let handle_trigger = Box::new(move |cycles: u32| {
             js_handle_trigger
                 .call1(&JsValue::NULL, &cycles.into())
@@ -65,9 +57,9 @@ impl JsCh22Device {
             read,
             write,
             handle_trigger,
-            phase_2,
-            is_slow,
+            flags,
             trigger: None,
+            phase_2_data: None,
         }
     }
 }
@@ -80,19 +72,24 @@ impl Ch22IODevice for JsCh22Device {
     }
 
     fn write(&mut self, address: Word, value: u8, cycles: u32, interrupt: &mut u8) -> bool {
-        self.set_js_device_params(interrupt, (self.write)(address.into(), value, cycles));
+        if self.flags & JS_DEVICE_PHASE_2_WRITE == 0 {
+            self.set_js_device_params(interrupt, (self.write)(address.into(), value, cycles));
+            false
+        } else {
+            self.phase_2_data = Some((address, value));
 
-        self.phase_2.is_some()
-    }
-
-    fn phase_2(&mut self, _address: Word, cycles: u32, interrupt: &mut u8) {
-        if let Some(phase_2) = &self.phase_2 {
-            self.set_js_device_params(interrupt, (phase_2)(cycles));
+            true
         }
     }
 
+    fn phase_2(&mut self, cycles: u32, interrupt: &mut u8) {
+        let (address, value) = self.phase_2_data.unwrap();
+
+        self.set_js_device_params(interrupt, (self.write)(address.into(), value, cycles));
+    }
+
     fn is_slow(&self) -> bool {
-        self.is_slow
+        self.flags & JS_DEVICE_SLOW != 0
     }
 
     fn sync(&mut self, cycles: u32, interrupt: &mut u8) {

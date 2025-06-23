@@ -85,7 +85,7 @@ impl Ch22Device for Ch22IOSpace {
 
     fn phase_2(&mut self, address: Word, cycles: u32) {
         if let Some(device) = self.devices.get_device_mut(address) {
-            device.phase_2(address, cycles, &mut self.interrupt);
+            device.phase_2(cycles, &mut self.interrupt);
         }
     }
 }
