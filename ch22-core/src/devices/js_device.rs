@@ -12,6 +12,7 @@ pub struct JsCh22Device {
     read: Box<dyn Fn(u16, u32) -> u64>,
     write: Box<dyn Fn(u16, u8, u32) -> u64>,
     handle_trigger: Box<dyn Fn(u32) -> u64>,
+    wrap_trigger: Box<dyn Fn(u32)>,
     flags: u8,
     trigger: Option<u32>,
     phase_2_data: Option<(Word, u8)>,
@@ -22,6 +23,7 @@ impl JsCh22Device {
         js_read: Function,
         js_write: Function,
         js_handle_trigger: Function,
+        js_wrap_trigger: Function,
         flags: u8,
     ) -> Self {
         let read = Box::new(move |address: u16, cycles: u32| {
@@ -53,10 +55,17 @@ impl JsCh22Device {
                 .expect("js_handle_trigger error")
         });
 
+        let wrap_trigger = Box::new(move |wrap: u32| {
+            js_wrap_trigger
+                .call1(&JsValue::NULL, &wrap.into())
+                .expect("js_wrap_trigger error");
+        });
+
         JsCh22Device {
             read,
             write,
             handle_trigger,
+            wrap_trigger,
             flags,
             trigger: None,
             phase_2_data: None,
@@ -102,6 +111,13 @@ impl Ch22IODevice for JsCh22Device {
 
     fn set_trigger(&mut self, trigger: Option<u32>) {
         self.trigger = trigger;
+    }
+
+    fn wrap_trigger(&mut self, wrap: u32) {
+        if let Some(trigger) = self.trigger {
+            self.trigger = Some(trigger - wrap);
+        }
+        (self.wrap_trigger)(wrap);
     }
 }
 

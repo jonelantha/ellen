@@ -16,18 +16,12 @@ pub struct Ch22System {
 
 #[wasm_bindgen]
 impl Ch22System {
-    pub fn new(js_wrap_counts: Function) -> Ch22System {
+    pub fn new() -> Ch22System {
         utils::set_panic_hook();
-
-        let wrap_counts = Box::new(move |wrap: u32| {
-            js_wrap_counts
-                .call1(&JsValue::NULL, &wrap.into())
-                .expect("js_wrap_counts error");
-        });
 
         let device_map = DeviceMap::new();
 
-        let cycle_manager = CycleManager::new(device_map, wrap_counts);
+        let cycle_manager = CycleManager::new(device_map);
 
         Ch22System {
             cpu: Ch22Cpu::new(),
@@ -66,6 +60,7 @@ impl Ch22System {
         js_read: Function,
         js_write: Function,
         js_handle_trigger: Function,
+        js_wrap_trigger: Function,
         flags: u8,
     ) -> u8 {
         self.cycle_manager.device_map.io_space.add_device(
@@ -74,6 +69,7 @@ impl Ch22System {
                 js_read,
                 js_write,
                 js_handle_trigger,
+                js_wrap_trigger,
                 flags,
             )),
         )
@@ -91,8 +87,10 @@ impl Ch22System {
         self.cpu.reset(&mut self.cycle_manager);
     }
 
-    pub fn run(&mut self, until: u32) -> u32 {
-        while self.cycle_manager.cycles < until {
+    pub fn run(&mut self, run_until: u32) -> u32 {
+        self.cycle_manager.run_until = run_until;
+
+        while self.cycle_manager.is_running() {
             self.cpu.handle_next_instruction(&mut self.cycle_manager);
         }
 

@@ -40,6 +40,12 @@ impl Ch22IOSpace {
             .get_device_by_id(device_id)
             .set_trigger(trigger);
     }
+
+    pub fn wrap_triggers(&mut self, wrap: u32) {
+        for device in self.devices.get_all_mut() {
+            device.wrap_trigger(wrap);
+        }
+    }
 }
 
 impl Ch22Device for Ch22IOSpace {

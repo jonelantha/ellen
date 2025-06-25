@@ -20,13 +20,7 @@ impl Ch22IODevice for Ch22ConstantDevice {
         false
     }
 
-    fn phase_2(&mut self, _cycles: u32, _interrupt: &mut u8) {}
-
     fn is_slow(&self) -> bool {
         self.is_slow
     }
-
-    fn sync(&mut self, _cycles: u32, _interrupt: &mut u8) {}
-
-    fn set_trigger(&mut self, _trigger: Option<u32>) {}
 }
