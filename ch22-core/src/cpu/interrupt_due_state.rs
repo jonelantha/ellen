@@ -6,9 +6,8 @@ pub struct InterruptDueState {
     pub interrupt_due: Option<InterruptType>,
 }
 
-#[derive(PartialEq, Default, Clone, Copy, Debug)]
+#[derive(PartialEq, Clone, Copy, Debug)]
 pub enum InterruptType {
-    #[default]
     IRQ,
     NMI,
 }
