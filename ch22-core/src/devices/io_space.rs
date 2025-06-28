@@ -23,10 +23,6 @@ impl Ch22IOSpace {
     }
 
     pub fn get_interrupt(&mut self, cycles: u32, interrupt_disable: bool) -> InterruptLines {
-        self.devices.get_all_mut().for_each(|device| {
-            device.sync(cycles);
-        });
-
         let irq = if interrupt_disable {
             false
         } else {
@@ -41,6 +37,12 @@ impl Ch22IOSpace {
             .any(|device| device.get_nmi(cycles));
 
         InterruptLines { irq, nmi }
+    }
+
+    pub fn sync(&mut self, cycles: u32) {
+        for device in self.devices.get_all_mut() {
+            device.sync(cycles);
+        }
     }
 
     pub fn set_device_irq(&mut self, device_id: u8, irq: bool) {

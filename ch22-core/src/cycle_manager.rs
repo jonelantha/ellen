@@ -54,6 +54,10 @@ impl CpuIO for CycleManager {
             .io_space
             .get_interrupt(self.cycles, interrupt_disable)
     }
+
+    fn instruction_ended(&mut self) {
+        self.device_map.io_space.sync(self.cycles)
+    }
 }
 
 impl CycleManager {
