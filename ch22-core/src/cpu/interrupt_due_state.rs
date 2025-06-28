@@ -1,15 +1,10 @@
 use crate::cpu_io::*;
+use crate::interrupt_type::*;
 
 #[derive(PartialEq, Default, Debug)]
 pub struct InterruptDueState {
     pub previous_nmi: bool,
     pub interrupt_due: Option<InterruptType>,
-}
-
-#[derive(PartialEq, Clone, Copy, Debug)]
-pub enum InterruptType {
-    IRQ,
-    NMI,
 }
 
 pub fn update_interrupt_due_state<IO: CpuIO>(

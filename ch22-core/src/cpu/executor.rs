@@ -1,6 +1,7 @@
 use super::interrupt_due_state::*;
 use super::registers::*;
 use crate::cpu_io::*;
+use crate::interrupt_type::*;
 use crate::word::*;
 
 mod accumulator_binary_ops;
