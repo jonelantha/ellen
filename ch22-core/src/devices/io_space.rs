@@ -1,20 +1,19 @@
 use std::collections::HashMap;
 use std::collections::hash_map::ValuesMut;
 
+use crate::interrupt_lines::InterruptLines;
 use crate::word::Word;
 
 use super::device::Ch22Device;
 use super::io_device::Ch22IODevice;
 
 pub struct Ch22IOSpace {
-    interrupt: u8,
     devices: DeviceList,
 }
 
 impl Ch22IOSpace {
     pub fn new() -> Self {
         Ch22IOSpace {
-            interrupt: 0,
             devices: DeviceList::default(),
         }
     }
@@ -23,16 +22,29 @@ impl Ch22IOSpace {
         self.devices.add_device(addresses, device)
     }
 
-    pub fn get_interrupt(&mut self, cycles: u32) -> u8 {
-        self.devices
-            .get_all_mut()
-            .for_each(|device| device.sync(cycles, &mut self.interrupt));
+    pub fn get_interrupt(&mut self, cycles: u32, interrupt_disable: bool) -> InterruptLines {
+        self.devices.get_all_mut().for_each(|device| {
+            device.sync(cycles);
+        });
 
-        self.interrupt
+        let irq = if interrupt_disable {
+            false
+        } else {
+            self.devices
+                .get_all_mut()
+                .any(|device| device.get_irq(cycles))
+        };
+
+        let nmi = self
+            .devices
+            .get_all_mut()
+            .any(|device| device.get_nmi(cycles));
+
+        InterruptLines { irq, nmi }
     }
 
-    pub fn set_interrupt(&mut self, mask: u8, interrupt_flags: u8) {
-        self.interrupt = (self.interrupt & !mask) | (interrupt_flags & mask);
+    pub fn set_device_irq(&mut self, device_id: u8, irq: bool) {
+        self.devices.get_device_by_id(device_id).set_irq(irq);
     }
 
     pub fn set_device_trigger(&mut self, device_id: u8, trigger: Option<u32>) {
@@ -60,7 +72,7 @@ impl Ch22Device for Ch22IOSpace {
             *cycles += 1;
         }
 
-        let value = device.read(address, *cycles, &mut self.interrupt);
+        let value = device.read(address, *cycles);
 
         if is_slow {
             *cycles += 1;
@@ -80,7 +92,7 @@ impl Ch22Device for Ch22IOSpace {
             *cycles += 1;
         }
 
-        let needs_phase_2 = device.write(address, value, *cycles, &mut self.interrupt);
+        let needs_phase_2 = device.write(address, value, *cycles);
 
         if is_slow {
             *cycles += 1;
@@ -91,7 +103,7 @@ impl Ch22Device for Ch22IOSpace {
 
     fn phase_2(&mut self, address: Word, cycles: u32) {
         if let Some(device) = self.devices.get_device_mut(address) {
-            device.phase_2(cycles, &mut self.interrupt);
+            device.phase_2(cycles);
         }
     }
 }

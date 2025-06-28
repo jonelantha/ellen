@@ -5,8 +5,11 @@ use crate::word::Word;
 
 use super::io_device::Ch22IODevice;
 
-const JS_DEVICE_SLOW: u8 = 0b00000001;
-const JS_DEVICE_PHASE_2_WRITE: u8 = 0b00000010;
+const JS_DEVICE_SLOW: u8 = 0b0000_0001;
+const JS_DEVICE_PHASE_2_WRITE: u8 = 0b0000_0010;
+const JS_DEVICE_SYNC: u8 = 0b0000_0100;
+const JS_DEVICE_NMI: u8 = 0b0001_0000;
+const JS_DEVICE_IRQ: u8 = 0b0010_0000;
 
 pub struct JsCh22Device {
     read: Box<dyn Fn(u16, u32) -> u64>,
@@ -16,6 +19,7 @@ pub struct JsCh22Device {
     flags: u8,
     trigger: Option<u32>,
     phase_2_data: Option<(Word, u8)>,
+    interrupt: bool,
 }
 
 impl JsCh22Device {
@@ -69,20 +73,21 @@ impl JsCh22Device {
             flags,
             trigger: None,
             phase_2_data: None,
+            interrupt: false,
         }
     }
 }
 
 impl Ch22IODevice for JsCh22Device {
-    fn read(&mut self, address: Word, cycles: u32, interrupt: &mut u8) -> u8 {
-        let value = self.set_js_device_params(interrupt, (self.read)(address.into(), cycles));
+    fn read(&mut self, address: Word, cycles: u32) -> u8 {
+        let value = self.set_js_device_params((self.read)(address.into(), cycles));
 
         (value & 0xff) as u8
     }
 
-    fn write(&mut self, address: Word, value: u8, cycles: u32, interrupt: &mut u8) -> bool {
+    fn write(&mut self, address: Word, value: u8, cycles: u32) -> bool {
         if self.flags & JS_DEVICE_PHASE_2_WRITE == 0 {
-            self.set_js_device_params(interrupt, (self.write)(address.into(), value, cycles));
+            self.set_js_device_params((self.write)(address.into(), value, cycles));
             false
         } else {
             self.phase_2_data = Some((address, value));
@@ -91,21 +96,45 @@ impl Ch22IODevice for JsCh22Device {
         }
     }
 
-    fn phase_2(&mut self, cycles: u32, interrupt: &mut u8) {
+    fn phase_2(&mut self, cycles: u32) {
         let (address, value) = self.phase_2_data.unwrap();
 
-        self.set_js_device_params(interrupt, (self.write)(address.into(), value, cycles));
+        self.set_js_device_params((self.write)(address.into(), value, cycles));
+    }
+
+    fn sync(&mut self, cycles: u32) {
+        if self.flags & JS_DEVICE_SYNC != 0 {
+            self.sync_internal(cycles);
+        }
     }
 
     fn is_slow(&self) -> bool {
         self.flags & JS_DEVICE_SLOW != 0
     }
 
-    fn sync(&mut self, cycles: u32, interrupt: &mut u8) {
-        if let Some(trigger) = self.trigger {
-            if trigger <= cycles {
-                self.set_js_device_params(interrupt, (self.handle_trigger)(cycles));
-            }
+    fn get_irq(&mut self, cycles: u32) -> bool {
+        if self.flags & JS_DEVICE_IRQ == 0 {
+            return false;
+        }
+
+        self.sync_internal(cycles);
+
+        return self.interrupt;
+    }
+
+    fn get_nmi(&mut self, cycles: u32) -> bool {
+        if self.flags & JS_DEVICE_NMI == 0 {
+            return false;
+        }
+
+        self.sync_internal(cycles);
+
+        return self.interrupt;
+    }
+
+    fn set_irq(&mut self, irq: bool) {
+        if self.flags & JS_DEVICE_IRQ != 0 {
+            self.interrupt = irq;
         }
     }
 
@@ -122,15 +151,21 @@ impl Ch22IODevice for JsCh22Device {
 }
 
 impl JsCh22Device {
-    // trig trig trig trig intmask intval flags value
+    fn sync_internal(&mut self, cycles: u32) {
+        if let Some(trigger) = self.trigger {
+            if trigger <= cycles {
+                self.set_js_device_params((self.handle_trigger)(cycles));
+            }
+        }
+    }
 
-    fn set_js_device_params(&mut self, interrupt: &mut u8, params_and_value: u64) -> u8 {
-        let interrupt_mask = ((params_and_value >> 24) & 0xff) as u8;
-        let interrupt_flags = ((params_and_value >> 16) & 0xff) as u8;
+    // trig trig trig trig null null flags value
+
+    fn set_js_device_params(&mut self, params_and_value: u64) -> u8 {
         let flags = (params_and_value >> 8) & 0xff;
         let value = ((params_and_value) & 0xff) as u8;
 
-        *interrupt = (*interrupt & !interrupt_mask) | (interrupt_flags & interrupt_mask);
+        self.interrupt = flags & 0x02 != 0;
 
         self.trigger = if flags & 0x01 != 0 {
             Some((params_and_value >> 32) as u32)
