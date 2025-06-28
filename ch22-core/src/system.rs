@@ -97,11 +97,11 @@ impl Ch22System {
         self.cycle_manager.cycles
     }
 
-    pub fn set_device_irq(&mut self, device_id: u8, irq: bool) {
+    pub fn set_device_interrupt(&mut self, device_id: u8, interrupt: bool) {
         self.cycle_manager
             .device_map
             .io_space
-            .set_device_irq(device_id, irq);
+            .set_interrupt(device_id, interrupt);
     }
 
     pub fn set_device_trigger(&mut self, device_id: u8, trigger: Option<u32>) {

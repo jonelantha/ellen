@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::collections::hash_map::ValuesMut;
 
+use crate::interrupt_type::InterruptType;
 use crate::word::Word;
 
 use super::device::Ch22Device;
@@ -21,16 +22,10 @@ impl Ch22IOSpace {
         self.devices.add_device(addresses, device)
     }
 
-    pub fn get_irq(&mut self, cycles: u32) -> bool {
+    pub fn get_interrupt(&mut self, interrupt_type: InterruptType, cycles: u32) -> bool {
         self.devices
             .get_all_mut()
-            .any(|device| device.get_irq(cycles))
-    }
-
-    pub fn get_nmi(&mut self, cycles: u32) -> bool {
-        self.devices
-            .get_all_mut()
-            .any(|device| device.get_nmi(cycles))
+            .any(|device| device.get_interrupt(interrupt_type, cycles))
     }
 
     pub fn sync(&mut self, cycles: u32) {
@@ -39,8 +34,10 @@ impl Ch22IOSpace {
         }
     }
 
-    pub fn set_device_irq(&mut self, device_id: u8, irq: bool) {
-        self.devices.get_device_by_id(device_id).set_irq(irq);
+    pub fn set_interrupt(&mut self, device_id: u8, iterrupt: bool) {
+        self.devices
+            .get_device_by_id(device_id)
+            .set_interrupt(iterrupt);
     }
 
     pub fn set_device_trigger(&mut self, device_id: u8, trigger: Option<u32>) {

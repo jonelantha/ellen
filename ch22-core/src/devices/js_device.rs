@@ -1,6 +1,7 @@
 use js_sys::Function;
 use wasm_bindgen::JsValue;
 
+use crate::interrupt_type::InterruptType;
 use crate::word::Word;
 
 use super::io_device::Ch22IODevice;
@@ -20,6 +21,7 @@ pub struct JsCh22Device {
     trigger: Option<u32>,
     phase_2_data: Option<(Word, u8)>,
     interrupt: bool,
+    interrupt_type: Option<InterruptType>,
 }
 
 impl JsCh22Device {
@@ -65,6 +67,12 @@ impl JsCh22Device {
                 .expect("js_wrap_trigger error");
         });
 
+        let interrupt_type = match flags & (JS_DEVICE_IRQ | JS_DEVICE_NMI) {
+            JS_DEVICE_IRQ => Some(InterruptType::IRQ),
+            JS_DEVICE_NMI => Some(InterruptType::NMI),
+            _ => None,
+        };
+
         JsCh22Device {
             read,
             write,
@@ -74,6 +82,7 @@ impl JsCh22Device {
             trigger: None,
             phase_2_data: None,
             interrupt: false,
+            interrupt_type,
         }
     }
 }
@@ -112,8 +121,8 @@ impl Ch22IODevice for JsCh22Device {
         self.flags & JS_DEVICE_SLOW != 0
     }
 
-    fn get_irq(&mut self, cycles: u32) -> bool {
-        if self.flags & JS_DEVICE_IRQ == 0 {
+    fn get_interrupt(&mut self, interrupt_type: InterruptType, cycles: u32) -> bool {
+        if self.interrupt_type.is_none() || self.interrupt_type != Some(interrupt_type) {
             return false;
         }
 
@@ -122,20 +131,12 @@ impl Ch22IODevice for JsCh22Device {
         return self.interrupt;
     }
 
-    fn get_nmi(&mut self, cycles: u32) -> bool {
-        if self.flags & JS_DEVICE_NMI == 0 {
-            return false;
+    fn set_interrupt(&mut self, interrupt: bool) {
+        if self.interrupt_type.is_none() {
+            return;
         }
 
-        self.sync_internal(cycles);
-
-        return self.interrupt;
-    }
-
-    fn set_irq(&mut self, irq: bool) {
-        if self.flags & JS_DEVICE_IRQ != 0 {
-            self.interrupt = irq;
-        }
+        self.interrupt = interrupt;
     }
 
     fn set_trigger(&mut self, trigger: Option<u32>) {

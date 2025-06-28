@@ -135,20 +135,18 @@ impl CpuIO for CycleManagerMock<'_> {
         self.cycle_check_nmi = false;
     }
 
-    fn get_irq(&mut self) -> bool {
-        self.cycle_check_irq = true;
+    fn get_interrupt(&mut self, interrupt_type: InterruptType) -> bool {
+        match interrupt_type {
+            InterruptType::IRQ => self.cycle_check_irq = true,
+            InterruptType::NMI => self.cycle_check_nmi = true,
+        }
 
         let current_cycle = self.cycles.len() as u8;
 
-        is_in_on_off_range(self.irq_on_off_list, current_cycle)
-    }
-
-    fn get_nmi(&mut self) -> bool {
-        self.cycle_check_nmi = true;
-
-        let current_cycle = self.cycles.len() as u8;
-
-        is_in_on_off_range(self.nmi_on_off_list, current_cycle)
+        match interrupt_type {
+            InterruptType::IRQ => is_in_on_off_range(self.irq_on_off_list, current_cycle),
+            InterruptType::NMI => is_in_on_off_range(self.nmi_on_off_list, current_cycle),
+        }
     }
 
     fn instruction_ended(&mut self) {}

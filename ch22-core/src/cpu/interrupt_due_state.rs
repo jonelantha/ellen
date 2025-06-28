@@ -12,7 +12,7 @@ pub fn update_interrupt_due_state<IO: CpuIO>(
     io: &mut IO,
     interrupt_disable: bool,
 ) {
-    let nmi = io.get_nmi();
+    let nmi = io.get_interrupt(InterruptType::NMI);
 
     if interrupt_due_state.previous_nmi != nmi {
         if nmi {
@@ -22,7 +22,7 @@ pub fn update_interrupt_due_state<IO: CpuIO>(
     }
 
     if !interrupt_disable && interrupt_due_state.interrupt_due.is_none() {
-        if io.get_irq() {
+        if io.get_interrupt(InterruptType::IRQ) {
             interrupt_due_state.interrupt_due = Some(InterruptType::IRQ);
         }
     }

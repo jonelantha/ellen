@@ -1,3 +1,4 @@
+use crate::interrupt_type::InterruptType;
 use crate::word::Word;
 
 pub trait Ch22IODevice {
@@ -8,11 +9,8 @@ pub trait Ch22IODevice {
     fn sync(&mut self, _cycles: u32) {}
     fn set_trigger(&mut self, _trigger: Option<u32>) {}
     fn wrap_trigger(&mut self, _wrap: u32) {}
-    fn get_irq(&mut self, _cycles: u32) -> bool {
+    fn get_interrupt(&mut self, _interrupt_type: InterruptType, _cycles: u32) -> bool {
         false
     }
-    fn get_nmi(&mut self, _cycles: u32) -> bool {
-        false
-    }
-    fn set_irq(&mut self, _irq: bool) {}
+    fn set_interrupt(&mut self, _interrupt: bool) {}
 }
