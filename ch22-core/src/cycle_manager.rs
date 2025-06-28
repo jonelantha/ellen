@@ -1,6 +1,5 @@
 use crate::cpu_io::*;
 use crate::device_map::*;
-use crate::interrupt_lines::*;
 use crate::word::Word;
 
 const CYCLE_WRAP: u32 = 0x3FFFFFFF;
@@ -49,10 +48,12 @@ impl CpuIO for CycleManager {
         }
     }
 
-    fn get_irq_nmi(&mut self, interrupt_disable: bool) -> InterruptLines {
-        self.device_map
-            .io_space
-            .get_interrupt(self.cycles, interrupt_disable)
+    fn get_irq(&mut self) -> bool {
+        self.device_map.io_space.get_irq(self.cycles)
+    }
+
+    fn get_nmi(&mut self) -> bool {
+        self.device_map.io_space.get_nmi(self.cycles)
     }
 
     fn instruction_ended(&mut self) {

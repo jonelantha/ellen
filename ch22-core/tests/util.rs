@@ -1,7 +1,6 @@
 use ch22_core::cpu::interrupt_due_state::*;
 use ch22_core::cpu::registers::Registers;
 use ch22_core::cpu_io::*;
-use ch22_core::interrupt_lines::*;
 use ch22_core::word::*;
 use serde::Deserialize;
 
@@ -135,16 +134,20 @@ impl CpuIO for CycleManagerMock<'_> {
         self.cycle_check_nmi = false;
     }
 
-    fn get_irq_nmi(&mut self, interrupt_disable: bool) -> InterruptLines {
-        self.cycle_check_nmi = true;
-        self.cycle_check_irq = !interrupt_disable;
+    fn get_irq(&mut self) -> bool {
+        self.cycle_check_irq = true;
 
         let current_cycle = self.cycles.len() as u8;
 
-        let irq = is_in_on_off_range(self.irq_on_off_list, current_cycle);
-        let nmi = is_in_on_off_range(self.nmi_on_off_list, current_cycle);
+        is_in_on_off_range(self.irq_on_off_list, current_cycle)
+    }
 
-        InterruptLines { irq, nmi }
+    fn get_nmi(&mut self) -> bool {
+        self.cycle_check_nmi = true;
+
+        let current_cycle = self.cycles.len() as u8;
+
+        is_in_on_off_range(self.nmi_on_off_list, current_cycle)
     }
 
     fn instruction_ended(&mut self) {}

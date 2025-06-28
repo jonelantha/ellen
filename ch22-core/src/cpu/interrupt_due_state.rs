@@ -1,4 +1,4 @@
-use crate::cpu_io::CpuIO;
+use crate::cpu_io::*;
 
 #[derive(PartialEq, Default, Debug)]
 pub struct InterruptDueState {
@@ -19,7 +19,7 @@ pub fn update_interrupt_due_state<IO: CpuIO>(
     io: &mut IO,
     interrupt_disable: bool,
 ) {
-    let (irq, nmi) = io.get_irq_nmi(interrupt_disable);
+    let nmi = io.get_nmi();
 
     if interrupt_due_state.previous_nmi != nmi {
         if nmi {
@@ -28,7 +28,9 @@ pub fn update_interrupt_due_state<IO: CpuIO>(
         interrupt_due_state.previous_nmi = nmi;
     }
 
-    if irq && interrupt_due_state.interrupt_due == InterruptType::None {
-        interrupt_due_state.interrupt_due = InterruptType::IRQ;
+    if !interrupt_disable && interrupt_due_state.interrupt_due == InterruptType::None {
+        if io.get_irq() {
+            interrupt_due_state.interrupt_due = InterruptType::IRQ;
+        }
     }
 }

@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::collections::hash_map::ValuesMut;
 
-use crate::interrupt_lines::InterruptLines;
 use crate::word::Word;
 
 use super::device::Ch22Device;
@@ -22,21 +21,16 @@ impl Ch22IOSpace {
         self.devices.add_device(addresses, device)
     }
 
-    pub fn get_interrupt(&mut self, cycles: u32, interrupt_disable: bool) -> InterruptLines {
-        let irq = if interrupt_disable {
-            false
-        } else {
-            self.devices
-                .get_all_mut()
-                .any(|device| device.get_irq(cycles))
-        };
-
-        let nmi = self
-            .devices
+    pub fn get_irq(&mut self, cycles: u32) -> bool {
+        self.devices
             .get_all_mut()
-            .any(|device| device.get_nmi(cycles));
+            .any(|device| device.get_irq(cycles))
+    }
 
-        InterruptLines { irq, nmi }
+    pub fn get_nmi(&mut self, cycles: u32) -> bool {
+        self.devices
+            .get_all_mut()
+            .any(|device| device.get_nmi(cycles))
     }
 
     pub fn sync(&mut self, cycles: u32) {
