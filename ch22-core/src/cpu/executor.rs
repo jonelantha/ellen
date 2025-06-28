@@ -37,7 +37,7 @@ fn get_next_instruction<IO: CpuIO>(
     interrupt_due_state: &mut InterruptDueState,
     allow_untested_in_wild: bool,
 ) -> Instruction {
-    if interrupt_due_state.interrupt_due == InterruptType::None {
+    if interrupt_due_state.interrupt_due.is_none() {
         let opcode = immediate_fetch(io, &mut registers.program_counter);
 
         if [0x36, 0x41, 0x56, 0x5e, 0xe1].contains(&opcode) && !allow_untested_in_wild {
@@ -672,11 +672,11 @@ impl Instruction {
                 registers.flags.interrupt_disable = true;
 
                 let vector = match interrupt_due_state.interrupt_due {
-                    InterruptType::NMI => NMI_VECTOR,
+                    Some(InterruptType::NMI) => NMI_VECTOR,
                     _ => IRQ_BRK_VECTOR,
                 };
 
-                interrupt_due_state.interrupt_due = InterruptType::None;
+                interrupt_due_state.interrupt_due = None;
 
                 registers.program_counter = read_word(io, vector);
             }

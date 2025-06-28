@@ -52,9 +52,9 @@ impl From<&InterruptDueTestState> for InterruptDueState {
         InterruptDueState {
             previous_nmi: test_state.previous_nmi,
             interrupt_due: match test_state.interrupt_due.as_str() {
-                "nmi" => InterruptType::NMI,
-                "irq" => InterruptType::IRQ,
-                _ => InterruptType::None,
+                "nmi" => Some(InterruptType::NMI),
+                "irq" => Some(InterruptType::IRQ),
+                _ => None,
             },
         }
     }
