@@ -1,27 +1,20 @@
 use js_sys::Function;
 use wasm_bindgen::JsValue;
 
-use crate::interrupt_type::InterruptType;
 use crate::word::Word;
 
 use super::io_device::Ch22IODevice;
-
-const JS_DEVICE_SLOW: u8 = 0b0000_0001;
-const JS_DEVICE_PHASE_2_WRITE: u8 = 0b0000_0010;
-const JS_DEVICE_SYNC: u8 = 0b0000_0100;
-const JS_DEVICE_NMI: u8 = 0b0001_0000;
-const JS_DEVICE_IRQ: u8 = 0b0010_0000;
 
 pub struct JsCh22Device {
     read: Box<dyn Fn(u16, u32) -> u64>,
     write: Box<dyn Fn(u16, u8, u32) -> u64>,
     handle_trigger: Box<dyn Fn(u32) -> u64>,
     wrap_trigger: Box<dyn Fn(u32)>,
-    flags: u8,
     trigger: Option<u32>,
     phase_2_data: Option<(Word, u8)>,
     interrupt: bool,
-    interrupt_type: Option<InterruptType>,
+    requires_sync: bool,
+    phase_2_write: bool,
 }
 
 impl JsCh22Device {
@@ -30,7 +23,8 @@ impl JsCh22Device {
         js_write: Function,
         js_handle_trigger: Function,
         js_wrap_trigger: Function,
-        flags: u8,
+        requires_sync: bool,
+        phase_2_write: bool,
     ) -> Self {
         let read = Box::new(move |address: u16, cycles: u32| {
             js_read
@@ -67,22 +61,16 @@ impl JsCh22Device {
                 .expect("js_wrap_trigger error");
         });
 
-        let interrupt_type = match flags & (JS_DEVICE_IRQ | JS_DEVICE_NMI) {
-            JS_DEVICE_IRQ => Some(InterruptType::IRQ),
-            JS_DEVICE_NMI => Some(InterruptType::NMI),
-            _ => None,
-        };
-
         JsCh22Device {
             read,
             write,
             handle_trigger,
             wrap_trigger,
-            flags,
             trigger: None,
             phase_2_data: None,
             interrupt: false,
-            interrupt_type,
+            requires_sync,
+            phase_2_write,
         }
     }
 }
@@ -95,7 +83,7 @@ impl Ch22IODevice for JsCh22Device {
     }
 
     fn write(&mut self, address: Word, value: u8, cycles: u32) -> bool {
-        if self.flags & JS_DEVICE_PHASE_2_WRITE == 0 {
+        if !self.phase_2_write {
             self.set_js_device_params((self.write)(address.into(), value, cycles));
             false
         } else {
@@ -112,30 +100,18 @@ impl Ch22IODevice for JsCh22Device {
     }
 
     fn sync(&mut self, cycles: u32) {
-        if self.flags & JS_DEVICE_SYNC != 0 {
+        if self.requires_sync {
             self.sync_internal(cycles);
         }
     }
 
-    fn is_slow(&self) -> bool {
-        self.flags & JS_DEVICE_SLOW != 0
-    }
-
-    fn get_interrupt(&mut self, interrupt_type: InterruptType, cycles: u32) -> bool {
-        if self.interrupt_type.is_none() || self.interrupt_type != Some(interrupt_type) {
-            return false;
-        }
-
+    fn get_interrupt(&mut self, cycles: u32) -> bool {
         self.sync_internal(cycles);
 
-        return self.interrupt;
+        self.interrupt
     }
 
     fn set_interrupt(&mut self, interrupt: bool) {
-        if self.interrupt_type.is_none() {
-            return;
-        }
-
         self.interrupt = interrupt;
     }
 

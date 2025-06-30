@@ -4,7 +4,6 @@ use super::io_device::Ch22IODevice;
 
 pub struct Ch22ConstantDevice {
     pub read_value: u8,
-    pub is_slow: bool,
     pub panic_on_write: bool,
 }
 
@@ -18,9 +17,5 @@ impl Ch22IODevice for Ch22ConstantDevice {
             panic!();
         }
         false
-    }
-
-    fn is_slow(&self) -> bool {
-        self.is_slow
     }
 }

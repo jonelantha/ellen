@@ -6,6 +6,7 @@ use crate::cycle_manager::*;
 use crate::device_map::DeviceMap;
 use crate::devices::constant_device::*;
 use crate::devices::js_device::*;
+use crate::interrupt_type::InterruptType;
 use crate::utils;
 
 #[wasm_bindgen]
@@ -41,16 +42,17 @@ impl Ch22System {
         &mut self,
         addresses: &[u16],
         read_value: u8,
-        is_slow: bool,
+        slow: bool,
         panic_on_write: bool,
-    ) -> u8 {
+    ) -> usize {
         self.cycle_manager.device_map.io_space.add_device(
             addresses,
             Box::new(Ch22ConstantDevice {
                 read_value,
-                is_slow,
                 panic_on_write,
             }),
+            None,
+            slow,
         )
     }
 
@@ -62,7 +64,13 @@ impl Ch22System {
         js_handle_trigger: Function,
         js_wrap_trigger: Function,
         flags: u8,
-    ) -> u8 {
+    ) -> usize {
+        let interrupt_type = match flags & (JS_DEVICE_IRQ | JS_DEVICE_NMI) {
+            JS_DEVICE_IRQ => Some(InterruptType::IRQ),
+            JS_DEVICE_NMI => Some(InterruptType::NMI),
+            _ => None,
+        };
+
         self.cycle_manager.device_map.io_space.add_device(
             addresses,
             Box::new(JsCh22Device::new(
@@ -70,8 +78,11 @@ impl Ch22System {
                 js_write,
                 js_handle_trigger,
                 js_wrap_trigger,
-                flags,
+                flags & JS_DEVICE_SYNC != 0,
+                flags & JS_DEVICE_PHASE_2_WRITE != 0,
             )),
+            interrupt_type,
+            flags & JS_DEVICE_SLOW != 0,
         )
     }
 
@@ -97,17 +108,23 @@ impl Ch22System {
         self.cycle_manager.cycles
     }
 
-    pub fn set_device_interrupt(&mut self, device_id: u8, interrupt: bool) {
+    pub fn set_device_interrupt(&mut self, device_id: usize, interrupt: bool) {
         self.cycle_manager
             .device_map
             .io_space
             .set_interrupt(device_id, interrupt);
     }
 
-    pub fn set_device_trigger(&mut self, device_id: u8, trigger: Option<u32>) {
+    pub fn set_device_trigger(&mut self, device_id: usize, trigger: Option<u32>) {
         self.cycle_manager
             .device_map
             .io_space
             .set_device_trigger(device_id, trigger);
     }
 }
+
+const JS_DEVICE_SLOW: u8 = 0b0000_0001;
+const JS_DEVICE_NMI: u8 = 0b0000_0010;
+const JS_DEVICE_IRQ: u8 = 0b0000_0100;
+const JS_DEVICE_PHASE_2_WRITE: u8 = 0b0001_0000;
+const JS_DEVICE_SYNC: u8 = 0b0010_0000;

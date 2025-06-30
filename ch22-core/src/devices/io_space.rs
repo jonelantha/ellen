@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::collections::hash_map::ValuesMut;
 
 use crate::interrupt_type::InterruptType;
 use crate::word::Word;
@@ -18,36 +17,39 @@ impl Ch22IOSpace {
         }
     }
 
-    pub fn add_device(&mut self, addresses: &[u16], device: Box<dyn Ch22IODevice>) -> u8 {
-        self.devices.add_device(addresses, device)
+    pub fn add_device(
+        &mut self,
+        addresses: &[u16],
+        device: Box<dyn Ch22IODevice>,
+        interrupt_type: Option<InterruptType>,
+        slow: bool,
+    ) -> usize {
+        self.devices
+            .add_device(addresses, device, interrupt_type, slow)
     }
 
     pub fn get_interrupt(&mut self, interrupt_type: InterruptType, cycles: u32) -> bool {
         self.devices
-            .get_all_mut()
-            .any(|device| device.get_interrupt(interrupt_type, cycles))
+            .get_by_interrupt_type(interrupt_type)
+            .any(|device| device.get_interrupt(cycles))
     }
 
     pub fn sync(&mut self, cycles: u32) {
-        for device in self.devices.get_all_mut() {
+        for device in self.devices.get_all() {
             device.sync(cycles);
         }
     }
 
-    pub fn set_interrupt(&mut self, device_id: u8, iterrupt: bool) {
-        self.devices
-            .get_device_by_id(device_id)
-            .set_interrupt(iterrupt);
+    pub fn set_interrupt(&mut self, device_id: usize, iterrupt: bool) {
+        self.devices.get_by_id(device_id).set_interrupt(iterrupt);
     }
 
-    pub fn set_device_trigger(&mut self, device_id: u8, trigger: Option<u32>) {
-        self.devices
-            .get_device_by_id(device_id)
-            .set_trigger(trigger);
+    pub fn set_device_trigger(&mut self, device_id: usize, trigger: Option<u32>) {
+        self.devices.get_by_id(device_id).set_trigger(trigger);
     }
 
     pub fn wrap_triggers(&mut self, wrap: u32) {
-        for device in self.devices.get_all_mut() {
+        for device in self.devices.get_all() {
             device.wrap_trigger(wrap);
         }
     }
@@ -55,19 +57,17 @@ impl Ch22IOSpace {
 
 impl Ch22Device for Ch22IOSpace {
     fn read(&mut self, address: Word, cycles: &mut u32) -> u8 {
-        let Some(device) = self.devices.get_device_mut(address) else {
+        let Some((device, config)) = self.devices.get_with_config_by_address(address) else {
             return 0xff;
         };
 
-        let is_slow = device.is_slow();
-
-        if is_slow && *cycles & 1 != 0 {
+        if config.slow && *cycles & 1 != 0 {
             *cycles += 1;
         }
 
         let value = device.read(address, *cycles);
 
-        if is_slow {
+        if config.slow {
             *cycles += 1;
         }
 
@@ -75,19 +75,17 @@ impl Ch22Device for Ch22IOSpace {
     }
 
     fn write(&mut self, address: Word, value: u8, cycles: &mut u32) -> bool {
-        let Some(device) = self.devices.get_device_mut(address) else {
+        let Some((device, config)) = self.devices.get_with_config_by_address(address) else {
             return false;
         };
 
-        let is_slow = device.is_slow();
-
-        if is_slow && *cycles & 1 != 0 {
+        if config.slow && *cycles & 1 != 0 {
             *cycles += 1;
         }
 
         let needs_phase_2 = device.write(address, value, *cycles);
 
-        if is_slow {
+        if config.slow {
             *cycles += 1;
         }
 
@@ -95,7 +93,7 @@ impl Ch22Device for Ch22IOSpace {
     }
 
     fn phase_2(&mut self, address: Word, cycles: u32) {
-        if let Some(device) = self.devices.get_device_mut(address) {
+        if let Some((device, _)) = self.devices.get_with_config_by_address(address) {
             device.phase_2(cycles);
         }
     }
@@ -103,40 +101,78 @@ impl Ch22Device for Ch22IOSpace {
 
 #[derive(Default)]
 struct DeviceList {
-    next_device_id: u8,
-    devices: HashMap<u8, Box<dyn Ch22IODevice>>,
-    address_to_device_id: HashMap<Word, u8>,
+    device_list: Vec<Box<dyn Ch22IODevice>>,
+    address_to_device_id: HashMap<Word, usize>,
+    config_list: Vec<Config>,
 }
 
 impl DeviceList {
-    pub fn add_device(&mut self, addresses: &[u16], device: Box<dyn Ch22IODevice>) -> u8 {
-        let device_id = self.next_device_id;
+    pub fn add_device(
+        &mut self,
+        addresses: &[u16],
+        device: Box<dyn Ch22IODevice>,
+        interrupt_type: Option<InterruptType>,
+        slow: bool,
+    ) -> usize {
+        self.device_list.push(device);
 
-        self.devices.insert(device_id, device);
+        self.config_list.push(Config {
+            interrupt_type,
+            slow,
+        });
+
+        // assumes devices will not be removed
+        let device_id = self.device_list.len() - 1;
 
         for address in addresses {
             self.address_to_device_id
                 .insert((*address).into(), device_id);
         }
 
-        self.next_device_id += 1;
-
         device_id
     }
 
-    fn get_device_by_id(&mut self, device_id: u8) -> &mut dyn Ch22IODevice {
-        self.devices.get_mut(&device_id).unwrap().as_mut()
+    fn get_by_id(&mut self, device_id: usize) -> &mut dyn Ch22IODevice {
+        self.device_list[device_id as usize].as_mut()
     }
 
-    fn get_device_mut(&mut self, address: Word) -> Option<&mut dyn Ch22IODevice> {
-        if let Some(device_id) = self.address_to_device_id.get(&address) {
-            Some(self.devices.get_mut(device_id).unwrap().as_mut())
-        } else {
-            None
-        }
+    fn get_with_config_by_id(&mut self, device_id: usize) -> (&mut dyn Ch22IODevice, &Config) {
+        let device = self.device_list[device_id as usize].as_mut();
+        let config = &self.config_list[device_id as usize];
+
+        (device, config)
     }
 
-    fn get_all_mut(&mut self) -> ValuesMut<u8, Box<dyn Ch22IODevice>> {
-        self.devices.values_mut()
+    fn get_with_config_by_address(
+        &mut self,
+        address: Word,
+    ) -> Option<(&mut dyn Ch22IODevice, &Config)> {
+        let device_id = self.address_to_device_id.get(&address)?;
+
+        Some(self.get_with_config_by_id(*device_id))
     }
+
+    fn get_all(&mut self) -> impl Iterator<Item = &mut Box<dyn Ch22IODevice>> {
+        self.device_list.iter_mut()
+    }
+
+    fn get_by_interrupt_type(
+        &mut self,
+        interrupt_type: InterruptType,
+    ) -> impl Iterator<Item = &mut Box<dyn Ch22IODevice>> {
+        let config_list = &self.config_list;
+
+        self.device_list
+            .iter_mut()
+            .enumerate()
+            .filter(move |(device_id, _)| {
+                config_list[*device_id].interrupt_type == Some(interrupt_type)
+            })
+            .map(|(_, device)| device)
+    }
+}
+
+struct Config {
+    interrupt_type: Option<InterruptType>,
+    slow: bool,
 }

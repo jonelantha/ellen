@@ -57,10 +57,6 @@ impl Ch22IODevice for Ch22RomSelect {
         self.active_rom.get() as u8
     }
 
-    fn is_slow(&self) -> bool {
-        false
-    }
-
     fn write(&mut self, _address: Word, value: u8, _cycles: u32) -> bool {
         self.active_rom.set(value as usize);
 

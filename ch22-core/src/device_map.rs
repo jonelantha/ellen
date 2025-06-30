@@ -22,6 +22,8 @@ impl DeviceMap {
         io_space.add_device(
             &[0xfe30, 0xfe31, 0xfe32, 0xfe33],
             Box::new(paged_rom.get_rom_select()),
+            None,
+            false,
         );
 
         DeviceMap {
