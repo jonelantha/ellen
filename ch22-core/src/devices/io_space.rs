@@ -93,7 +93,7 @@ impl Ch22Device for Ch22IOSpace {
     }
 
     fn phase_2(&mut self, address: Word, cycles: u32) {
-        if let Some((device, _)) = self.devices.get_with_config_by_address(address) {
+        if let Some(device) = self.devices.get_by_address(address) {
             device.phase_2(cycles);
         }
     }
@@ -141,6 +141,12 @@ impl DeviceList {
         let config = &self.config_list[device_id as usize];
 
         (device, config)
+    }
+
+    fn get_by_address(&mut self, address: Word) -> Option<&mut dyn Ch22IODevice> {
+        let device_id = self.address_to_device_id.get(&address)?;
+
+        Some(self.get_by_id(*device_id))
     }
 
     fn get_with_config_by_address(
