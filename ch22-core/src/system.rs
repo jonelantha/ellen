@@ -5,6 +5,7 @@ use crate::cpu::*;
 use crate::cycle_manager::*;
 use crate::device_map::DeviceMap;
 use crate::devices::constant_device::*;
+use crate::devices::io_space::*;
 use crate::devices::js_device::*;
 use crate::interrupt_type::InterruptType;
 use crate::utils;
@@ -44,7 +45,7 @@ impl Ch22System {
         read_value: u8,
         slow: bool,
         panic_on_write: bool,
-    ) -> usize {
+    ) -> DeviceID {
         self.cycle_manager.device_map.io_space.add_device(
             addresses,
             Box::new(Ch22ConstantDevice {
@@ -64,7 +65,7 @@ impl Ch22System {
         js_handle_trigger: Function,
         js_wrap_trigger: Function,
         flags: u8,
-    ) -> usize {
+    ) -> DeviceID {
         let interrupt_type = match flags & (JS_DEVICE_IRQ | JS_DEVICE_NMI) {
             JS_DEVICE_IRQ => Some(InterruptType::IRQ),
             JS_DEVICE_NMI => Some(InterruptType::NMI),
@@ -108,14 +109,14 @@ impl Ch22System {
         self.cycle_manager.cycles
     }
 
-    pub fn set_device_interrupt(&mut self, device_id: usize, interrupt: bool) {
+    pub fn set_device_interrupt(&mut self, device_id: DeviceID, interrupt: bool) {
         self.cycle_manager
             .device_map
             .io_space
             .set_interrupt(device_id, interrupt);
     }
 
-    pub fn set_device_trigger(&mut self, device_id: usize, trigger: Option<u32>) {
+    pub fn set_device_trigger(&mut self, device_id: DeviceID, trigger: Option<u32>) {
         self.cycle_manager
             .device_map
             .io_space

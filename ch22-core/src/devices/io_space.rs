@@ -6,6 +6,8 @@ use crate::word::Word;
 use super::device::Ch22Device;
 use super::io_device::Ch22IODevice;
 
+pub type DeviceID = usize;
+
 pub struct Ch22IOSpace {
     devices: DeviceList,
 }
@@ -23,7 +25,7 @@ impl Ch22IOSpace {
         device: Box<dyn Ch22IODevice>,
         interrupt_type: Option<InterruptType>,
         slow: bool,
-    ) -> usize {
+    ) -> DeviceID {
         self.devices
             .add_device(addresses, device, interrupt_type, slow)
     }
@@ -40,11 +42,11 @@ impl Ch22IOSpace {
         }
     }
 
-    pub fn set_interrupt(&mut self, device_id: usize, iterrupt: bool) {
+    pub fn set_interrupt(&mut self, device_id: DeviceID, iterrupt: bool) {
         self.devices.get_by_id(device_id).set_interrupt(iterrupt);
     }
 
-    pub fn set_device_trigger(&mut self, device_id: usize, trigger: Option<u32>) {
+    pub fn set_device_trigger(&mut self, device_id: DeviceID, trigger: Option<u32>) {
         self.devices.get_by_id(device_id).set_trigger(trigger);
     }
 
@@ -102,7 +104,7 @@ impl Ch22Device for Ch22IOSpace {
 #[derive(Default)]
 struct DeviceList {
     device_list: Vec<Box<dyn Ch22IODevice>>,
-    address_to_device_id: HashMap<Word, usize>,
+    address_to_device_id: HashMap<Word, DeviceID>,
     config_list: Vec<Config>,
 }
 
@@ -113,7 +115,7 @@ impl DeviceList {
         device: Box<dyn Ch22IODevice>,
         interrupt_type: Option<InterruptType>,
         slow: bool,
-    ) -> usize {
+    ) -> DeviceID {
         self.device_list.push(device);
 
         self.config_list.push(Config {
@@ -132,13 +134,13 @@ impl DeviceList {
         device_id
     }
 
-    fn get_by_id(&mut self, device_id: usize) -> &mut dyn Ch22IODevice {
-        self.device_list[device_id as usize].as_mut()
+    fn get_by_id(&mut self, device_id: DeviceID) -> &mut dyn Ch22IODevice {
+        self.device_list[device_id].as_mut()
     }
 
-    fn get_with_config_by_id(&mut self, device_id: usize) -> (&mut dyn Ch22IODevice, &Config) {
-        let device = self.device_list[device_id as usize].as_mut();
-        let config = &self.config_list[device_id as usize];
+    fn get_with_config_by_id(&mut self, device_id: DeviceID) -> (&mut dyn Ch22IODevice, &Config) {
+        let device = self.device_list[device_id].as_mut();
+        let config = &self.config_list[device_id];
 
         (device, config)
     }
