@@ -30,13 +30,13 @@ impl Ch22IOSpace {
             .add_device(addresses, device, interrupt_type, slow)
     }
 
-    pub fn get_interrupt(&mut self, interrupt_type: InterruptType, cycles: u32) -> bool {
+    pub fn get_interrupt(&mut self, interrupt_type: InterruptType, cycles: u64) -> bool {
         self.devices
             .get_by_interrupt_type(interrupt_type)
             .any(|device| device.get_interrupt(cycles))
     }
 
-    pub fn sync(&mut self, cycles: u32) {
+    pub fn sync(&mut self, cycles: u64) {
         for device in self.devices.get_all() {
             device.sync(cycles);
         }
@@ -46,19 +46,13 @@ impl Ch22IOSpace {
         self.devices.get_by_id(device_id).set_interrupt(iterrupt);
     }
 
-    pub fn set_device_trigger(&mut self, device_id: DeviceID, trigger: Option<u32>) {
+    pub fn set_device_trigger(&mut self, device_id: DeviceID, trigger: Option<u64>) {
         self.devices.get_by_id(device_id).set_trigger(trigger);
-    }
-
-    pub fn wrap_triggers(&mut self, wrap: u32) {
-        for device in self.devices.get_all() {
-            device.wrap_trigger(wrap);
-        }
     }
 }
 
 impl Ch22Device for Ch22IOSpace {
-    fn read(&mut self, address: Word, cycles: &mut u32) -> u8 {
+    fn read(&mut self, address: Word, cycles: &mut u64) -> u8 {
         let Some((device, config)) = self.devices.get_with_config_by_address(address) else {
             return 0xff;
         };
@@ -76,7 +70,7 @@ impl Ch22Device for Ch22IOSpace {
         value
     }
 
-    fn write(&mut self, address: Word, value: u8, cycles: &mut u32) -> bool {
+    fn write(&mut self, address: Word, value: u8, cycles: &mut u64) -> bool {
         let Some((device, config)) = self.devices.get_with_config_by_address(address) else {
             return false;
         };
@@ -94,7 +88,7 @@ impl Ch22Device for Ch22IOSpace {
         needs_phase_2
     }
 
-    fn phase_2(&mut self, address: Word, cycles: u32) {
+    fn phase_2(&mut self, address: Word, cycles: u64) {
         if let Some(device) = self.devices.get_by_address(address) {
             device.phase_2(cycles);
         }

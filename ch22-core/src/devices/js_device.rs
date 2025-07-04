@@ -6,11 +6,10 @@ use crate::word::Word;
 use super::io_device::Ch22IODevice;
 
 pub struct JsCh22Device {
-    read: Box<dyn Fn(u16, u32) -> u64>,
-    write: Box<dyn Fn(u16, u8, u32) -> u64>,
-    handle_trigger: Box<dyn Fn(u32) -> u64>,
-    wrap_trigger: Box<dyn Fn(u32)>,
-    trigger: Option<u32>,
+    read: Box<dyn Fn(u16, u64) -> u64>,
+    write: Box<dyn Fn(u16, u8, u64) -> u64>,
+    handle_trigger: Box<dyn Fn(u64) -> u64>,
+    trigger: Option<u64>,
     phase_2_data: Option<(Word, u8)>,
     interrupt: bool,
     requires_sync: bool,
@@ -22,11 +21,10 @@ impl JsCh22Device {
         js_read: Function,
         js_write: Function,
         js_handle_trigger: Function,
-        js_wrap_trigger: Function,
         requires_sync: bool,
         phase_2_write: bool,
     ) -> Self {
-        let read = Box::new(move |address: u16, cycles: u32| {
+        let read = Box::new(move |address: u16, cycles: u64| {
             js_read
                 .call2(&JsValue::NULL, &address.into(), &cycles.into())
                 .expect("js_read error")
@@ -34,7 +32,7 @@ impl JsCh22Device {
                 .expect("js_read error")
         });
 
-        let write = Box::new(move |address: u16, value: u8, cycles: u32| {
+        let write = Box::new(move |address: u16, value: u8, cycles: u64| {
             js_write
                 .call3(
                     &JsValue::NULL,
@@ -47,7 +45,7 @@ impl JsCh22Device {
                 .expect("js_write error")
         });
 
-        let handle_trigger = Box::new(move |cycles: u32| {
+        let handle_trigger = Box::new(move |cycles: u64| {
             js_handle_trigger
                 .call1(&JsValue::NULL, &cycles.into())
                 .expect("js_handle_trigger error")
@@ -55,17 +53,10 @@ impl JsCh22Device {
                 .expect("js_handle_trigger error")
         });
 
-        let wrap_trigger = Box::new(move |wrap: u32| {
-            js_wrap_trigger
-                .call1(&JsValue::NULL, &wrap.into())
-                .expect("js_wrap_trigger error");
-        });
-
         JsCh22Device {
             read,
             write,
             handle_trigger,
-            wrap_trigger,
             trigger: None,
             phase_2_data: None,
             interrupt: false,
@@ -76,13 +67,13 @@ impl JsCh22Device {
 }
 
 impl Ch22IODevice for JsCh22Device {
-    fn read(&mut self, address: Word, cycles: u32) -> u8 {
+    fn read(&mut self, address: Word, cycles: u64) -> u8 {
         let value = self.set_js_device_params((self.read)(address.into(), cycles));
 
         (value & 0xff) as u8
     }
 
-    fn write(&mut self, address: Word, value: u8, cycles: u32) -> bool {
+    fn write(&mut self, address: Word, value: u8, cycles: u64) -> bool {
         if !self.phase_2_write {
             self.set_js_device_params((self.write)(address.into(), value, cycles));
             false
@@ -93,19 +84,19 @@ impl Ch22IODevice for JsCh22Device {
         }
     }
 
-    fn phase_2(&mut self, cycles: u32) {
+    fn phase_2(&mut self, cycles: u64) {
         let (address, value) = self.phase_2_data.unwrap();
 
         self.set_js_device_params((self.write)(address.into(), value, cycles));
     }
 
-    fn sync(&mut self, cycles: u32) {
+    fn sync(&mut self, cycles: u64) {
         if self.requires_sync {
             self.sync_internal(cycles);
         }
     }
 
-    fn get_interrupt(&mut self, cycles: u32) -> bool {
+    fn get_interrupt(&mut self, cycles: u64) -> bool {
         self.sync_internal(cycles);
 
         self.interrupt
@@ -115,20 +106,13 @@ impl Ch22IODevice for JsCh22Device {
         self.interrupt = interrupt;
     }
 
-    fn set_trigger(&mut self, trigger: Option<u32>) {
+    fn set_trigger(&mut self, trigger: Option<u64>) {
         self.trigger = trigger;
-    }
-
-    fn wrap_trigger(&mut self, wrap: u32) {
-        if let Some(trigger) = self.trigger {
-            self.trigger = Some(trigger - wrap);
-        }
-        (self.wrap_trigger)(wrap);
     }
 }
 
 impl JsCh22Device {
-    fn sync_internal(&mut self, cycles: u32) {
+    fn sync_internal(&mut self, cycles: u64) {
         if let Some(trigger) = self.trigger {
             if trigger <= cycles {
                 self.set_js_device_params((self.handle_trigger)(cycles));
@@ -145,7 +129,7 @@ impl JsCh22Device {
         self.interrupt = flags & 0x02 != 0;
 
         self.trigger = if flags & 0x01 != 0 {
-            Some((params_and_value >> 32) as u32)
+            Some((params_and_value >> 32) as u64)
         } else {
             None
         };

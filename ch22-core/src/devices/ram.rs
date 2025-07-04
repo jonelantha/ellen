@@ -23,15 +23,15 @@ impl Ch22Ram {
 }
 
 impl Ch22Device for Ch22Ram {
-    fn read(&mut self, address: Word, _cycles: &mut u32) -> u8 {
+    fn read(&mut self, address: Word, _cycles: &mut u64) -> u8 {
         self.ram[Into::<usize>::into(address)]
     }
 
-    fn write(&mut self, address: Word, value: u8, _cycles: &mut u32) -> bool {
+    fn write(&mut self, address: Word, value: u8, _cycles: &mut u64) -> bool {
         self.ram[Into::<usize>::into(address)] = value;
 
         false
     }
 
-    fn phase_2(&mut self, _address: Word, _cycles: u32) {}
+    fn phase_2(&mut self, _address: Word, _cycles: u64) {}
 }

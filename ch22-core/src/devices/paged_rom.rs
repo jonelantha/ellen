@@ -37,15 +37,15 @@ impl Ch22PagedRom {
 }
 
 impl Ch22Device for Ch22PagedRom {
-    fn read(&mut self, address: Word, _cycles: &mut u32) -> u8 {
+    fn read(&mut self, address: Word, _cycles: &mut u64) -> u8 {
         self.roms[self.active_rom.get()][Into::<usize>::into(address) - self.base_address]
     }
 
-    fn write(&mut self, _address: Word, _value: u8, _cycles: &mut u32) -> bool {
+    fn write(&mut self, _address: Word, _value: u8, _cycles: &mut u64) -> bool {
         false
     }
 
-    fn phase_2(&mut self, _address: Word, _cycles: u32) {}
+    fn phase_2(&mut self, _address: Word, _cycles: u64) {}
 }
 
 pub struct Ch22RomSelect {
@@ -53,11 +53,11 @@ pub struct Ch22RomSelect {
 }
 
 impl Ch22IODevice for Ch22RomSelect {
-    fn read(&mut self, _address: Word, _cycles: u32) -> u8 {
+    fn read(&mut self, _address: Word, _cycles: u64) -> u8 {
         self.active_rom.get() as u8
     }
 
-    fn write(&mut self, _address: Word, value: u8, _cycles: u32) -> bool {
+    fn write(&mut self, _address: Word, value: u8, _cycles: u64) -> bool {
         self.active_rom.set(value as usize);
 
         false

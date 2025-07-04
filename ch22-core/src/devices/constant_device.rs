@@ -8,11 +8,11 @@ pub struct Ch22ConstantDevice {
 }
 
 impl Ch22IODevice for Ch22ConstantDevice {
-    fn read(&mut self, _address: Word, _cycles: u32) -> u8 {
+    fn read(&mut self, _address: Word, _cycles: u64) -> u8 {
         self.read_value
     }
 
-    fn write(&mut self, _address: Word, _value: u8, _cycles: u32) -> bool {
+    fn write(&mut self, _address: Word, _value: u8, _cycles: u64) -> bool {
         if self.panic_on_write {
             panic!();
         }

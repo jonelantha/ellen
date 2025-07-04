@@ -3,13 +3,11 @@ use crate::device_map::*;
 use crate::interrupt_type::InterruptType;
 use crate::word::Word;
 
-const CYCLE_WRAP: u32 = 0x3FFFFFFF;
-
 pub struct CycleManager {
-    pub cycles: u32,
+    pub cycles: u64,
     needs_phase_2: Option<Word>,
     pub device_map: DeviceMap,
-    pub run_until: u32,
+    pub run_until: u64,
 }
 
 impl CycleManager {
@@ -75,11 +73,5 @@ impl CycleManager {
         }
 
         self.cycles += 1;
-
-        if self.cycles > CYCLE_WRAP {
-            self.device_map.io_space.wrap_triggers(CYCLE_WRAP);
-            self.cycles -= CYCLE_WRAP;
-            self.run_until -= CYCLE_WRAP;
-        }
     }
 }

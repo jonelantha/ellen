@@ -63,7 +63,6 @@ impl Ch22System {
         js_read: Function,
         js_write: Function,
         js_handle_trigger: Function,
-        js_wrap_trigger: Function,
         flags: u8,
     ) -> DeviceID {
         let interrupt_type = match flags & (JS_DEVICE_IRQ | JS_DEVICE_NMI) {
@@ -78,7 +77,6 @@ impl Ch22System {
                 js_read,
                 js_write,
                 js_handle_trigger,
-                js_wrap_trigger,
                 flags & JS_DEVICE_SYNC != 0,
                 flags & JS_DEVICE_PHASE_2_WRITE != 0,
             )),
@@ -99,7 +97,7 @@ impl Ch22System {
         self.cpu.reset(&mut self.cycle_manager);
     }
 
-    pub fn run(&mut self, run_until: u32) -> u32 {
+    pub fn run(&mut self, run_until: u64) -> u64 {
         self.cycle_manager.run_until = run_until;
 
         while self.cycle_manager.is_running() {
@@ -116,7 +114,7 @@ impl Ch22System {
             .set_interrupt(device_id, interrupt);
     }
 
-    pub fn set_device_trigger(&mut self, device_id: DeviceID, trigger: Option<u32>) {
+    pub fn set_device_trigger(&mut self, device_id: DeviceID, trigger: Option<u64>) {
         self.cycle_manager
             .device_map
             .io_space

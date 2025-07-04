@@ -27,13 +27,13 @@ impl Ch22Rom {
 }
 
 impl Ch22Device for Ch22Rom {
-    fn read(&mut self, address: Word, _cycles: &mut u32) -> u8 {
+    fn read(&mut self, address: Word, _cycles: &mut u64) -> u8 {
         self.rom[Into::<usize>::into(address) - self.base_address]
     }
 
-    fn write(&mut self, _address: Word, _value: u8, _cycles: &mut u32) -> bool {
+    fn write(&mut self, _address: Word, _value: u8, _cycles: &mut u64) -> bool {
         false
     }
 
-    fn phase_2(&mut self, _address: Word, _cycles: u32) {}
+    fn phase_2(&mut self, _address: Word, _cycles: u64) {}
 }
