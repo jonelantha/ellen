@@ -32,6 +32,4 @@ impl Ch22Device for Ch22Ram {
 
         false
     }
-
-    fn phase_2(&mut self, _address: Word, _cycles: u64) {}
 }
