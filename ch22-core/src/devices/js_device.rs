@@ -120,7 +120,7 @@ impl JsCh22Device {
         }
     }
 
-    // trig trig trig trig null null flags value
+    // trig trig trig trig trig trig flags value
 
     fn set_js_device_params(&mut self, params_and_value: u64) -> u8 {
         let flags = (params_and_value >> 8) & 0xff;
@@ -129,7 +129,7 @@ impl JsCh22Device {
         self.interrupt = flags & 0x02 != 0;
 
         self.trigger = if flags & 0x01 != 0 {
-            Some((params_and_value >> 32) as u64)
+            Some(params_and_value >> 16)
         } else {
             None
         };
