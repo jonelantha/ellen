@@ -1,23 +1,23 @@
-use crate::devices::device::*;
+use crate::devices::addressable_device::*;
 use crate::devices::io_space::*;
 use crate::devices::paged_rom::*;
 use crate::devices::ram::*;
-use crate::devices::rom::Ch22Rom;
+use crate::devices::rom::Rom;
 use crate::word::Word;
 
 pub struct DeviceMap {
-    pub ram: Ch22Ram,
-    pub paged_rom: Ch22PagedRom,
-    pub io_space: Ch22IOSpace,
-    pub os_rom: Ch22Rom,
+    pub ram: Ram,
+    pub paged_rom: PagedRom,
+    pub io_space: IOSpace,
+    pub os_rom: Rom,
 }
 
 impl DeviceMap {
     pub fn new() -> Self {
-        let mut io_space = Ch22IOSpace::new();
-        let ram = Ch22Ram::new();
-        let os_rom = Ch22Rom::new(0xc000);
-        let paged_rom = Ch22PagedRom::new(0x8000);
+        let mut io_space = IOSpace::new();
+        let ram = Ram::new();
+        let os_rom = Rom::new(0xc000);
+        let paged_rom = PagedRom::new(0x8000);
 
         io_space.add_device(
             &[0xfe30, 0xfe31, 0xfe32, 0xfe33],
@@ -34,7 +34,7 @@ impl DeviceMap {
         }
     }
 
-    pub fn get_device(&mut self, address: Word) -> &mut dyn Ch22Device {
+    pub fn get_device(&mut self, address: Word) -> &mut dyn AddressableDevice {
         match address.1 {
             ..0x80 => &mut self.ram,
             0x80..0xc0 => &mut self.paged_rom,

@@ -3,9 +3,9 @@ use wasm_bindgen::JsValue;
 
 use crate::word::Word;
 
-use super::io_device::Ch22IODevice;
+use super::io_device::IODevice;
 
-pub struct JsCh22Device {
+pub struct JsIODevice {
     read: Box<dyn Fn(u16, u64) -> u64>,
     write: Box<dyn Fn(u16, u8, u64) -> u64>,
     handle_trigger: Box<dyn Fn(u64) -> u64>,
@@ -15,7 +15,7 @@ pub struct JsCh22Device {
     phase_2_write: bool,
 }
 
-impl JsCh22Device {
+impl JsIODevice {
     pub fn new(
         js_read: Function,
         js_write: Function,
@@ -51,7 +51,7 @@ impl JsCh22Device {
                 .expect("js_handle_trigger error")
         });
 
-        JsCh22Device {
+        JsIODevice {
             read,
             write,
             handle_trigger,
@@ -63,7 +63,7 @@ impl JsCh22Device {
     }
 }
 
-impl Ch22IODevice for JsCh22Device {
+impl IODevice for JsIODevice {
     fn read(&mut self, address: Word, cycles: u64) -> u8 {
         let value = self.set_js_device_params((self.read)(address.into(), cycles));
 
@@ -98,7 +98,7 @@ impl Ch22IODevice for JsCh22Device {
     }
 }
 
-impl JsCh22Device {
+impl JsIODevice {
     fn sync(&mut self, cycles: u64) {
         if let Some(trigger) = self.trigger {
             if trigger <= cycles {

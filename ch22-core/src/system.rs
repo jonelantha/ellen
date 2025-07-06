@@ -4,30 +4,30 @@ use wasm_bindgen::prelude::*;
 use crate::cpu::*;
 use crate::cycle_manager::*;
 use crate::device_map::DeviceMap;
-use crate::devices::constant_device::*;
 use crate::devices::io_space::*;
-use crate::devices::js_device::*;
+use crate::devices::js_io_device::*;
 use crate::devices::js_sync_device::*;
+use crate::devices::static_device::*;
 use crate::interrupt_type::InterruptType;
 use crate::utils;
 
 #[wasm_bindgen]
-pub struct Ch22System {
-    cpu: Ch22Cpu,
+pub struct System {
+    cpu: Cpu,
     cycle_manager: CycleManager,
 }
 
 #[wasm_bindgen]
-impl Ch22System {
-    pub fn new() -> Ch22System {
+impl System {
+    pub fn new() -> System {
         utils::set_panic_hook();
 
         let device_map = DeviceMap::new();
 
         let cycle_manager = CycleManager::new(device_map);
 
-        Ch22System {
-            cpu: Ch22Cpu::new(),
+        System {
+            cpu: Cpu::new(),
             cycle_manager,
         }
     }
@@ -40,7 +40,7 @@ impl Ch22System {
         self.cycle_manager.device_map.paged_rom.load(bank, data);
     }
 
-    pub fn add_constant_device(
+    pub fn add_static_device(
         &mut self,
         addresses: &[u16],
         read_value: u8,
@@ -49,7 +49,7 @@ impl Ch22System {
     ) -> DeviceID {
         self.cycle_manager.device_map.io_space.add_device(
             addresses,
-            Box::new(Ch22ConstantDevice {
+            Box::new(StaticDevice {
                 read_value,
                 panic_on_write,
             }),
@@ -58,7 +58,7 @@ impl Ch22System {
         )
     }
 
-    pub fn add_device_js(
+    pub fn add_js_io_device(
         &mut self,
         addresses: &[u16],
         js_read: Function,
@@ -74,7 +74,7 @@ impl Ch22System {
 
         self.cycle_manager.device_map.io_space.add_device(
             addresses,
-            Box::new(JsCh22Device::new(
+            Box::new(JsIODevice::new(
                 js_read,
                 js_write,
                 js_handle_trigger,
@@ -87,7 +87,7 @@ impl Ch22System {
 
     pub fn add_js_sync_device(&mut self, js_handle_trigger: Function) -> DeviceID {
         self.cycle_manager
-            .add_device(Box::new(JsCh22SyncDevice::new(js_handle_trigger)))
+            .add_device(Box::new(JsSyncDevice::new(js_handle_trigger)))
     }
 
     pub fn ram_start(&self) -> *const u8 {

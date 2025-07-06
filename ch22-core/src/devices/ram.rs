@@ -1,16 +1,16 @@
 use crate::word::Word;
 
-use super::device::Ch22Device;
+use super::addressable_device::AddressableDevice;
 
 const RAM_SIZE: usize = 0x8000;
 
-pub struct Ch22Ram {
+pub struct Ram {
     ram: [u8; RAM_SIZE],
 }
 
-impl Ch22Ram {
-    pub fn new() -> Ch22Ram {
-        Ch22Ram { ram: [0; RAM_SIZE] }
+impl Ram {
+    pub fn new() -> Ram {
+        Ram { ram: [0; RAM_SIZE] }
     }
 
     pub fn ram_start(&self) -> *const u8 {
@@ -22,7 +22,7 @@ impl Ch22Ram {
     }
 }
 
-impl Ch22Device for Ch22Ram {
+impl AddressableDevice for Ram {
     fn read(&mut self, address: Word, _cycles: &mut u64) -> u8 {
         self.ram[Into::<usize>::into(address)]
     }

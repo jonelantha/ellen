@@ -12,16 +12,16 @@ pub mod registers;
 pub mod util;
 
 #[derive(Default)]
-pub struct Ch22Cpu {
+pub struct Cpu {
     registers: Registers,
     interrupt_due_state: InterruptDueState,
 }
 
-impl Ch22Cpu {
-    pub fn new() -> Ch22Cpu {
+impl Cpu {
+    pub fn new() -> Cpu {
         utils::set_panic_hook();
 
-        Ch22Cpu::default()
+        Cpu::default()
     }
 
     pub fn reset<IO: CpuIO>(&mut self, io: &mut IO) {

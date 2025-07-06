@@ -1,17 +1,17 @@
 use crate::word::Word;
 
-use super::device::*;
+use super::addressable_device::*;
 
 const ROM_SIZE: usize = 0x4000;
 
-pub struct Ch22Rom {
+pub struct Rom {
     base_address: usize,
     rom: [u8; ROM_SIZE],
 }
 
-impl Ch22Rom {
+impl Rom {
     pub fn new(base_address: usize) -> Self {
-        Ch22Rom {
+        Rom {
             base_address,
             rom: [0; ROM_SIZE],
         }
@@ -26,7 +26,7 @@ impl Ch22Rom {
     }
 }
 
-impl Ch22Device for Ch22Rom {
+impl AddressableDevice for Rom {
     fn read(&mut self, address: Word, _cycles: &mut u64) -> u8 {
         self.rom[Into::<usize>::into(address) - self.base_address]
     }

@@ -1,28 +1,29 @@
 use std::{cell::Cell, rc::Rc};
 
-use crate::{devices::io_device::Ch22IODevice, word::Word};
+use crate::devices::io_device::IODevice;
+use crate::word::Word;
 
-use super::device::*;
+use super::addressable_device::*;
 
 const ROM_SIZE: usize = 0x4000;
 
-pub struct Ch22PagedRom {
+pub struct PagedRom {
     base_address: usize,
     roms: [[u8; ROM_SIZE]; 16],
     active_rom: Rc<Cell<usize>>,
 }
 
-impl Ch22PagedRom {
+impl PagedRom {
     pub fn new(base_address: usize) -> Self {
-        Ch22PagedRom {
+        PagedRom {
             base_address,
             roms: [[0; ROM_SIZE]; 16],
             active_rom: Rc::new(Cell::new(15)),
         }
     }
 
-    pub fn get_rom_select(&self) -> Ch22RomSelect {
-        Ch22RomSelect {
+    pub fn get_rom_select(&self) -> RomSelect {
+        RomSelect {
             active_rom: self.active_rom.clone(),
         }
     }
@@ -36,17 +37,17 @@ impl Ch22PagedRom {
     }
 }
 
-impl Ch22Device for Ch22PagedRom {
+impl AddressableDevice for PagedRom {
     fn read(&mut self, address: Word, _cycles: &mut u64) -> u8 {
         self.roms[self.active_rom.get()][Into::<usize>::into(address) - self.base_address]
     }
 }
 
-pub struct Ch22RomSelect {
+pub struct RomSelect {
     active_rom: Rc<Cell<usize>>,
 }
 
-impl Ch22IODevice for Ch22RomSelect {
+impl IODevice for RomSelect {
     fn read(&mut self, _address: Word, _cycles: u64) -> u8 {
         self.active_rom.get() as u8
     }

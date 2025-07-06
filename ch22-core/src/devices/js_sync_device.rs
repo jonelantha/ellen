@@ -3,12 +3,12 @@ use wasm_bindgen::JsValue;
 
 use super::syncable_device::SyncableDevice;
 
-pub struct JsCh22SyncDevice {
+pub struct JsSyncDevice {
     handle_trigger: Box<dyn Fn(u64) -> u64>,
     trigger: Option<u64>,
 }
 
-impl JsCh22SyncDevice {
+impl JsSyncDevice {
     pub fn new(js_handle_trigger: Function) -> Self {
         let handle_trigger = Box::new(move |cycles: u64| {
             js_handle_trigger
@@ -18,14 +18,14 @@ impl JsCh22SyncDevice {
                 .expect("js_handle_trigger error")
         });
 
-        JsCh22SyncDevice {
+        JsSyncDevice {
             handle_trigger,
             trigger: None,
         }
     }
 }
 
-impl SyncableDevice for JsCh22SyncDevice {
+impl SyncableDevice for JsSyncDevice {
     fn sync(&mut self, cycles: u64) {
         if let Some(trigger) = self.trigger {
             if trigger <= cycles {
@@ -39,7 +39,7 @@ impl SyncableDevice for JsCh22SyncDevice {
     }
 }
 
-impl JsCh22SyncDevice {
+impl JsSyncDevice {
     // trig trig trig trig trig trig flags null
 
     fn set_js_trigger_params(&mut self, params: u64) {
