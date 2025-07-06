@@ -12,7 +12,6 @@ pub struct JsCh22Device {
     trigger: Option<u64>,
     phase_2_data: Option<(Word, u8)>,
     interrupt: bool,
-    requires_sync: bool,
     phase_2_write: bool,
 }
 
@@ -21,7 +20,6 @@ impl JsCh22Device {
         js_read: Function,
         js_write: Function,
         js_handle_trigger: Function,
-        requires_sync: bool,
         phase_2_write: bool,
     ) -> Self {
         let read = Box::new(move |address: u16, cycles: u64| {
@@ -60,7 +58,6 @@ impl JsCh22Device {
             trigger: None,
             phase_2_data: None,
             interrupt: false,
-            requires_sync,
             phase_2_write,
         }
     }
@@ -90,14 +87,8 @@ impl Ch22IODevice for JsCh22Device {
         self.set_js_device_params((self.write)(address.into(), value, cycles));
     }
 
-    fn sync(&mut self, cycles: u64) {
-        if self.requires_sync {
-            self.sync_internal(cycles);
-        }
-    }
-
     fn get_interrupt(&mut self, cycles: u64) -> bool {
-        self.sync_internal(cycles);
+        self.sync(cycles);
 
         self.interrupt
     }
@@ -105,14 +96,10 @@ impl Ch22IODevice for JsCh22Device {
     fn set_interrupt(&mut self, interrupt: bool) {
         self.interrupt = interrupt;
     }
-
-    fn set_trigger(&mut self, trigger: Option<u64>) {
-        self.trigger = trigger;
-    }
 }
 
 impl JsCh22Device {
-    fn sync_internal(&mut self, cycles: u64) {
+    fn sync(&mut self, cycles: u64) {
         if let Some(trigger) = self.trigger {
             if trigger <= cycles {
                 self.set_js_device_params((self.handle_trigger)(cycles));

@@ -1,5 +1,7 @@
 use crate::cpu_io::*;
 use crate::device_map::*;
+use crate::devices::io_space::DeviceID;
+use crate::devices::syncable_device::SyncableDevice;
 use crate::interrupt_type::InterruptType;
 use crate::word::Word;
 
@@ -8,6 +10,7 @@ pub struct CycleManager {
     needs_phase_2: Option<Word>,
     pub device_map: DeviceMap,
     pub run_until: u64,
+    sync_devices: Vec<Box<dyn SyncableDevice>>,
 }
 
 impl CycleManager {
@@ -17,6 +20,7 @@ impl CycleManager {
             needs_phase_2: None,
             device_map,
             run_until: 0,
+            sync_devices: Vec::new(),
         }
     }
 }
@@ -54,7 +58,7 @@ impl CpuIO for CycleManager {
     }
 
     fn instruction_ended(&mut self) {
-        self.device_map.io_space.sync(self.cycles)
+        self.sync();
     }
 }
 
@@ -73,5 +77,24 @@ impl CycleManager {
         }
 
         self.cycles += 1;
+    }
+
+    pub fn sync(&mut self) {
+        for device in self.sync_devices.iter_mut() {
+            device.sync(self.cycles);
+        }
+    }
+
+    pub fn add_device(&mut self, device: Box<dyn SyncableDevice>) -> DeviceID {
+        self.sync_devices.push(device);
+
+        // assumes devices will not be removed
+        let device_id = self.sync_devices.len() - 1;
+
+        device_id
+    }
+
+    pub fn set_device_trigger(&mut self, device_id: DeviceID, trigger: Option<u64>) {
+        self.sync_devices[device_id].set_trigger(trigger);
     }
 }

@@ -4,8 +4,6 @@ pub trait Ch22IODevice {
     fn read(&mut self, address: Word, cycles: u64) -> u8;
     fn write(&mut self, address: Word, value: u8, cycles: u64) -> bool;
     fn phase_2(&mut self, _cycles: u64) {}
-    fn sync(&mut self, _cycles: u64) {}
-    fn set_trigger(&mut self, _trigger: Option<u64>) {}
     fn get_interrupt(&mut self, _cycles: u64) -> bool {
         false
     }

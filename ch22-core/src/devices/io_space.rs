@@ -36,18 +36,8 @@ impl Ch22IOSpace {
             .any(|device| device.get_interrupt(cycles))
     }
 
-    pub fn sync(&mut self, cycles: u64) {
-        for device in self.devices.get_all() {
-            device.sync(cycles);
-        }
-    }
-
     pub fn set_interrupt(&mut self, device_id: DeviceID, iterrupt: bool) {
         self.devices.get_by_id(device_id).set_interrupt(iterrupt);
-    }
-
-    pub fn set_device_trigger(&mut self, device_id: DeviceID, trigger: Option<u64>) {
-        self.devices.get_by_id(device_id).set_trigger(trigger);
     }
 }
 
@@ -152,10 +142,6 @@ impl DeviceList {
         let device_id = self.address_to_device_id.get(&address)?;
 
         Some(self.get_with_config_by_id(*device_id))
-    }
-
-    fn get_all(&mut self) -> impl Iterator<Item = &mut Box<dyn Ch22IODevice>> {
-        self.device_list.iter_mut()
     }
 
     fn get_by_interrupt_type(

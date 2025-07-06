@@ -7,6 +7,7 @@ use crate::device_map::DeviceMap;
 use crate::devices::constant_device::*;
 use crate::devices::io_space::*;
 use crate::devices::js_device::*;
+use crate::devices::js_sync_device::*;
 use crate::interrupt_type::InterruptType;
 use crate::utils;
 
@@ -77,12 +78,16 @@ impl Ch22System {
                 js_read,
                 js_write,
                 js_handle_trigger,
-                flags & JS_DEVICE_SYNC != 0,
                 flags & JS_DEVICE_PHASE_2_WRITE != 0,
             )),
             interrupt_type,
             flags & JS_DEVICE_SLOW != 0,
         )
+    }
+
+    pub fn add_js_sync_device(&mut self, js_handle_trigger: Function) -> DeviceID {
+        self.cycle_manager
+            .add_device(Box::new(JsCh22SyncDevice::new(js_handle_trigger)))
     }
 
     pub fn ram_start(&self) -> *const u8 {
@@ -115,10 +120,7 @@ impl Ch22System {
     }
 
     pub fn set_device_trigger(&mut self, device_id: DeviceID, trigger: Option<u64>) {
-        self.cycle_manager
-            .device_map
-            .io_space
-            .set_device_trigger(device_id, trigger);
+        self.cycle_manager.set_device_trigger(device_id, trigger);
     }
 }
 
@@ -126,4 +128,3 @@ const JS_DEVICE_SLOW: u8 = 0b0000_0001;
 const JS_DEVICE_NMI: u8 = 0b0000_0010;
 const JS_DEVICE_IRQ: u8 = 0b0000_0100;
 const JS_DEVICE_PHASE_2_WRITE: u8 = 0b0001_0000;
-const JS_DEVICE_SYNC: u8 = 0b0010_0000;
