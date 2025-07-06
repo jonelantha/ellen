@@ -103,9 +103,7 @@ impl Ch22System {
     }
 
     pub fn run(&mut self, run_until: u64) -> u64 {
-        self.cycle_manager.run_until = run_until;
-
-        while self.cycle_manager.is_running() {
+        while self.cycle_manager.cycles < run_until {
             self.cpu.handle_next_instruction(&mut self.cycle_manager);
         }
 
