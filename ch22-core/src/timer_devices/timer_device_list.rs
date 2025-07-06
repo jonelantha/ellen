@@ -1,6 +1,6 @@
 use super::timer_device::TimerDevice;
 
-type TimerDeviceID = usize;
+pub type TimerDeviceID = usize;
 
 #[derive(Default)]
 pub struct TimerDeviceList {

@@ -9,6 +9,7 @@ use crate::interrupt_type::InterruptType;
 use crate::io_devices::js_io_device::JsIODevice;
 use crate::io_devices::static_device::StaticDevice;
 use crate::timer_devices::js_timer_device::*;
+use crate::timer_devices::timer_device_list::TimerDeviceID;
 use crate::utils;
 
 #[wasm_bindgen]
@@ -46,8 +47,8 @@ impl System {
         read_value: u8,
         slow: bool,
         panic_on_write: bool,
-    ) -> DeviceID {
-        self.cycle_manager.device_map.io_space.add_device(
+    ) -> IODeviceID {
+        self.cycle_manager.address_map.io_space.add_device(
             addresses,
             Box::new(StaticDevice {
                 read_value,
@@ -65,7 +66,7 @@ impl System {
         js_write: Function,
         js_handle_trigger: Function,
         flags: u8,
-    ) -> DeviceID {
+    ) -> IODeviceID {
         let interrupt_type = match flags & (JS_DEVICE_IRQ | JS_DEVICE_NMI) {
             JS_DEVICE_IRQ => Some(InterruptType::IRQ),
             JS_DEVICE_NMI => Some(InterruptType::NMI),
@@ -85,7 +86,7 @@ impl System {
         )
     }
 
-    pub fn add_js_timer_device(&mut self, js_handle_trigger: Function) -> DeviceID {
+    pub fn add_js_timer_device(&mut self, js_handle_trigger: Function) -> TimerDeviceID {
         self.cycle_manager
             .timer_devices
             .add_device(Box::new(JsTimerDevice::new(js_handle_trigger)))
@@ -111,14 +112,14 @@ impl System {
         self.cycle_manager.cycles
     }
 
-    pub fn set_device_interrupt(&mut self, device_id: DeviceID, interrupt: bool) {
+    pub fn set_device_interrupt(&mut self, device_id: IODeviceID, interrupt: bool) {
         self.cycle_manager
             .device_map
             .io_space
             .set_interrupt(device_id, interrupt);
     }
 
-    pub fn set_device_trigger(&mut self, device_id: DeviceID, trigger: Option<u64>) {
+    pub fn set_device_trigger(&mut self, device_id: TimerDeviceID, trigger: Option<u64>) {
         self.cycle_manager
             .timer_devices
             .set_device_trigger(device_id, trigger);

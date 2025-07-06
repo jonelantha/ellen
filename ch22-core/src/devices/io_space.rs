@@ -6,7 +6,7 @@ use crate::word::Word;
 
 use super::addressable_device::AddressableDevice;
 
-pub type DeviceID = usize;
+pub type IODeviceID = usize;
 
 pub struct IOSpace {
     devices: IODeviceList,
@@ -25,7 +25,7 @@ impl IOSpace {
         device: Box<dyn IODevice>,
         interrupt_type: Option<InterruptType>,
         slow: bool,
-    ) -> DeviceID {
+    ) -> IODeviceID {
         self.devices
             .add_device(addresses, device, interrupt_type, slow)
     }
@@ -36,7 +36,7 @@ impl IOSpace {
             .any(|device| device.get_interrupt(cycles))
     }
 
-    pub fn set_interrupt(&mut self, device_id: DeviceID, iterrupt: bool) {
+    pub fn set_interrupt(&mut self, device_id: IODeviceID, iterrupt: bool) {
         self.devices.get_by_id(device_id).set_interrupt(iterrupt);
     }
 }
@@ -88,7 +88,7 @@ impl AddressableDevice for IOSpace {
 #[derive(Default)]
 struct IODeviceList {
     device_list: Vec<Box<dyn IODevice>>,
-    address_to_device_id: HashMap<Word, DeviceID>,
+    address_to_device_id: HashMap<Word, IODeviceID>,
     config_list: Vec<Config>,
 }
 
@@ -99,7 +99,7 @@ impl IODeviceList {
         device: Box<dyn IODevice>,
         interrupt_type: Option<InterruptType>,
         slow: bool,
-    ) -> DeviceID {
+    ) -> IODeviceID {
         self.device_list.push(device);
 
         self.config_list.push(Config {
@@ -118,11 +118,11 @@ impl IODeviceList {
         device_id
     }
 
-    fn get_by_id(&mut self, device_id: DeviceID) -> &mut dyn IODevice {
+    fn get_by_id(&mut self, device_id: IODeviceID) -> &mut dyn IODevice {
         self.device_list[device_id].as_mut()
     }
 
-    fn get_with_config_by_id(&mut self, device_id: DeviceID) -> (&mut dyn IODevice, &Config) {
+    fn get_with_config_by_id(&mut self, device_id: IODeviceID) -> (&mut dyn IODevice, &Config) {
         let device = self.device_list[device_id].as_mut();
         let config = &self.config_list[device_id];
 
