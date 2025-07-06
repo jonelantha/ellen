@@ -40,10 +40,6 @@ impl Ch22Device for Ch22PagedRom {
     fn read(&mut self, address: Word, _cycles: &mut u64) -> u8 {
         self.roms[self.active_rom.get()][Into::<usize>::into(address) - self.base_address]
     }
-
-    fn write(&mut self, _address: Word, _value: u8, _cycles: &mut u64) -> bool {
-        false
-    }
 }
 
 pub struct Ch22RomSelect {
