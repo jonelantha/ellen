@@ -1,19 +1,19 @@
-use crate::devices::addressable_device::*;
-use crate::devices::io_space::*;
-use crate::devices::paged_rom::*;
-use crate::devices::ram::*;
-use crate::devices::rom::Rom;
+use crate::address_spaces::addressable_device::*;
+use crate::address_spaces::io_space::*;
+use crate::address_spaces::paged_rom::*;
+use crate::address_spaces::ram::*;
+use crate::address_spaces::rom::Rom;
 use crate::io_devices::rom_select::RomSelect;
 use crate::word::Word;
 
-pub struct DeviceMap {
+pub struct AddressMap {
     pub ram: Ram,
     pub paged_rom: PagedRom,
     pub io_space: IOSpace,
     pub os_rom: Rom,
 }
 
-impl DeviceMap {
+impl AddressMap {
     pub fn new() -> Self {
         let mut io_space = IOSpace::new();
         let ram = Ram::new();
@@ -27,7 +27,7 @@ impl DeviceMap {
             false,
         );
 
-        DeviceMap {
+        AddressMap {
             ram,
             paged_rom,
             io_space,

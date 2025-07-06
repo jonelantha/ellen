@@ -1,10 +1,10 @@
 use js_sys::Function;
 use wasm_bindgen::prelude::*;
 
+use crate::address_spaces::address_map::*;
+use crate::address_spaces::io_space::*;
 use crate::cpu::*;
 use crate::cycle_manager::*;
-use crate::device_map::DeviceMap;
-use crate::devices::io_space::*;
 use crate::interrupt_type::InterruptType;
 use crate::io_devices::js_io_device::JsIODevice;
 use crate::io_devices::static_device::StaticDevice;
@@ -23,7 +23,7 @@ impl System {
     pub fn new() -> System {
         utils::set_panic_hook();
 
-        let device_map = DeviceMap::new();
+        let device_map = AddressMap::new();
 
         let cycle_manager = CycleManager::new(device_map);
 
@@ -34,11 +34,11 @@ impl System {
     }
 
     pub fn load_os_rom(&mut self, data: &[u8]) {
-        self.cycle_manager.device_map.os_rom.load(data);
+        self.cycle_manager.address_map.os_rom.load(data);
     }
 
     pub fn load_paged_rom(&mut self, bank: u8, data: &[u8]) {
-        self.cycle_manager.device_map.paged_rom.load(bank, data);
+        self.cycle_manager.address_map.paged_rom.load(bank, data);
     }
 
     pub fn add_static_device(
@@ -73,7 +73,7 @@ impl System {
             _ => None,
         };
 
-        self.cycle_manager.device_map.io_space.add_device(
+        self.cycle_manager.address_map.io_space.add_device(
             addresses,
             Box::new(JsIODevice::new(
                 js_read,
@@ -93,11 +93,11 @@ impl System {
     }
 
     pub fn ram_start(&self) -> *const u8 {
-        self.cycle_manager.device_map.ram.ram_start()
+        self.cycle_manager.address_map.ram.ram_start()
     }
 
     pub fn ram_size(&self) -> usize {
-        self.cycle_manager.device_map.ram.ram_size()
+        self.cycle_manager.address_map.ram.ram_size()
     }
 
     pub fn reset(&mut self) {
@@ -114,7 +114,7 @@ impl System {
 
     pub fn set_device_interrupt(&mut self, device_id: IODeviceID, interrupt: bool) {
         self.cycle_manager
-            .device_map
+            .address_map
             .io_space
             .set_interrupt(device_id, interrupt);
     }

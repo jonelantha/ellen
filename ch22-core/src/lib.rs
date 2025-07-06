@@ -1,8 +1,7 @@
+mod address_spaces;
 pub mod cpu;
 pub mod cpu_io;
 pub mod cycle_manager;
-mod device_map;
-mod devices;
 pub mod interrupt_type;
 mod io_devices;
 pub mod system;
