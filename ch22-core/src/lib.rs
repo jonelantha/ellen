@@ -5,5 +5,6 @@ mod device_map;
 mod devices;
 pub mod interrupt_type;
 pub mod system;
+pub mod timer_devices;
 mod utils;
 pub mod word;

@@ -6,9 +6,9 @@ use crate::cycle_manager::*;
 use crate::device_map::DeviceMap;
 use crate::devices::io_space::*;
 use crate::devices::js_io_device::*;
-use crate::devices::js_sync_device::*;
 use crate::devices::static_device::*;
 use crate::interrupt_type::InterruptType;
+use crate::timer_devices::js_timer_device::*;
 use crate::utils;
 
 #[wasm_bindgen]
@@ -85,9 +85,10 @@ impl System {
         )
     }
 
-    pub fn add_js_sync_device(&mut self, js_handle_trigger: Function) -> DeviceID {
+    pub fn add_js_timer_device(&mut self, js_handle_trigger: Function) -> DeviceID {
         self.cycle_manager
-            .add_device(Box::new(JsSyncDevice::new(js_handle_trigger)))
+            .timer_devices
+            .add_device(Box::new(JsTimerDevice::new(js_handle_trigger)))
     }
 
     pub fn ram_start(&self) -> *const u8 {
@@ -118,7 +119,9 @@ impl System {
     }
 
     pub fn set_device_trigger(&mut self, device_id: DeviceID, trigger: Option<u64>) {
-        self.cycle_manager.set_device_trigger(device_id, trigger);
+        self.cycle_manager
+            .timer_devices
+            .set_device_trigger(device_id, trigger);
     }
 }
 

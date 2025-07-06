@@ -1,15 +1,14 @@
 use crate::cpu_io::*;
 use crate::device_map::*;
-use crate::devices::io_space::DeviceID;
-use crate::devices::syncable_device::SyncableDevice;
 use crate::interrupt_type::InterruptType;
+use crate::timer_devices::timer_device_list::TimerDeviceList;
 use crate::word::Word;
 
 pub struct CycleManager {
     pub cycles: u64,
     needs_phase_2: Option<Word>,
     pub device_map: DeviceMap,
-    sync_devices: Vec<Box<dyn SyncableDevice>>,
+    pub timer_devices: TimerDeviceList,
 }
 
 impl CycleManager {
@@ -18,7 +17,7 @@ impl CycleManager {
             cycles: 0,
             needs_phase_2: None,
             device_map,
-            sync_devices: Vec::new(),
+            timer_devices: TimerDeviceList::default(),
         }
     }
 }
@@ -56,7 +55,7 @@ impl CpuIO for CycleManager {
     }
 
     fn instruction_ended(&mut self) {
-        self.sync();
+        self.timer_devices.sync(self.cycles);
     }
 }
 
@@ -71,24 +70,5 @@ impl CycleManager {
         }
 
         self.cycles += 1;
-    }
-
-    pub fn sync(&mut self) {
-        for device in self.sync_devices.iter_mut() {
-            device.sync(self.cycles);
-        }
-    }
-
-    pub fn add_device(&mut self, device: Box<dyn SyncableDevice>) -> DeviceID {
-        self.sync_devices.push(device);
-
-        // assumes devices will not be removed
-        let device_id = self.sync_devices.len() - 1;
-
-        device_id
-    }
-
-    pub fn set_device_trigger(&mut self, device_id: DeviceID, trigger: Option<u64>) {
-        self.sync_devices[device_id].set_trigger(trigger);
     }
 }

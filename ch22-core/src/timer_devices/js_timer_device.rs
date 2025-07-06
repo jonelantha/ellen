@@ -1,14 +1,14 @@
 use js_sys::Function;
 use wasm_bindgen::JsValue;
 
-use super::syncable_device::SyncableDevice;
+use super::timer_device::TimerDevice;
 
-pub struct JsSyncDevice {
+pub struct JsTimerDevice {
     handle_trigger: Box<dyn Fn(u64) -> u64>,
     trigger: Option<u64>,
 }
 
-impl JsSyncDevice {
+impl JsTimerDevice {
     pub fn new(js_handle_trigger: Function) -> Self {
         let handle_trigger = Box::new(move |cycles: u64| {
             js_handle_trigger
@@ -18,14 +18,14 @@ impl JsSyncDevice {
                 .expect("js_handle_trigger error")
         });
 
-        JsSyncDevice {
+        JsTimerDevice {
             handle_trigger,
             trigger: None,
         }
     }
 }
 
-impl SyncableDevice for JsSyncDevice {
+impl TimerDevice for JsTimerDevice {
     fn sync(&mut self, cycles: u64) {
         if let Some(trigger) = self.trigger {
             if trigger <= cycles {
@@ -39,7 +39,7 @@ impl SyncableDevice for JsSyncDevice {
     }
 }
 
-impl JsSyncDevice {
+impl JsTimerDevice {
     // trig trig trig trig trig trig flags null
 
     fn set_js_trigger_params(&mut self, params: u64) {
