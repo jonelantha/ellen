@@ -9,13 +9,13 @@ use super::io_device::IODevice;
 pub type DeviceID = usize;
 
 pub struct IOSpace {
-    devices: DeviceList,
+    devices: IODeviceList,
 }
 
 impl IOSpace {
     pub fn new() -> Self {
         IOSpace {
-            devices: DeviceList::default(),
+            devices: IODeviceList::default(),
         }
     }
 
@@ -86,13 +86,13 @@ impl AddressableDevice for IOSpace {
 }
 
 #[derive(Default)]
-struct DeviceList {
+struct IODeviceList {
     device_list: Vec<Box<dyn IODevice>>,
     address_to_device_id: HashMap<Word, DeviceID>,
     config_list: Vec<Config>,
 }
 
-impl DeviceList {
+impl IODeviceList {
     pub fn add_device(
         &mut self,
         addresses: &[u16],
