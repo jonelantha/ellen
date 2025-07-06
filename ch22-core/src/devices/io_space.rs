@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
 use crate::interrupt_type::InterruptType;
+use crate::io_devices::io_device::IODevice;
 use crate::word::Word;
 
 use super::addressable_device::AddressableDevice;
-use super::io_device::IODevice;
 
 pub type DeviceID = usize;
 

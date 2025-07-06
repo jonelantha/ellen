@@ -4,6 +4,7 @@ pub mod cycle_manager;
 mod device_map;
 mod devices;
 pub mod interrupt_type;
+mod io_devices;
 pub mod system;
 pub mod timer_devices;
 mod utils;

@@ -1,8 +1,5 @@
 pub mod addressable_device;
-pub mod io_device;
 pub mod io_space;
-pub mod js_io_device;
 pub mod paged_rom;
 pub mod ram;
 pub mod rom;
-pub mod static_device;

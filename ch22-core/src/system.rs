@@ -5,9 +5,9 @@ use crate::cpu::*;
 use crate::cycle_manager::*;
 use crate::device_map::DeviceMap;
 use crate::devices::io_space::*;
-use crate::devices::js_io_device::*;
-use crate::devices::static_device::*;
 use crate::interrupt_type::InterruptType;
+use crate::io_devices::js_io_device::JsIODevice;
+use crate::io_devices::static_device::StaticDevice;
 use crate::timer_devices::js_timer_device::*;
 use crate::utils;
 
