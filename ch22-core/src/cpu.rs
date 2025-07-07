@@ -3,7 +3,6 @@ use interrupt_due_state::*;
 use registers::*;
 
 use crate::cpu_io::CpuIO;
-use crate::utils;
 use crate::word::Word;
 
 pub mod executor;
@@ -18,12 +17,6 @@ pub struct Cpu {
 }
 
 impl Cpu {
-    pub fn new() -> Cpu {
-        utils::set_panic_hook();
-
-        Cpu::default()
-    }
-
     pub fn reset<IO: CpuIO>(&mut self, io: &mut IO) {
         self.registers = Registers {
             program_counter: Word(

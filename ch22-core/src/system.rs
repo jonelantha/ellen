@@ -6,13 +6,13 @@ use crate::cycle_manager::*;
 use crate::devices::js_io_device::JsIODevice;
 use crate::devices::js_timer_device::*;
 use crate::devices::static_device::StaticDevice;
-use crate::devices_lib::address_map::*;
 use crate::devices_lib::io_device_list::IODeviceID;
 use crate::devices_lib::timer_device_list::TimerDeviceID;
 use crate::interrupt_type::InterruptType;
 use crate::utils;
 
 #[wasm_bindgen]
+#[derive(Default)]
 pub struct System {
     cpu: Cpu,
     cycle_manager: CycleManager,
@@ -23,14 +23,7 @@ impl System {
     pub fn new() -> System {
         utils::set_panic_hook();
 
-        let device_map = AddressMap::default();
-
-        let cycle_manager = CycleManager::new(device_map);
-
-        System {
-            cpu: Cpu::new(),
-            cycle_manager,
-        }
+        System::default()
     }
 
     pub fn load_os_rom(&mut self, data: &[u8]) {
@@ -125,12 +118,6 @@ impl System {
             .clock
             .timer_devices
             .set_device_trigger(device_id, trigger);
-    }
-}
-
-impl Default for System {
-    fn default() -> Self {
-        System::new()
     }
 }
 

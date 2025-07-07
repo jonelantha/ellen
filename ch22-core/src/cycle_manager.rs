@@ -4,20 +4,11 @@ use crate::devices_lib::address_map::*;
 use crate::interrupt_type::InterruptType;
 use crate::word::Word;
 
+#[derive(Default)]
 pub struct CycleManager {
     pub clock: Clock,
     needs_phase_2: Option<Word>,
     pub address_map: AddressMap,
-}
-
-impl CycleManager {
-    pub fn new(address_map: AddressMap) -> Self {
-        CycleManager {
-            clock: Clock::default(),
-            needs_phase_2: None,
-            address_map,
-        }
-    }
 }
 
 impl CpuIO for CycleManager {
