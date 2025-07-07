@@ -1,23 +1,21 @@
+use crate::clock::Clock;
 use crate::cpu_io::*;
 use crate::devices_lib::address_map::*;
-use crate::devices_lib::timer_device_list::TimerDeviceList;
 use crate::interrupt_type::InterruptType;
 use crate::word::Word;
 
 pub struct CycleManager {
-    pub cycles: u64,
+    pub clock: Clock,
     needs_phase_2: Option<Word>,
     pub address_map: AddressMap,
-    pub timer_devices: TimerDeviceList,
 }
 
 impl CycleManager {
     pub fn new(address_map: AddressMap) -> Self {
         CycleManager {
-            cycles: 0,
+            clock: Clock::default(),
             needs_phase_2: None,
             address_map,
-            timer_devices: TimerDeviceList::default(),
         }
     }
 }
@@ -32,7 +30,7 @@ impl CpuIO for CycleManager {
 
         self.address_map
             .get_device(address)
-            .read(address, &mut self.cycles)
+            .read(address, &mut self.clock)
     }
 
     fn write(&mut self, address: Word, value: u8) {
@@ -41,7 +39,7 @@ impl CpuIO for CycleManager {
         let needs_phase_2 =
             self.address_map
                 .get_device(address)
-                .write(address, value, &mut self.cycles);
+                .write(address, value, &mut self.clock);
 
         if needs_phase_2 {
             self.needs_phase_2 = Some(address);
@@ -51,7 +49,7 @@ impl CpuIO for CycleManager {
     fn get_interrupt(&mut self, interrupt_type: InterruptType) -> bool {
         self.address_map
             .io_space
-            .get_interrupt(interrupt_type, self.cycles)
+            .get_interrupt(interrupt_type, self.clock.get_cycles())
     }
 }
 
@@ -60,17 +58,11 @@ impl CycleManager {
         if let Some(address) = self.needs_phase_2 {
             let device = self.address_map.get_device(address);
 
-            device.phase_2(address, self.cycles);
+            device.phase_2(address, self.clock.get_cycles());
 
             self.needs_phase_2 = None;
         }
 
-        self.inc_cycle();
-    }
-
-    fn inc_cycle(&mut self) {
-        self.cycles += 1;
-
-        self.timer_devices.sync(self.cycles);
+        self.clock.inc();
     }
 }

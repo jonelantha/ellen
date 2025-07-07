@@ -1,3 +1,4 @@
+use crate::clock::Clock;
 use crate::word::Word;
 
 use crate::devices_lib::addressable_device::AddressableDevice;
@@ -25,11 +26,11 @@ impl Ram {
 }
 
 impl AddressableDevice for Ram {
-    fn read(&mut self, address: Word, _cycles: &mut u64) -> u8 {
+    fn read(&mut self, address: Word, _cycles: &mut Clock) -> u8 {
         self.ram[Into::<usize>::into(address)]
     }
 
-    fn write(&mut self, address: Word, value: u8, _cycles: &mut u64) -> bool {
+    fn write(&mut self, address: Word, value: u8, _cycles: &mut Clock) -> bool {
         self.ram[Into::<usize>::into(address)] = value;
 
         false

@@ -1,3 +1,4 @@
+use crate::clock::Clock;
 use crate::word::Word;
 
 use crate::devices_lib::addressable_device::AddressableDevice;
@@ -27,7 +28,7 @@ impl Rom {
 }
 
 impl AddressableDevice for Rom {
-    fn read(&mut self, address: Word, _cycles: &mut u64) -> u8 {
+    fn read(&mut self, address: Word, _cycles: &mut Clock) -> u8 {
         self.rom[Into::<usize>::into(address) - self.base_address]
     }
 }

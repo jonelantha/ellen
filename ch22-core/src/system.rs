@@ -88,6 +88,7 @@ impl System {
 
     pub fn add_js_timer_device(&mut self, js_handle_trigger: Function) -> TimerDeviceID {
         self.cycle_manager
+            .clock
             .timer_devices
             .add_device(Box::new(JsTimerDevice::new(js_handle_trigger)))
     }
@@ -105,11 +106,11 @@ impl System {
     }
 
     pub fn run(&mut self, run_until: u64) -> u64 {
-        while self.cycle_manager.cycles < run_until {
+        while self.cycle_manager.clock.get_cycles() < run_until {
             self.cpu.handle_next_instruction(&mut self.cycle_manager);
         }
 
-        self.cycle_manager.cycles
+        self.cycle_manager.clock.get_cycles()
     }
 
     pub fn set_device_interrupt(&mut self, device_id: IODeviceID, interrupt: bool) {
@@ -121,6 +122,7 @@ impl System {
 
     pub fn set_device_trigger(&mut self, device_id: TimerDeviceID, trigger: Option<u64>) {
         self.cycle_manager
+            .clock
             .timer_devices
             .set_device_trigger(device_id, trigger);
     }

@@ -1,6 +1,7 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
+use crate::clock::Clock;
 use crate::word::Word;
 
 use crate::devices_lib::addressable_device::AddressableDevice;
@@ -36,7 +37,7 @@ impl PagedRom {
 }
 
 impl AddressableDevice for PagedRom {
-    fn read(&mut self, address: Word, _cycles: &mut u64) -> u8 {
+    fn read(&mut self, address: Word, _cycles: &mut Clock) -> u8 {
         self.roms[self.active_rom.get()][Into::<usize>::into(address) - self.base_address]
     }
 }

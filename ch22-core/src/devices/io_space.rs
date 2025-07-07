@@ -1,3 +1,4 @@
+use crate::clock::Clock;
 use crate::devices_lib::addressable_device::AddressableDevice;
 use crate::devices_lib::io_device::IODevice;
 use crate::devices_lib::io_device_list::{IODeviceID, IODeviceList};
@@ -33,40 +34,28 @@ impl IOSpace {
 }
 
 impl AddressableDevice for IOSpace {
-    fn read(&mut self, address: Word, cycles: &mut u64) -> u8 {
+    fn read(&mut self, address: Word, cycles: &mut Clock) -> u8 {
         let Some((device, config)) = self.devices.get_with_config_by_address(address) else {
             return 0xff;
         };
 
-        if config.slow && *cycles & 1 != 0 {
-            *cycles += 1;
-        }
-
-        let value = device.read(address, *cycles);
-
         if config.slow {
-            *cycles += 1;
+            cycles.slow_access(|cycles| device.read(address, cycles))
+        } else {
+            device.read(address, cycles.get_cycles())
         }
-
-        value
     }
 
-    fn write(&mut self, address: Word, value: u8, cycles: &mut u64) -> bool {
+    fn write(&mut self, address: Word, value: u8, cycles: &mut Clock) -> bool {
         let Some((device, config)) = self.devices.get_with_config_by_address(address) else {
             return false;
         };
 
-        if config.slow && *cycles & 1 != 0 {
-            *cycles += 1;
-        }
-
-        let needs_phase_2 = device.write(address, value, *cycles);
-
         if config.slow {
-            *cycles += 1;
+            cycles.slow_access(|cycles| device.write(address, value, cycles))
+        } else {
+            device.write(address, value, cycles.get_cycles())
         }
-
-        needs_phase_2
     }
 
     fn phase_2(&mut self, address: Word, cycles: u64) {

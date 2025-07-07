@@ -23,7 +23,7 @@ impl TimerDeviceList {
     }
 
     pub fn needs_sync(&mut self, cycles: u64) -> bool {
-        self.next_sync.is_some_and(|next_sync| next_sync <= cycles)
+        self.next_sync.is_some_and(|next_sync| next_sync == cycles)
     }
 
     pub fn sync(&mut self, cycles: u64) {
@@ -33,7 +33,7 @@ impl TimerDeviceList {
 
         self.devices_and_triggers
             .iter_mut()
-            .filter(|(_, trigger)| trigger.is_some_and(|trigger| trigger <= cycles))
+            .filter(|(_, trigger)| *trigger == Some(cycles))
             .for_each(|(device, trigger)| *trigger = device.sync(cycles));
 
         self.update_next_sync();
