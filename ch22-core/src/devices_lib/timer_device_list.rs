@@ -4,26 +4,46 @@ pub type TimerDeviceID = usize;
 
 #[derive(Default)]
 pub struct TimerDeviceList {
-    device_list: Vec<Box<dyn TimerDevice>>,
+    devices_and_triggers: Vec<(Box<dyn TimerDevice>, Option<u64>)>,
+    next_sync: Option<u64>,
 }
 
 impl TimerDeviceList {
-    pub fn sync(&mut self, cycles: u64) {
-        for device in self.device_list.iter_mut() {
-            device.sync(cycles);
-        }
-    }
-
     pub fn add_device(&mut self, device: Box<dyn TimerDevice>) -> TimerDeviceID {
-        self.device_list.push(device);
+        self.devices_and_triggers.push((device, None));
 
         // assumes devices will not be removed
-        let device_id = self.device_list.len() - 1;
-
-        device_id
+        self.devices_and_triggers.len() - 1
     }
 
     pub fn set_device_trigger(&mut self, device_id: TimerDeviceID, trigger: Option<u64>) {
-        self.device_list[device_id].set_trigger(trigger);
+        self.devices_and_triggers[device_id].1 = trigger;
+
+        self.update_next_sync();
+    }
+
+    pub fn needs_sync(&mut self, cycles: u64) -> bool {
+        self.next_sync.is_some_and(|next_sync| next_sync <= cycles)
+    }
+
+    pub fn sync(&mut self, cycles: u64) {
+        if !self.needs_sync(cycles) {
+            return;
+        }
+
+        self.devices_and_triggers
+            .iter_mut()
+            .filter(|(_, trigger)| trigger.is_some_and(|trigger| trigger <= cycles))
+            .for_each(|(device, trigger)| *trigger = device.sync(cycles));
+
+        self.update_next_sync();
+    }
+
+    fn update_next_sync(&mut self) {
+        self.next_sync = self
+            .devices_and_triggers
+            .iter()
+            .filter_map(|(_, trigger)| *trigger)
+            .min();
     }
 }
