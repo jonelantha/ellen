@@ -1,6 +1,6 @@
 use crate::word::Word;
 
-use super::io_device::IODevice;
+use crate::devices_lib::io_device::IODevice;
 
 pub struct StaticDevice {
     pub read_value: u8,

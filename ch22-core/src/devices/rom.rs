@@ -1,6 +1,6 @@
 use crate::word::Word;
 
-use super::addressable_device::*;
+use crate::devices_lib::addressable_device::AddressableDevice;
 
 const ROM_SIZE: usize = 0x4000;
 

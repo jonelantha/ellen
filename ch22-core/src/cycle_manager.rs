@@ -1,7 +1,7 @@
-use crate::address_spaces::address_map::*;
 use crate::cpu_io::*;
+use crate::devices_lib::address_map::*;
+use crate::devices_lib::timer_device_list::TimerDeviceList;
 use crate::interrupt_type::InterruptType;
-use crate::timer_devices::timer_device_list::TimerDeviceList;
 use crate::word::Word;
 
 pub struct CycleManager {

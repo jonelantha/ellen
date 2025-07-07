@@ -1,9 +1,9 @@
-use crate::address_spaces::addressable_device::*;
-use crate::address_spaces::io_space::*;
-use crate::address_spaces::paged_rom::*;
-use crate::address_spaces::ram::*;
-use crate::address_spaces::rom::Rom;
-use crate::io_devices::rom_select::RomSelect;
+use crate::devices::io_space::*;
+use crate::devices::paged_rom::*;
+use crate::devices::ram::*;
+use crate::devices::rom::*;
+use crate::devices::rom_select::*;
+use crate::devices_lib::addressable_device::*;
 use crate::word::Word;
 
 pub struct AddressMap {

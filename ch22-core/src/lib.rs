@@ -1,10 +1,9 @@
-mod address_spaces;
 pub mod cpu;
 pub mod cpu_io;
 pub mod cycle_manager;
+mod devices;
+pub mod devices_lib;
 pub mod interrupt_type;
-mod io_devices;
 pub mod system;
-pub mod timer_devices;
 mod utils;
 pub mod word;

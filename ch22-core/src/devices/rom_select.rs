@@ -1,9 +1,8 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
+use crate::devices_lib::io_device::IODevice;
 use crate::word::Word;
-
-use super::io_device::IODevice;
 
 pub struct RomSelect {
     active_rom: Rc<Cell<usize>>,

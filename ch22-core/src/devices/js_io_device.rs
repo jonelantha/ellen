@@ -1,9 +1,8 @@
 use js_sys::Function;
 use wasm_bindgen::JsValue;
 
+use crate::devices_lib::io_device::IODevice;
 use crate::word::Word;
-
-use super::io_device::IODevice;
 
 pub struct JsIODevice {
     read: Box<dyn Fn(u16, u64) -> u64>,

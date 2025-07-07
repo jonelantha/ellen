@@ -1,6 +1,6 @@
 use crate::word::Word;
 
-use super::addressable_device::AddressableDevice;
+use crate::devices_lib::addressable_device::AddressableDevice;
 
 const RAM_SIZE: usize = 0x8000;
 
