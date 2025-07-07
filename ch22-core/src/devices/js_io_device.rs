@@ -64,9 +64,7 @@ impl JsIODevice {
 
 impl IODevice for JsIODevice {
     fn read(&mut self, address: Word, cycles: u64) -> u8 {
-        let value = self.set_js_device_params((self.read)(address.into(), cycles));
-
-        (value & 0xff) as u8
+        self.set_js_device_params((self.read)(address.into(), cycles))
     }
 
     fn write(&mut self, address: Word, value: u8, cycles: u64) -> bool {

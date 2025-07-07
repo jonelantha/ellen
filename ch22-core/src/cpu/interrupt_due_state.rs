@@ -21,9 +21,10 @@ pub fn update_interrupt_due_state<IO: CpuIO>(
         interrupt_due_state.previous_nmi = nmi;
     }
 
-    if !interrupt_disable && interrupt_due_state.interrupt_due.is_none() {
-        if io.get_interrupt(InterruptType::IRQ) {
-            interrupt_due_state.interrupt_due = Some(InterruptType::IRQ);
-        }
+    if !interrupt_disable
+        && interrupt_due_state.interrupt_due.is_none()
+        && io.get_interrupt(InterruptType::IRQ)
+    {
+        interrupt_due_state.interrupt_due = Some(InterruptType::IRQ);
     }
 }

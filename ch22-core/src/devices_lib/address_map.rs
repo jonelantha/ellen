@@ -13,10 +13,10 @@ pub struct AddressMap {
     pub os_rom: Rom,
 }
 
-impl AddressMap {
-    pub fn new() -> Self {
-        let mut io_space = IOSpace::new();
-        let ram = Ram::new();
+impl Default for AddressMap {
+    fn default() -> Self {
+        let mut io_space = IOSpace::default();
+        let ram = Ram::default();
         let os_rom = Rom::new(0xc000);
         let paged_rom = PagedRom::new(0x8000);
 
@@ -34,7 +34,9 @@ impl AddressMap {
             os_rom,
         }
     }
+}
 
+impl AddressMap {
     pub fn get_device(&mut self, address: Word) -> &mut dyn AddressableDevice {
         match address.1 {
             ..0x80 => &mut self.ram,

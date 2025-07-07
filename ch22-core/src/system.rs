@@ -23,7 +23,7 @@ impl System {
     pub fn new() -> System {
         utils::set_panic_hook();
 
-        let device_map = AddressMap::new();
+        let device_map = AddressMap::default();
 
         let cycle_manager = CycleManager::new(device_map);
 
@@ -123,6 +123,12 @@ impl System {
         self.cycle_manager
             .timer_devices
             .set_device_trigger(device_id, trigger);
+    }
+}
+
+impl Default for System {
+    fn default() -> Self {
+        System::new()
     }
 }
 

@@ -4,17 +4,12 @@ use crate::devices_lib::io_device_list::{IODeviceID, IODeviceList};
 use crate::interrupt_type::InterruptType;
 use crate::word::Word;
 
+#[derive(Default)]
 pub struct IOSpace {
     devices: IODeviceList,
 }
 
 impl IOSpace {
-    pub fn new() -> Self {
-        IOSpace {
-            devices: IODeviceList::default(),
-        }
-    }
-
     pub fn add_device(
         &mut self,
         addresses: &[u16],

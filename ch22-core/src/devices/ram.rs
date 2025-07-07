@@ -8,11 +8,13 @@ pub struct Ram {
     ram: [u8; RAM_SIZE],
 }
 
-impl Ram {
-    pub fn new() -> Ram {
+impl Default for Ram {
+    fn default() -> Ram {
         Ram { ram: [0; RAM_SIZE] }
     }
+}
 
+impl Ram {
     pub fn ram_start(&self) -> *const u8 {
         self.ram.as_ptr()
     }
