@@ -28,7 +28,7 @@ impl Rom {
 }
 
 impl AddressableDevice for Rom {
-    fn read(&mut self, address: Word, _cycles: &mut Clock) -> u8 {
+    fn read(&mut self, address: Word, _clock: &mut Clock) -> u8 {
         self.rom[Into::<usize>::into(address) - self.base_address]
     }
 }

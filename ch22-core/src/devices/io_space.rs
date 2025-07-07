@@ -1,7 +1,6 @@
 use crate::clock::Clock;
 use crate::devices_lib::addressable_device::AddressableDevice;
-use crate::devices_lib::io_device::IODevice;
-use crate::devices_lib::io_device_list::{IODeviceID, IODeviceList};
+use crate::devices_lib::io_device_list::*;
 use crate::interrupt_type::InterruptType;
 use crate::word::Word;
 
@@ -14,7 +13,7 @@ impl IOSpace {
     pub fn add_device(
         &mut self,
         addresses: &[u16],
-        device: Box<dyn IODevice>,
+        device: Box<dyn AddressableDevice>,
         interrupt_type: Option<InterruptType>,
         slow: bool,
     ) -> IODeviceID {
@@ -34,33 +33,33 @@ impl IOSpace {
 }
 
 impl AddressableDevice for IOSpace {
-    fn read(&mut self, address: Word, cycles: &mut Clock) -> u8 {
+    fn read(&mut self, address: Word, clock: &mut Clock) -> u8 {
         let Some((device, config)) = self.devices.get_with_config_by_address(address) else {
             return 0xff;
         };
 
         if config.slow {
-            cycles.slow_access(|cycles| device.read(address, cycles))
+            clock.slow_access(|clock| device.read(address, clock))
         } else {
-            device.read(address, cycles.get_cycles())
+            device.read(address, clock)
         }
     }
 
-    fn write(&mut self, address: Word, value: u8, cycles: &mut Clock) -> bool {
+    fn write(&mut self, address: Word, value: u8, clock: &mut Clock) -> bool {
         let Some((device, config)) = self.devices.get_with_config_by_address(address) else {
             return false;
         };
 
         if config.slow {
-            cycles.slow_access(|cycles| device.write(address, value, cycles))
+            clock.slow_access(|clock| device.write(address, value, clock))
         } else {
-            device.write(address, value, cycles.get_cycles())
+            device.write(address, value, clock)
         }
     }
 
     fn phase_2(&mut self, address: Word, cycles: u64) {
         if let Some(device) = self.devices.get_by_address(address) {
-            device.phase_2(cycles);
+            device.phase_2(address, cycles);
         }
     }
 }

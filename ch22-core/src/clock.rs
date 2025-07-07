@@ -11,12 +11,12 @@ impl Clock {
         self.cycles
     }
 
-    pub fn slow_access<F: FnOnce(u64) -> G, G>(&mut self, access_fn: F) -> G {
+    pub fn slow_access<F: FnOnce(&mut Self) -> G, G>(&mut self, access_fn: F) -> G {
         if self.cycles & 1 != 0 {
             self.inc();
         }
 
-        let result = access_fn(self.cycles);
+        let result = access_fn(self);
 
         self.inc();
 

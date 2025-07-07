@@ -37,7 +37,7 @@ impl PagedRom {
 }
 
 impl AddressableDevice for PagedRom {
-    fn read(&mut self, address: Word, _cycles: &mut Clock) -> u8 {
+    fn read(&mut self, address: Word, _clock: &mut Clock) -> u8 {
         self.roms[self.active_rom.get()][Into::<usize>::into(address) - self.base_address]
     }
 }

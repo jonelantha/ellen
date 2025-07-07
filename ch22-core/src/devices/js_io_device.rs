@@ -1,7 +1,8 @@
 use js_sys::Function;
 use wasm_bindgen::JsValue;
 
-use crate::devices_lib::io_device::IODevice;
+use crate::clock::Clock;
+use crate::devices_lib::addressable_device::AddressableDevice;
 use crate::word::Word;
 
 pub struct JsIODevice {
@@ -9,7 +10,7 @@ pub struct JsIODevice {
     write: Box<dyn Fn(u16, u8, u64) -> u64>,
     handle_trigger: Box<dyn Fn(u64) -> u64>,
     trigger: Option<u64>,
-    phase_2_data: Option<(Word, u8)>,
+    phase_2_data: Option<u8>,
     interrupt: bool,
     phase_2_write: bool,
 }
@@ -62,24 +63,24 @@ impl JsIODevice {
     }
 }
 
-impl IODevice for JsIODevice {
-    fn read(&mut self, address: Word, cycles: u64) -> u8 {
-        self.set_js_device_params((self.read)(address.into(), cycles))
+impl AddressableDevice for JsIODevice {
+    fn read(&mut self, address: Word, clock: &mut Clock) -> u8 {
+        self.set_js_device_params((self.read)(address.into(), clock.get_cycles()))
     }
 
-    fn write(&mut self, address: Word, value: u8, cycles: u64) -> bool {
+    fn write(&mut self, address: Word, value: u8, clock: &mut Clock) -> bool {
         if !self.phase_2_write {
-            self.set_js_device_params((self.write)(address.into(), value, cycles));
+            self.set_js_device_params((self.write)(address.into(), value, clock.get_cycles()));
             false
         } else {
-            self.phase_2_data = Some((address, value));
+            self.phase_2_data = Some(value);
 
             true
         }
     }
 
-    fn phase_2(&mut self, cycles: u64) {
-        let (address, value) = self.phase_2_data.unwrap();
+    fn phase_2(&mut self, address: Word, cycles: u64) {
+        let value = self.phase_2_data.unwrap();
 
         self.set_js_device_params((self.write)(address.into(), value, cycles));
     }
