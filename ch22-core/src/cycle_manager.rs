@@ -53,10 +53,6 @@ impl CpuIO for CycleManager {
             .io_space
             .get_interrupt(interrupt_type, self.cycles)
     }
-
-    fn instruction_ended(&mut self) {
-        self.timer_devices.sync(self.cycles);
-    }
 }
 
 impl CycleManager {
@@ -69,6 +65,12 @@ impl CycleManager {
             self.needs_phase_2 = None;
         }
 
+        self.inc_cycle();
+    }
+
+    fn inc_cycle(&mut self) {
         self.cycles += 1;
+
+        self.timer_devices.sync(self.cycles);
     }
 }

@@ -148,8 +148,6 @@ impl CpuIO for CycleManagerMock<'_> {
             InterruptType::NMI => is_in_on_off_range(self.nmi_on_off_list, current_cycle),
         }
     }
-
-    fn instruction_ended(&mut self) {}
 }
 
 fn is_in_on_off_range(on_off_list: &Option<TestInterruptOnOffList>, cycle: u8) -> bool {
