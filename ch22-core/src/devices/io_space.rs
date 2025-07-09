@@ -15,10 +15,10 @@ impl IOSpace {
         addresses: &[u16],
         device: Box<dyn AddressableDevice>,
         interrupt_type: Option<InterruptType>,
-        slow: bool,
+        one_mhz: bool,
     ) -> IODeviceID {
         self.devices
-            .add_device(addresses, device, interrupt_type, slow)
+            .add_device(addresses, device, interrupt_type, one_mhz)
     }
 
     pub fn get_interrupt(&mut self, interrupt_type: InterruptType, cycles: u64) -> bool {
@@ -36,7 +36,7 @@ impl IOSpace {
             return 0xff;
         };
 
-        if config.slow {
+        if config.one_mhz {
             clock.one_mhz_sync();
 
             let value = device.read(address, clock.get_cycles());
@@ -54,7 +54,7 @@ impl IOSpace {
             return false;
         };
 
-        if config.slow {
+        if config.one_mhz {
             clock.one_mhz_sync();
 
             let value = device.write(address, value, clock.get_cycles());

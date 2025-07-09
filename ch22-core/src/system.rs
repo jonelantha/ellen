@@ -38,7 +38,7 @@ impl System {
         &mut self,
         addresses: &[u16],
         read_value: u8,
-        slow: bool,
+        one_mhz: bool,
         panic_on_write: bool,
     ) -> IODeviceID {
         self.cycle_manager.address_map.io_space.add_device(
@@ -48,7 +48,7 @@ impl System {
                 panic_on_write,
             }),
             None,
-            slow,
+            one_mhz,
         )
     }
 
@@ -75,7 +75,7 @@ impl System {
                 flags & JS_DEVICE_PHASE_2_WRITE != 0,
             )),
             interrupt_type,
-            flags & JS_DEVICE_SLOW != 0,
+            flags & JS_DEVICE_ONE_MHZ != 0,
         )
     }
 
@@ -121,7 +121,7 @@ impl System {
     }
 }
 
-const JS_DEVICE_SLOW: u8 = 0b0000_0001;
+const JS_DEVICE_ONE_MHZ: u8 = 0b0000_0001;
 const JS_DEVICE_NMI: u8 = 0b0000_0010;
 const JS_DEVICE_IRQ: u8 = 0b0000_0100;
 const JS_DEVICE_PHASE_2_WRITE: u8 = 0b0001_0000;
