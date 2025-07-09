@@ -1,4 +1,3 @@
-use crate::clock::Clock;
 use crate::devices_lib::addressable_device::AddressableDevice;
 use crate::word::Word;
 
@@ -8,11 +7,11 @@ pub struct StaticDevice {
 }
 
 impl AddressableDevice for StaticDevice {
-    fn read(&mut self, _address: Word, _clock: &mut Clock) -> u8 {
+    fn read(&mut self, _address: Word, _cycles: u64) -> u8 {
         self.read_value
     }
 
-    fn write(&mut self, _address: Word, _value: u8, _clock: &mut Clock) -> bool {
+    fn write(&mut self, _address: Word, _value: u8, _cycles: u64) -> bool {
         if self.panic_on_write {
             panic!();
         }

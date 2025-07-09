@@ -30,36 +30,46 @@ impl IOSpace {
     pub fn set_interrupt(&mut self, device_id: IODeviceID, iterrupt: bool) {
         self.devices.get_by_id(device_id).set_interrupt(iterrupt);
     }
-}
 
-impl AddressableDevice for IOSpace {
-    fn read(&mut self, address: Word, clock: &mut Clock) -> u8 {
+    pub fn read(&mut self, address: Word, clock: &mut Clock) -> u8 {
         let Some((device, config)) = self.devices.get_with_config_by_address(address) else {
             return 0xff;
         };
 
         if config.slow {
-            clock.slow_access(|clock| device.read(address, clock))
+            clock.one_mhz_sync();
+
+            let value = device.read(address, clock.get_cycles());
+
+            clock.inc();
+
+            value
         } else {
-            device.read(address, clock)
+            device.read(address, clock.get_cycles())
         }
     }
 
-    fn write(&mut self, address: Word, value: u8, clock: &mut Clock) -> bool {
+    pub fn write(&mut self, address: Word, value: u8, clock: &mut Clock) -> bool {
         let Some((device, config)) = self.devices.get_with_config_by_address(address) else {
             return false;
         };
 
         if config.slow {
-            clock.slow_access(|clock| device.write(address, value, clock))
+            clock.one_mhz_sync();
+
+            let value = device.write(address, value, clock.get_cycles());
+
+            clock.inc();
+
+            value
         } else {
-            device.write(address, value, clock)
+            device.write(address, value, clock.get_cycles())
         }
     }
 
-    fn phase_2(&mut self, address: Word, cycles: u64) {
+    pub fn phase_2(&mut self, address: Word, clock: &mut Clock) {
         if let Some(device) = self.devices.get_by_address(address) {
-            device.phase_2(address, cycles);
+            device.phase_2(address, clock.get_cycles());
         }
     }
 }

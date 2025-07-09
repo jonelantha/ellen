@@ -1,7 +1,4 @@
-use crate::clock::Clock;
 use crate::word::Word;
-
-use crate::devices_lib::addressable_device::AddressableDevice;
 
 const RAM_SIZE: usize = 0x8000;
 
@@ -23,14 +20,12 @@ impl Ram {
     pub fn ram_size(&self) -> usize {
         RAM_SIZE
     }
-}
 
-impl AddressableDevice for Ram {
-    fn read(&mut self, address: Word, _clock: &mut Clock) -> u8 {
+    pub fn read(&mut self, address: Word) -> u8 {
         self.ram[Into::<usize>::into(address)]
     }
 
-    fn write(&mut self, address: Word, value: u8, _clock: &mut Clock) -> bool {
+    pub fn write(&mut self, address: Word, value: u8) -> bool {
         self.ram[Into::<usize>::into(address)] = value;
 
         false

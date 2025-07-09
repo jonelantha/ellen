@@ -1,10 +1,7 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
-use crate::clock::Clock;
 use crate::word::Word;
-
-use crate::devices_lib::addressable_device::AddressableDevice;
 
 const ROM_SIZE: usize = 0x4000;
 
@@ -34,10 +31,8 @@ impl PagedRom {
 
         self.roms[bank as usize].copy_from_slice(data);
     }
-}
 
-impl AddressableDevice for PagedRom {
-    fn read(&mut self, address: Word, _clock: &mut Clock) -> u8 {
+    pub fn read(&mut self, address: Word) -> u8 {
         self.roms[self.active_rom.get()][Into::<usize>::into(address) - self.base_address]
     }
 }

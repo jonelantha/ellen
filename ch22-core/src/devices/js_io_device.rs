@@ -1,7 +1,6 @@
 use js_sys::Function;
 use wasm_bindgen::JsValue;
 
-use crate::clock::Clock;
 use crate::devices_lib::addressable_device::AddressableDevice;
 use crate::word::Word;
 
@@ -64,13 +63,13 @@ impl JsIODevice {
 }
 
 impl AddressableDevice for JsIODevice {
-    fn read(&mut self, address: Word, clock: &mut Clock) -> u8 {
-        self.set_js_device_params((self.read)(address.into(), clock.get_cycles()))
+    fn read(&mut self, address: Word, cycles: u64) -> u8 {
+        self.set_js_device_params((self.read)(address.into(), cycles))
     }
 
-    fn write(&mut self, address: Word, value: u8, clock: &mut Clock) -> bool {
+    fn write(&mut self, address: Word, value: u8, cycles: u64) -> bool {
         if !self.phase_2_write {
-            self.set_js_device_params((self.write)(address.into(), value, clock.get_cycles()));
+            self.set_js_device_params((self.write)(address.into(), value, cycles));
             false
         } else {
             self.phase_2_data = Some(value);

@@ -11,16 +11,10 @@ impl Clock {
         self.cycles
     }
 
-    pub fn slow_access<F: FnOnce(&mut Self) -> G, G>(&mut self, access_fn: F) -> G {
+    pub fn one_mhz_sync(&mut self) {
         if self.cycles & 1 != 0 {
             self.inc();
         }
-
-        let result = access_fn(self);
-
-        self.inc();
-
-        result
     }
 
     pub fn inc(&mut self) {

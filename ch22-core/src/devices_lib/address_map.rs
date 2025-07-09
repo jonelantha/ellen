@@ -1,9 +1,10 @@
+use crate::clock::Clock;
 use crate::devices::io_space::*;
 use crate::devices::paged_rom::*;
 use crate::devices::ram::*;
 use crate::devices::rom::*;
 use crate::devices::rom_select::*;
-use crate::devices_lib::addressable_device::*;
+use crate::interrupt_type::InterruptType;
 use crate::word::Word;
 
 pub struct AddressMap {
@@ -37,13 +38,36 @@ impl Default for AddressMap {
 }
 
 impl AddressMap {
-    pub fn get_device(&mut self, address: Word) -> &mut dyn AddressableDevice {
+    pub fn read(&mut self, address: Word, clock: &mut Clock) -> u8 {
         match address.1 {
-            ..0x80 => &mut self.ram,
-            0x80..0xc0 => &mut self.paged_rom,
-            0xc0..0xfc => &mut self.os_rom,
-            0xfc..0xff => &mut self.io_space,
-            0xff.. => &mut self.os_rom,
+            ..0x80 => self.ram.read(address),
+            0x80..0xc0 => self.paged_rom.read(address),
+            0xc0..0xfc => self.os_rom.read(address),
+            0xfc..0xff => self.io_space.read(address, clock),
+            0xff.. => self.os_rom.read(address),
         }
+    }
+
+    pub fn write(&mut self, address: Word, value: u8, clock: &mut Clock) -> bool {
+        match address.1 {
+            ..0x80 => self.ram.write(address, value),
+            0x80..0xc0 => false, // paged rom
+            0xc0..0xfc => false, // os rom
+            0xfc..0xff => self.io_space.write(address, value, clock),
+            0xff.. => false, // os rom
+        }
+    }
+
+    pub fn phase_2(&mut self, address: Word, clock: &mut Clock) {
+        match address.1 {
+            ..0xfc => (),
+            0xfc..0xff => self.io_space.phase_2(address, clock),
+            0xff.. => (),
+        };
+    }
+
+    pub fn get_interrupt(&mut self, interrupt_type: InterruptType, clock: &mut Clock) -> bool {
+        self.io_space
+            .get_interrupt(interrupt_type, clock.get_cycles())
     }
 }

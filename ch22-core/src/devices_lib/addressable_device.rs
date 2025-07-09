@@ -1,9 +1,8 @@
-use crate::clock::Clock;
 use crate::word::Word;
 
 pub trait AddressableDevice {
-    fn read(&mut self, address: Word, _clock: &mut Clock) -> u8;
-    fn write(&mut self, _address: Word, _value: u8, _clock: &mut Clock) -> bool {
+    fn read(&mut self, address: Word, cycles: u64) -> u8;
+    fn write(&mut self, _address: Word, _value: u8, _cycles: u64) -> bool {
         false
     }
     fn phase_2(&mut self, _address: Word, _cycles: u64) {}
