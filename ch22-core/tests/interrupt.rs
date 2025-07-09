@@ -1,7 +1,7 @@
 mod util;
 
 use ch22_core::cpu::executor::*;
-use ch22_core::cpu::interrupt_state::*;
+use ch22_core::cpu::interrupt_due_state::*;
 use ch22_core::cpu::registers::*;
 use serde::Deserialize;
 use std::fs;
@@ -11,11 +11,11 @@ use util::*;
 struct InterruptTestParams {
     name: String,
     initial: CPUTestState,
-    initial_interrupt_state: InterruptTestState,
+    initial_interrupt_due_state: InterruptDueTestState,
     irq: Option<TestInterruptOnOffList>,
     nmi: Option<TestInterruptOnOffList>,
     r#final: CPUTestState,
-    final_interrupt_state: InterruptTestState,
+    final_interrupt_due_state: InterruptDueTestState,
     cycles: Option<CPUCycles>,
 }
 
@@ -31,11 +31,11 @@ fn interrupt_tests_from_file() {
         let panics = std::panic::catch_unwind(|| {
             interrupt_cycles_test(
                 &test_param.initial,
-                &test_param.initial_interrupt_state,
+                &test_param.initial_interrupt_due_state,
                 &test_param.irq,
                 &test_param.nmi,
                 &test_param.r#final,
-                &test_param.final_interrupt_state,
+                &test_param.final_interrupt_due_state,
                 &test_param.cycles,
             )
         });
@@ -48,23 +48,23 @@ fn interrupt_tests_from_file() {
 
 fn interrupt_cycles_test(
     initial_state: &CPUTestState,
-    initial_interrupt_state: &InterruptTestState,
+    initial_interrupt_due_state: &InterruptDueTestState,
     irq_on_off: &Option<TestInterruptOnOffList>,
     nmi_on_off: &Option<TestInterruptOnOffList>,
     final_state: &CPUTestState,
-    final_interrupt_state: &InterruptTestState,
+    final_interrupt_due_state: &InterruptDueTestState,
     expected_cycles: &Option<CPUCycles>,
 ) {
     let mut registers: Registers = initial_state.into();
 
-    let mut interrupt_state: InterruptState = initial_interrupt_state.into();
+    let mut interrupt_due_state: InterruptDueState = initial_interrupt_due_state.into();
 
     let mut cycle_manager_mock = CycleManagerMock::new(&initial_state.ram, irq_on_off, nmi_on_off);
 
     execute(
         &mut cycle_manager_mock,
         &mut registers,
-        &mut interrupt_state,
+        &mut interrupt_due_state,
         true,
     );
 
@@ -92,8 +92,8 @@ fn interrupt_cycles_test(
     );
 
     assert_eq!(
-        interrupt_state,
-        InterruptState::from(final_interrupt_state),
-        "interrupt_state mismatch"
+        interrupt_due_state,
+        InterruptDueState::from(final_interrupt_due_state),
+        "interrupt_due_state mismatch"
     );
 }

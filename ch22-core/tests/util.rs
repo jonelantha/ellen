@@ -1,4 +1,4 @@
-use ch22_core::cpu::interrupt_state::*;
+use ch22_core::cpu::interrupt_due_state::*;
 use ch22_core::cpu::registers::Registers;
 use ch22_core::cpu_io::*;
 use ch22_core::word::*;
@@ -42,14 +42,14 @@ pub struct TestInterruptOnOff {
 pub type TestInterruptOnOffList = Vec<TestInterruptOnOff>;
 
 #[derive(Deserialize)]
-pub struct InterruptTestState {
+pub struct InterruptDueTestState {
     pub previous_nmi: bool,
     pub interrupt_due: String,
 }
 
-impl From<&InterruptTestState> for InterruptState {
-    fn from(test_state: &InterruptTestState) -> Self {
-        InterruptState {
+impl From<&InterruptDueTestState> for InterruptDueState {
+    fn from(test_state: &InterruptDueTestState) -> Self {
+        InterruptDueState {
             previous_nmi: test_state.previous_nmi,
             interrupt_due: match test_state.interrupt_due.as_str() {
                 "nmi" => InterruptType::NMI,
