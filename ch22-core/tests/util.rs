@@ -106,7 +106,7 @@ impl CpuIO for CycleManagerMock<'_> {
         let value = *self
             .memory
             .get(&address)
-            .unwrap_or_else(|| panic!("memory not set {:x}", address));
+            .unwrap_or_else(|| panic!("memory not set {address:x}"));
 
         self.cycles.push((address, value, "read".to_owned()));
 

@@ -40,7 +40,7 @@ fn get_next_instruction<IO: CpuIO>(
         let opcode = immediate_fetch(io, &mut registers.program_counter);
 
         if [0x36, 0x41, 0x56, 0x5e, 0xe1].contains(&opcode) && !allow_untested_in_wild {
-            panic!("untested opcode: {:02x}", opcode);
+            panic!("untested opcode: {opcode:02x}");
         }
 
         decode(opcode, registers)
@@ -527,7 +527,7 @@ fn decode(opcode: u8, registers: &Registers) -> Instruction {
         // INC abs,X
         0xfe => ReadModifyWrite(increment, AbsoluteIndexed(registers.x)),
 
-        _ => panic!("Unimplemented opcode: {:#04x}", opcode),
+        _ => panic!("Unimplemented opcode: {opcode:#04x}"),
     }
 }
 
