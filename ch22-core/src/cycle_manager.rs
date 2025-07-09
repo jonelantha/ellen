@@ -3,22 +3,23 @@ use crate::memory::*;
 use crate::word::Word;
 
 pub struct CycleManager<'a> {
-    pub cycles: u8,
+    machine_cycles: &'a mut u32,
     needs_phase_2: bool,
     memory: &'a mut Ch22Memory,
-    get_irq_nmi: &'a (dyn Fn(u8) -> (bool, bool) + 'a),
-    do_phase_2: &'a (dyn Fn(u8) + 'a),
+    get_irq_nmi: &'a (dyn Fn(u32) -> (bool, bool) + 'a),
+    do_phase_2: &'a (dyn Fn(u32) + 'a),
     is_first: bool,
 }
 
 impl<'a> CycleManager<'a> {
     pub fn new(
         memory: &'a mut Ch22Memory,
-        get_irq_nmi: &'a (dyn Fn(u8) -> (bool, bool) + 'a),
-        do_phase_2: &'a (dyn Fn(u8) + 'a),
+        machine_cycles: &'a mut u32,
+        get_irq_nmi: &'a (dyn Fn(u32) -> (bool, bool) + 'a),
+        do_phase_2: &'a (dyn Fn(u32) + 'a),
     ) -> Self {
         CycleManager {
-            cycles: 0,
+            machine_cycles,
             memory,
             get_irq_nmi,
             do_phase_2,
@@ -36,13 +37,37 @@ impl CpuIO for CycleManager<'_> {
     fn read(&mut self, address: Word) -> u8 {
         self.cycle_end();
 
-        self.memory.read(address.into(), self.cycles)
+        let is_io = self.memory.is_io(address.into());
+
+        if is_io && *self.machine_cycles & 1 != 0 {
+            *self.machine_cycles += 1;
+        }
+
+        let value = self.memory.read(address.into(), *self.machine_cycles);
+
+        if is_io {
+            *self.machine_cycles += 1;
+        }
+
+        value
     }
 
     fn write(&mut self, address: Word, value: u8) {
         self.cycle_end();
 
-        self.needs_phase_2 = self.memory.write(address.into(), value, self.cycles);
+        let is_io = self.memory.is_io(address.into());
+
+        if is_io && *self.machine_cycles & 1 != 0 {
+            *self.machine_cycles += 1;
+        }
+
+        self.needs_phase_2 = self
+            .memory
+            .write(address.into(), value, *self.machine_cycles);
+
+        if is_io {
+            *self.machine_cycles += 1;
+        }
     }
 
     fn complete(&mut self) {
@@ -50,7 +75,7 @@ impl CpuIO for CycleManager<'_> {
     }
 
     fn get_irq_nmi(&mut self, interrupt_disable: bool) -> (bool, bool) {
-        let (irq, nmi) = (self.get_irq_nmi)(self.cycles);
+        let (irq, nmi) = (self.get_irq_nmi)(*self.machine_cycles);
 
         (irq & !interrupt_disable, nmi)
     }
@@ -64,10 +89,10 @@ impl CycleManager<'_> {
         };
 
         if self.needs_phase_2 {
-            (self.do_phase_2)(self.cycles);
+            (self.do_phase_2)(*self.machine_cycles);
             self.needs_phase_2 = false;
         }
 
-        self.cycles += 1;
+        *self.machine_cycles += 1;
     }
 }

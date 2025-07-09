@@ -14,22 +14,30 @@ pub mod interrupt_due_state;
 pub mod registers;
 pub mod util;
 
+const CYCLE_COUNT_WRAP: u32 = 0x3FFFFFFF;
+
 #[wasm_bindgen]
 pub struct Ch22Cpu {
-    get_irq_nmi: Box<dyn Fn(u8) -> (bool, bool)>,
-    do_phase_2: Box<dyn Fn(u8)>,
+    get_irq_nmi: Box<dyn Fn(u32) -> (bool, bool)>,
+    do_phase_2: Box<dyn Fn(u32)>,
+    wrap_counts: Box<dyn Fn(u32)>,
     registers: Registers,
     interrupt_due_state: InterruptDueState,
+    machine_cycles: u32,
 }
 
 #[wasm_bindgen]
 impl Ch22Cpu {
-    pub fn new(js_get_irq_nmi: Function, js_do_phase_2: Function) -> Ch22Cpu {
+    pub fn new(
+        js_get_irq_nmi: Function,
+        js_do_phase_2: Function,
+        js_wrap_counts: Function,
+    ) -> Ch22Cpu {
         utils::set_panic_hook();
 
-        let get_irq_nmi = Box::new(move |cycles: u8| {
+        let get_irq_nmi = Box::new(move |machine_cycles: u32| {
             let flags = js_get_irq_nmi
-                .call1(&JsValue::NULL, &cycles.into())
+                .call1(&JsValue::NULL, &machine_cycles.into())
                 .expect("js_get_irq_nmi error")
                 .as_f64()
                 .expect("js_get_irq_nmi error") as u8;
@@ -38,15 +46,24 @@ impl Ch22Cpu {
             (flags & 1 != 0, flags & 2 != 0)
         });
 
-        let do_phase_2 = Box::new(move |cycles: u8| {
+        let do_phase_2 = Box::new(move |machine_cycles: u32| {
             js_do_phase_2
-                .call1(&JsValue::NULL, &cycles.into())
+                .call1(&JsValue::NULL, &machine_cycles.into())
                 .expect("js_do_phase_2 error");
         });
 
+        let wrap_counts = Box::new(move |wrap: u32| {
+            js_wrap_counts
+                .call1(&JsValue::NULL, &wrap.into())
+                .expect("js_wrap_counts error");
+        });
+        //
+
         Ch22Cpu {
+            machine_cycles: 0,
             get_irq_nmi,
             do_phase_2,
+            wrap_counts,
             registers: Registers::default(),
             interrupt_due_state: InterruptDueState::default(),
         }
@@ -56,7 +73,10 @@ impl Ch22Cpu {
         let vector: u16 = RESET_VECTOR.into();
 
         self.registers = Registers {
-            program_counter: Word(memory.read(vector, 0), memory.read(vector + 1, 0)),
+            program_counter: Word(
+                memory.read(vector, self.machine_cycles),
+                memory.read(vector + 1, self.machine_cycles),
+            ),
             stack_pointer: 0xff,
             flags: ProcessorFlags {
                 interrupt_disable: true,
@@ -68,8 +88,13 @@ impl Ch22Cpu {
         self.interrupt_due_state = InterruptDueState::default();
     }
 
-    pub fn handle_next_instruction(&mut self, memory: &mut Ch22Memory) -> u8 {
-        let mut cycle_manager = CycleManager::new(memory, &self.get_irq_nmi, &self.do_phase_2);
+    pub fn handle_next_instruction(&mut self, memory: &mut Ch22Memory) -> u32 {
+        let mut cycle_manager = CycleManager::new(
+            memory,
+            &mut self.machine_cycles,
+            &self.get_irq_nmi,
+            &self.do_phase_2,
+        );
 
         execute(
             &mut cycle_manager,
@@ -78,6 +103,11 @@ impl Ch22Cpu {
             false,
         );
 
-        cycle_manager.cycles
+        if self.machine_cycles > CYCLE_COUNT_WRAP {
+            (self.wrap_counts)(CYCLE_COUNT_WRAP);
+            self.machine_cycles -= CYCLE_COUNT_WRAP;
+        }
+
+        self.machine_cycles
     }
 }
