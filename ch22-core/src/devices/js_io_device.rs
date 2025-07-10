@@ -9,7 +9,6 @@ pub struct JsIODevice {
     write: Box<dyn Fn(u16, u8, u64) -> u64>,
     handle_trigger: Box<dyn Fn(u64) -> u64>,
     trigger: Option<u64>,
-    phase_2_data: Option<u8>,
     interrupt: bool,
     phase_2_write: bool,
 }
@@ -55,7 +54,6 @@ impl JsIODevice {
             write,
             handle_trigger,
             trigger: None,
-            phase_2_data: None,
             interrupt: false,
             phase_2_write,
         }
@@ -70,18 +68,17 @@ impl IODevice for JsIODevice {
     fn write(&mut self, address: Word, value: u8, cycles: u64) -> bool {
         if !self.phase_2_write {
             self.set_js_device_params((self.write)(address.into(), value, cycles));
+
             false
         } else {
-            self.phase_2_data = Some(value);
-
             true
         }
     }
 
-    fn phase_2(&mut self, address: Word, cycles: u64) {
-        let value = self.phase_2_data.unwrap();
-
-        self.set_js_device_params((self.write)(address.into(), value, cycles));
+    fn phase_2(&mut self, address: Word, value: u8, cycles: u64) {
+        if self.phase_2_write {
+            self.set_js_device_params((self.write)(address.into(), value, cycles));
+        }
     }
 
     fn get_interrupt(&mut self, cycles: u64) -> bool {

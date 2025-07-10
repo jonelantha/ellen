@@ -48,22 +48,18 @@ impl AddressMap {
         }
     }
 
-    pub fn write(&mut self, address: Word, value: u8, clock: &mut Clock) -> bool {
+    pub fn write(&mut self, address: Word, value: u8, clock: &mut Clock) {
         match address.1 {
             ..0x80 => self.ram.write(address, value),
-            0x80..0xc0 => false, // paged rom
-            0xc0..0xfc => false, // os rom
+            0x80..0xc0 => (), // paged rom
+            0xc0..0xfc => (), // os rom
             0xfc..0xff => self.io_space.write(address, value, clock),
-            0xff.. => false, // os rom
+            0xff.. => (), // os rom
         }
     }
 
-    pub fn phase_2(&mut self, address: Word, clock: &mut Clock) {
-        match address.1 {
-            ..0xfc => (),
-            0xfc..0xff => self.io_space.phase_2(address, clock),
-            0xff.. => (),
-        };
+    pub fn phase_2(&mut self, clock: &mut Clock) {
+        self.io_space.phase_2(clock);
     }
 
     pub fn get_interrupt(&mut self, interrupt_type: InterruptType, clock: &mut Clock) -> bool {

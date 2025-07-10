@@ -25,9 +25,7 @@ impl Ram {
         self.ram[Into::<usize>::into(address)]
     }
 
-    pub fn write(&mut self, address: Word, value: u8) -> bool {
+    pub fn write(&mut self, address: Word, value: u8) {
         self.ram[Into::<usize>::into(address)] = value;
-
-        false
     }
 }

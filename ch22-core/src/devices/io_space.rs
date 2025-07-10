@@ -7,6 +7,7 @@ use crate::word::Word;
 #[derive(Default)]
 pub struct IOSpace {
     devices: IODeviceList,
+    phase_2_data: Option<(Word, u8)>,
 }
 
 impl IOSpace {
@@ -36,40 +37,50 @@ impl IOSpace {
             return 0xff;
         };
 
+        let value;
+
         if config.one_mhz {
             clock.one_mhz_sync();
 
-            let value = device.read(address, clock.get_cycles());
+            value = device.read(address, clock.get_cycles());
 
             clock.inc();
-
-            value
         } else {
-            device.read(address, clock.get_cycles())
+            value = device.read(address, clock.get_cycles())
         }
+
+        value
     }
 
-    pub fn write(&mut self, address: Word, value: u8, clock: &mut Clock) -> bool {
+    pub fn write(&mut self, address: Word, value: u8, clock: &mut Clock) {
         let Some((device, config)) = self.devices.get_with_config_by_address(address) else {
-            return false;
+            return;
         };
 
+        let needs_phase_2;
+
         if config.one_mhz {
             clock.one_mhz_sync();
 
-            let value = device.write(address, value, clock.get_cycles());
+            needs_phase_2 = device.write(address, value, clock.get_cycles());
 
             clock.inc();
-
-            value
         } else {
-            device.write(address, value, clock.get_cycles())
+            needs_phase_2 = device.write(address, value, clock.get_cycles());
+        };
+
+        if needs_phase_2 {
+            self.phase_2_data = Some((address, value));
         }
     }
 
-    pub fn phase_2(&mut self, address: Word, clock: &mut Clock) {
-        if let Some(device) = self.devices.get_by_address(address) {
-            device.phase_2(address, clock.get_cycles());
+    pub fn phase_2(&mut self, clock: &mut Clock) {
+        if let Some((address, value)) = self.phase_2_data {
+            if let Some(device) = self.devices.get_by_address(address) {
+                device.phase_2(address, value, clock.get_cycles());
+            }
+
+            self.phase_2_data = None;
         }
     }
 }

@@ -7,7 +7,6 @@ use crate::word::Word;
 #[derive(Default)]
 pub struct CycleManager {
     pub clock: Clock,
-    needs_phase_2: Option<Word>,
     pub address_map: AddressMap,
 }
 
@@ -25,11 +24,7 @@ impl CpuIO for CycleManager {
     fn write(&mut self, address: Word, value: u8) {
         self.end_previous_cycle();
 
-        let needs_phase_2 = self.address_map.write(address, value, &mut self.clock);
-
-        if needs_phase_2 {
-            self.needs_phase_2 = Some(address);
-        }
+        self.address_map.write(address, value, &mut self.clock);
     }
 
     fn get_interrupt(&mut self, interrupt_type: InterruptType) -> bool {
@@ -40,11 +35,7 @@ impl CpuIO for CycleManager {
 
 impl CycleManager {
     fn end_previous_cycle(&mut self) {
-        if let Some(address) = self.needs_phase_2 {
-            self.address_map.phase_2(address, &mut self.clock);
-
-            self.needs_phase_2 = None;
-        }
+        self.address_map.phase_2(&mut self.clock);
 
         self.clock.inc();
     }
