@@ -97,10 +97,10 @@ impl IODevice for JsIODevice {
 
 impl JsIODevice {
     fn sync(&mut self, cycles: u64) {
-        if let Some(trigger) = self.trigger {
-            if trigger <= cycles {
-                self.set_js_device_params((self.handle_trigger)(cycles));
-            }
+        if let Some(trigger) = self.trigger
+            && trigger <= cycles
+        {
+            self.set_js_device_params((self.handle_trigger)(cycles));
         }
     }
 
