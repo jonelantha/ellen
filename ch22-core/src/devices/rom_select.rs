@@ -1,7 +1,7 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
-use crate::devices_lib::addressable_device::AddressableDevice;
+use crate::devices_lib::io_device::IODevice;
 use crate::word::Word;
 
 pub struct RomSelect {
@@ -14,7 +14,7 @@ impl RomSelect {
     }
 }
 
-impl AddressableDevice for RomSelect {
+impl IODevice for RomSelect {
     fn read(&mut self, _address: Word, _cycles: u64) -> u8 {
         self.active_rom.get() as u8
     }

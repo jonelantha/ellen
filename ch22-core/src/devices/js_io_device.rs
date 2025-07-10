@@ -1,7 +1,7 @@
 use js_sys::Function;
 use wasm_bindgen::JsValue;
 
-use crate::devices_lib::addressable_device::AddressableDevice;
+use crate::devices_lib::io_device::IODevice;
 use crate::word::Word;
 
 pub struct JsIODevice {
@@ -62,7 +62,7 @@ impl JsIODevice {
     }
 }
 
-impl AddressableDevice for JsIODevice {
+impl IODevice for JsIODevice {
     fn read(&mut self, address: Word, cycles: u64) -> u8 {
         self.set_js_device_params((self.read)(address.into(), cycles))
     }

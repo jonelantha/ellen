@@ -1,5 +1,5 @@
 use crate::clock::Clock;
-use crate::devices_lib::addressable_device::AddressableDevice;
+use crate::devices_lib::io_device::IODevice;
 use crate::devices_lib::io_device_list::*;
 use crate::interrupt_type::InterruptType;
 use crate::word::Word;
@@ -13,7 +13,7 @@ impl IOSpace {
     pub fn add_device(
         &mut self,
         addresses: &[u16],
-        device: Box<dyn AddressableDevice>,
+        device: Box<dyn IODevice>,
         interrupt_type: Option<InterruptType>,
         one_mhz: bool,
     ) -> IODeviceID {
