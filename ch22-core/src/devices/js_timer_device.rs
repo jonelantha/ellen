@@ -30,11 +30,13 @@ impl TimerDevice for JsTimerDevice {
 // trig trig trig trig trig trig flags null
 
 fn get_js_trigger_params(params: u64) -> Option<u64> {
-    let flags = (params >> 8) & 0xff;
+    let [_, _, _, _, _, _, flags, _] = params.to_be_bytes();
 
-    if flags & 0x01 != 0 {
+    if flags & JS_TIMER_FLAG_HAS_TRIGGER != 0 {
         Some(params >> 16)
     } else {
         None
     }
 }
+
+const JS_TIMER_FLAG_HAS_TRIGGER: u8 = 0x01;

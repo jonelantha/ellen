@@ -107,12 +107,11 @@ impl JsIODevice {
     // trig trig trig trig trig trig flags value
 
     fn set_js_device_params(&mut self, params_and_value: u64) -> u8 {
-        let flags = (params_and_value >> 8) & 0xff;
-        let value = ((params_and_value) & 0xff) as u8;
+        let [_, _, _, _, _, _, flags, value] = params_and_value.to_be_bytes();
 
-        self.interrupt = flags & 0x02 != 0;
+        self.interrupt = flags & JS_IO_FLAG_INTERRUPT != 0;
 
-        self.trigger = if flags & 0x01 != 0 {
+        self.trigger = if flags & JS_IO_FLAG_HAS_TRIGGER != 0 {
             Some(params_and_value >> 16)
         } else {
             None
@@ -121,3 +120,6 @@ impl JsIODevice {
         value
     }
 }
+
+const JS_IO_FLAG_HAS_TRIGGER: u8 = 0x01;
+const JS_IO_FLAG_INTERRUPT: u8 = 0x02;
