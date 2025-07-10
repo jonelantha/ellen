@@ -22,10 +22,10 @@ impl IOSpace {
             .add_device(addresses, device, interrupt_type, one_mhz)
     }
 
-    pub fn get_interrupt(&mut self, interrupt_type: InterruptType, cycles: u64) -> bool {
+    pub fn get_interrupt(&mut self, interrupt_type: InterruptType, clock: &Clock) -> bool {
         self.devices
             .get_by_interrupt_type(interrupt_type)
-            .any(|device| device.get_interrupt(cycles))
+            .any(|device| device.get_interrupt(clock.get_cycles()))
     }
 
     pub fn set_interrupt(&mut self, device_id: IODeviceID, iterrupt: bool) {
@@ -74,7 +74,7 @@ impl IOSpace {
         }
     }
 
-    pub fn phase_2(&mut self, clock: &mut Clock) {
+    pub fn phase_2(&mut self, clock: &Clock) {
         if let Some((address, value)) = self.phase_2_data {
             if let Some(device) = self.devices.get_by_address(address) {
                 device.phase_2(address, value, clock.get_cycles());

@@ -58,12 +58,11 @@ impl AddressMap {
         }
     }
 
-    pub fn phase_2(&mut self, clock: &mut Clock) {
+    pub fn phase_2(&mut self, clock: &Clock) {
         self.io_space.phase_2(clock);
     }
 
-    pub fn get_interrupt(&mut self, interrupt_type: InterruptType, clock: &mut Clock) -> bool {
-        self.io_space
-            .get_interrupt(interrupt_type, clock.get_cycles())
+    pub fn get_interrupt(&mut self, interrupt_type: InterruptType, clock: &Clock) -> bool {
+        self.io_space.get_interrupt(interrupt_type, clock)
     }
 }

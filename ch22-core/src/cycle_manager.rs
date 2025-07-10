@@ -28,14 +28,13 @@ impl CpuIO for CycleManager {
     }
 
     fn get_interrupt(&mut self, interrupt_type: InterruptType) -> bool {
-        self.address_map
-            .get_interrupt(interrupt_type, &mut self.clock)
+        self.address_map.get_interrupt(interrupt_type, &self.clock)
     }
 }
 
 impl CycleManager {
     fn end_previous_cycle(&mut self) {
-        self.address_map.phase_2(&mut self.clock);
+        self.address_map.phase_2(&self.clock);
 
         self.clock.inc();
     }
