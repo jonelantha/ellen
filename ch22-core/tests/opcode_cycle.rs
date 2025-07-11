@@ -1,10 +1,12 @@
-mod util;
-
 use ch22_core::cpu::executor::*;
 use ch22_core::cpu::interrupt_due_state::*;
 use serde::Deserialize;
 use std::fs;
-use util::{CPUTestState, CycleManagerMock};
+
+use crate::common::cycle_manager_mock::CycleManagerMock;
+use crate::common::json_data::CPUTestState;
+
+mod common;
 
 #[derive(Deserialize)]
 struct CycleTestParams {

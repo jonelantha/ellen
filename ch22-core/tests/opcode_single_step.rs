@@ -1,11 +1,13 @@
-mod util;
+mod common;
 
 use ch22_core::cpu::executor::*;
 use ch22_core::cpu::interrupt_due_state::*;
 use ch22_core::cpu::registers::*;
 use serde::Deserialize;
 use std::fs;
-use util::*;
+
+use crate::common::cycle_manager_mock::CycleManagerMock;
+use crate::common::json_data::*;
 
 #[derive(Deserialize)]
 struct SingleStepTestParams {
