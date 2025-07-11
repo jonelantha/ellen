@@ -1,13 +1,13 @@
 use js_sys::Function;
 use wasm_bindgen::prelude::*;
 
+use crate::address_map::io_space::io_device_list::IODeviceID;
+use crate::clock::timer_device_list::TimerDeviceID;
 use crate::cpu::*;
 use crate::cycle_manager::*;
 use crate::devices::js_io_device::JsIODevice;
 use crate::devices::js_timer_device::*;
 use crate::devices::static_device::StaticDevice;
-use crate::devices_lib::io_device_list::IODeviceID;
-use crate::devices_lib::timer_device_list::TimerDeviceID;
 use crate::interrupt_type::InterruptType;
 use crate::utils;
 

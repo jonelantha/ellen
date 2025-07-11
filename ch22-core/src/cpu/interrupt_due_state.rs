@@ -1,4 +1,4 @@
-use crate::cpu_io::*;
+use super::cpu_io::*;
 use crate::interrupt_type::*;
 
 #[derive(PartialEq, Default, Debug)]

@@ -1,4 +1,6 @@
-use crate::devices_lib::timer_device_list::TimerDeviceList;
+use timer_device_list::TimerDeviceList;
+
+pub mod timer_device_list;
 
 #[derive(Default)]
 pub struct Clock {

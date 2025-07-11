@@ -1,6 +1,6 @@
+use crate::address_map::*;
 use crate::clock::Clock;
-use crate::cpu_io::*;
-use crate::devices_lib::address_map::*;
+use crate::cpu::cpu_io::*;
 use crate::interrupt_type::InterruptType;
 use crate::word::Word;
 

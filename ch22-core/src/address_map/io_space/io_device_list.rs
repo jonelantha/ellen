@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::devices_lib::io_device::IODevice;
+use crate::devices::io_device::IODevice;
 use crate::interrupt_type::InterruptType;
 use crate::word::Word;
 

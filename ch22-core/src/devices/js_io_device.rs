@@ -1,7 +1,7 @@
 use js_sys::Function;
 use wasm_bindgen::JsValue;
 
-use crate::devices_lib::io_device::IODevice;
+use super::io_device::*;
 use crate::word::Word;
 
 pub struct JsIODevice {

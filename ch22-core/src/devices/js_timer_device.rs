@@ -1,7 +1,7 @@
 use js_sys::Function;
 use wasm_bindgen::JsValue;
 
-use crate::devices_lib::timer_device::TimerDevice;
+use super::timer_device::*;
 
 pub struct JsTimerDevice {
     handle_trigger: Box<dyn Fn(u64) -> u64>,

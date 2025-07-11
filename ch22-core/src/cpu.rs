@@ -2,9 +2,10 @@ use executor::*;
 use interrupt_due_state::*;
 use registers::*;
 
-use crate::cpu_io::CpuIO;
 use crate::word::Word;
+use cpu_io::*;
 
+pub mod cpu_io;
 pub mod executor;
 pub mod interrupt_due_state;
 pub mod registers;

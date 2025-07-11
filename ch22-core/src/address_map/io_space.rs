@@ -1,8 +1,10 @@
+pub mod io_device_list;
+
 use crate::clock::Clock;
-use crate::devices_lib::io_device::IODevice;
-use crate::devices_lib::io_device_list::*;
+use crate::devices::io_device::IODevice;
 use crate::interrupt_type::InterruptType;
 use crate::word::Word;
+use io_device_list::*;
 
 #[derive(Default)]
 pub struct IOSpace {
