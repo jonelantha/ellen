@@ -4,7 +4,7 @@ use ch22_core::interrupt_type::*;
 
 use serde::Deserialize;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone, Copy)]
 pub struct TestInterruptOnOff {
     pub on: u8,
     pub off: u8,

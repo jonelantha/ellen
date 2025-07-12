@@ -42,7 +42,7 @@ fn opcode_cycle_test(_name: &str, initial_state: &CPUTestState, cycle_syncs: &Ve
 
     let mut interrupt_due_state = InterruptDueState::default();
 
-    let mut cycle_manager_mock = CycleManagerMock::new(&initial_state.ram, &None, &None);
+    let mut cycle_manager_mock = CycleManagerMock::new(&initial_state.ram, None, None);
 
     execute(
         &mut cycle_manager_mock,

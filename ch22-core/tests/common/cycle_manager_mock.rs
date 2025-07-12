@@ -6,22 +6,23 @@ use std::collections::HashMap;
 
 use super::json_data::TestInterruptOnOffList;
 
-pub struct CycleManagerMock<'a> {
+#[derive(Default)]
+pub struct CycleManagerMock {
     memory: HashMap<u16, u8>,
-    irq_on_off_list: &'a Option<TestInterruptOnOffList>,
-    nmi_on_off_list: &'a Option<TestInterruptOnOffList>,
+    irq_on_off_list: Option<TestInterruptOnOffList>,
+    nmi_on_off_list: Option<TestInterruptOnOffList>,
     cycle_check_nmi: bool,
     cycle_check_irq: bool,
     pub cycles: Vec<(u16, u8, String)>,
     pub cycle_syncs: Vec<String>,
 }
 
-impl<'a> CycleManagerMock<'a> {
+impl CycleManagerMock {
     pub fn new(
         initial_ram: &Vec<(u16, u8)>,
-        irq_on_off_list: &'a Option<TestInterruptOnOffList>,
-        nmi_on_off_list: &'a Option<TestInterruptOnOffList>,
-    ) -> CycleManagerMock<'a> {
+        irq_on_off_list: Option<TestInterruptOnOffList>,
+        nmi_on_off_list: Option<TestInterruptOnOffList>,
+    ) -> CycleManagerMock {
         let mut memory = HashMap::new();
 
         for ram_location in initial_ram {
@@ -32,15 +33,12 @@ impl<'a> CycleManagerMock<'a> {
             memory,
             irq_on_off_list,
             nmi_on_off_list,
-            cycle_check_nmi: false,
-            cycle_check_irq: false,
-            cycles: Vec::new(),
-            cycle_syncs: Vec::new(),
+            ..Default::default()
         }
     }
 }
 
-impl CpuIO for CycleManagerMock<'_> {
+impl CpuIO for CycleManagerMock {
     fn phantom_read(&mut self, address: Word) {
         self.read(address);
     }
@@ -89,8 +87,8 @@ impl CpuIO for CycleManagerMock<'_> {
         let current_cycle = self.cycles.len() as u8;
 
         match interrupt_type {
-            InterruptType::IRQ => is_in_on_off_range(self.irq_on_off_list, current_cycle),
-            InterruptType::NMI => is_in_on_off_range(self.nmi_on_off_list, current_cycle),
+            InterruptType::IRQ => is_in_on_off_range(&self.irq_on_off_list, current_cycle),
+            InterruptType::NMI => is_in_on_off_range(&self.nmi_on_off_list, current_cycle),
         }
     }
 }

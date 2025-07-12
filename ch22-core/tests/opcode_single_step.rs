@@ -843,7 +843,7 @@ fn opcode_single_step_test(
     let mut registers = initial_state.into();
     let mut interrupt_due_state = InterruptDueState::default();
 
-    let mut cycle_manager_mock = CycleManagerMock::new(&initial_state.ram, &None, &None);
+    let mut cycle_manager_mock = CycleManagerMock::new(&initial_state.ram, None, None);
 
     execute(
         &mut cycle_manager_mock,

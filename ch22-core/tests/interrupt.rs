@@ -61,7 +61,8 @@ fn interrupt_cycles_test(
 
     let mut interrupt_due_state: InterruptDueState = initial_interrupt_due_state.into();
 
-    let mut cycle_manager_mock = CycleManagerMock::new(&initial_state.ram, irq_on_off, nmi_on_off);
+    let mut cycle_manager_mock =
+        CycleManagerMock::new(&initial_state.ram, irq_on_off.clone(), nmi_on_off.clone());
 
     execute(
         &mut cycle_manager_mock,
