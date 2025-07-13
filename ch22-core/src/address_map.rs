@@ -30,7 +30,7 @@ impl Default for AddressMap {
             &[0xfe30, 0xfe31, 0xfe32, 0xfe33],
             Box::new(RomSelect::new(paged_rom.get_active_rom())),
             None,
-            false,
+            DeviceSpeed::TwoMhz,
         );
 
         AddressMap {

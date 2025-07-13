@@ -1,6 +1,7 @@
 use js_sys::Function;
 use wasm_bindgen::prelude::*;
 
+use crate::address_map::io_space::DeviceSpeed;
 use crate::address_map::io_space::io_device_list::IODeviceID;
 use crate::clock::timer_device_list::TimerDeviceID;
 use crate::cpu::*;
@@ -41,6 +42,11 @@ impl System {
         one_mhz: bool,
         panic_on_write: bool,
     ) -> IODeviceID {
+        let speed = match one_mhz {
+            true => DeviceSpeed::OneMhz,
+            false => DeviceSpeed::TwoMhz,
+        };
+
         self.cycle_manager.address_map.io_space.add_device(
             addresses,
             Box::new(StaticDevice {
@@ -48,7 +54,7 @@ impl System {
                 panic_on_write,
             }),
             None,
-            one_mhz,
+            speed,
         )
     }
 
@@ -66,6 +72,11 @@ impl System {
             _ => None,
         };
 
+        let speed = match flags & JS_DEVICE_ONE_MHZ {
+            JS_DEVICE_ONE_MHZ => DeviceSpeed::OneMhz,
+            _ => DeviceSpeed::TwoMhz,
+        };
+
         self.cycle_manager.address_map.io_space.add_device(
             addresses,
             Box::new(JsIODevice::new(
@@ -75,7 +86,7 @@ impl System {
                 flags & JS_DEVICE_PHASE_2_WRITE != 0,
             )),
             interrupt_type,
-            flags & JS_DEVICE_ONE_MHZ != 0,
+            speed,
         )
     }
 

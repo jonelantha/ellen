@@ -19,13 +19,13 @@ impl IODeviceList {
         addresses: &[u16],
         device: Box<dyn IODevice>,
         interrupt_type: Option<InterruptType>,
-        one_mhz: bool,
+        speed: DeviceSpeed,
     ) -> IODeviceID {
         self.device_list.push(device);
 
         self.config_list.push(IODeviceConfig {
             interrupt_type,
-            one_mhz,
+            speed,
         });
 
         // assumes devices will not be removed
@@ -86,5 +86,5 @@ impl IODeviceList {
 
 pub struct IODeviceConfig {
     pub interrupt_type: Option<InterruptType>,
-    pub one_mhz: bool,
+    pub speed: DeviceSpeed,
 }

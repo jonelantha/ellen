@@ -18,10 +18,10 @@ impl IOSpace {
         addresses: &[u16],
         device: Box<dyn IODevice>,
         interrupt_type: Option<InterruptType>,
-        one_mhz: bool,
+        speed: DeviceSpeed,
     ) -> IODeviceID {
         self.devices
-            .add_device(addresses, device, interrupt_type, one_mhz)
+            .add_device(addresses, device, interrupt_type, speed)
     }
 
     pub fn get_interrupt(&mut self, interrupt_type: InterruptType, clock: &Clock) -> bool {
@@ -39,19 +39,7 @@ impl IOSpace {
             return 0xff;
         };
 
-        let value;
-
-        if config.one_mhz {
-            clock.one_mhz_sync();
-
-            value = device.read(address, clock.get_cycles());
-
-            clock.inc();
-        } else {
-            value = device.read(address, clock.get_cycles())
-        }
-
-        value
+        access(|cycles| device.read(address, cycles), &config.speed, clock)
     }
 
     pub fn write(&mut self, address: Word, value: u8, clock: &mut Clock) {
@@ -59,17 +47,11 @@ impl IOSpace {
             return;
         };
 
-        let needs_phase_2;
-
-        if config.one_mhz {
-            clock.one_mhz_sync();
-
-            needs_phase_2 = device.write(address, value, clock.get_cycles());
-
-            clock.inc();
-        } else {
-            needs_phase_2 = device.write(address, value, clock.get_cycles());
-        };
+        let needs_phase_2 = access(
+            |cycles| device.write(address, value, cycles),
+            &config.speed,
+            clock,
+        );
 
         if needs_phase_2 {
             self.phase_2_data = Some((address, value));
@@ -85,4 +67,24 @@ impl IOSpace {
             self.phase_2_data = None;
         }
     }
+}
+
+pub fn access<F: FnOnce(u64) -> G, G>(access_fn: F, speed: &DeviceSpeed, clock: &mut Clock) -> G {
+    match speed {
+        DeviceSpeed::OneMhz => {
+            clock.one_mhz_sync();
+
+            let value = access_fn(clock.get_cycles());
+
+            clock.inc();
+
+            value
+        }
+        DeviceSpeed::TwoMhz => access_fn(clock.get_cycles()),
+    }
+}
+
+pub enum DeviceSpeed {
+    OneMhz,
+    TwoMhz,
 }
