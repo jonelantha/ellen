@@ -1,7 +1,7 @@
 mod util;
 
 use ch22_core::cpu::executor::*;
-use ch22_core::cpu::interrupt_state::*;
+use ch22_core::cpu::interrupt_due_state::*;
 use ch22_core::cpu::registers::*;
 use serde::Deserialize;
 use std::fs;
@@ -839,14 +839,14 @@ fn opcode_single_step_test(
     ignore_break: bool,
 ) {
     let mut registers = initial_state.into();
-    let mut interrupt_state = InterruptState::default();
+    let mut interrupt_due_state = InterruptDueState::default();
 
     let mut cycle_manager_mock = CycleManagerMock::new(&initial_state.ram, &None, &None);
 
     execute(
         &mut cycle_manager_mock,
         &mut registers,
-        &mut interrupt_state,
+        &mut interrupt_due_state,
         true,
     );
 

@@ -1,4 +1,4 @@
-use crate::cpu::interrupt_state::*;
+use crate::cpu::interrupt_due_state::*;
 use crate::cpu_io::*;
 use crate::word::*;
 
@@ -31,11 +31,11 @@ pub fn pop_word_with_interrupt_check<IO: CpuIO>(
     io: &mut IO,
     stack_pointer: &mut u8,
     interrupt_disable: bool,
-    interrupt_state: &mut InterruptState,
+    interrupt_due_state: &mut InterruptDueState,
 ) -> Word {
     let low = pop(io, stack_pointer);
 
-    update_interrupt_state(interrupt_state, io, interrupt_disable);
+    update_interrupt_due_state(interrupt_due_state, io, interrupt_disable);
 
     let high = pop(io, stack_pointer);
 
@@ -61,11 +61,11 @@ pub fn immediate_fetch_word_with_interrupt_check<IO: CpuIO>(
     io: &mut IO,
     program_counter: &mut Word,
     interrupt_disable: bool,
-    interrupt_state: &mut InterruptState,
+    interrupt_due_state: &mut InterruptDueState,
 ) -> Word {
     let low = immediate_fetch(io, program_counter);
 
-    update_interrupt_state(interrupt_state, io, interrupt_disable);
+    update_interrupt_due_state(interrupt_due_state, io, interrupt_disable);
 
     let high = immediate_fetch(io, program_counter);
 
@@ -80,11 +80,11 @@ pub fn read_word_with_interrupt_check<IO: CpuIO>(
     io: &mut IO,
     address: Word,
     interrupt_disable: bool,
-    interrupt_state: &mut InterruptState,
+    interrupt_due_state: &mut InterruptDueState,
 ) -> Word {
     let low = io.read(address);
 
-    update_interrupt_state(interrupt_state, io, interrupt_disable);
+    update_interrupt_due_state(interrupt_due_state, io, interrupt_disable);
 
     let high = io.read(address.same_page_add(1));
 

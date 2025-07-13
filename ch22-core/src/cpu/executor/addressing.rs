@@ -1,5 +1,5 @@
 use super::memory_util::*;
-use crate::cpu::interrupt_state::*;
+use crate::cpu::interrupt_due_state::*;
 use crate::cpu_io::*;
 use crate::word::*;
 
@@ -76,20 +76,20 @@ pub fn get_address_with_interrupt_check<IO: CpuIO>(
     program_counter: &mut Word,
     address_mode: &AddressMode,
     interrupt_disable: bool,
-    interrupt_state: &mut InterruptState,
+    interrupt_due_state: &mut InterruptDueState,
 ) -> Word {
     match address_mode {
         Absolute => immediate_fetch_word_with_interrupt_check(
             io,
             program_counter,
             interrupt_disable,
-            interrupt_state,
+            interrupt_due_state,
         ),
 
         Indirect => {
             let base_address = immediate_fetch_word(io, program_counter);
 
-            read_word_with_interrupt_check(io, base_address, interrupt_disable, interrupt_state)
+            read_word_with_interrupt_check(io, base_address, interrupt_disable, interrupt_due_state)
         }
 
         Relative => {
@@ -104,7 +104,7 @@ pub fn get_address_with_interrupt_check<IO: CpuIO>(
             };
 
             if let OffsetResult::CrossedPage(intermediate) = offset_result {
-                update_interrupt_state(interrupt_state, io, interrupt_disable);
+                update_interrupt_due_state(interrupt_due_state, io, interrupt_disable);
 
                 io.phantom_read(intermediate);
             }
@@ -147,11 +147,11 @@ pub fn get_data_with_interrupt_check<IO: CpuIO>(
     program_counter: &mut Word,
     address_mode: &AddressMode,
     interrupt_disable: bool,
-    interrupt_state: &mut InterruptState,
+    interrupt_due_state: &mut InterruptDueState,
 ) -> u8 {
     match address_mode {
         Immediate => {
-            update_interrupt_state(interrupt_state, io, interrupt_disable);
+            update_interrupt_due_state(interrupt_due_state, io, interrupt_disable);
 
             immediate_fetch(io, program_counter)
         }
@@ -159,7 +159,7 @@ pub fn get_data_with_interrupt_check<IO: CpuIO>(
         ZeroPage | ZeroPageIndexed(_) | Absolute | IndexedIndirect(_) | Indirect => {
             let address = get_address(io, program_counter, address_mode);
 
-            update_interrupt_state(interrupt_state, io, interrupt_disable);
+            update_interrupt_due_state(interrupt_due_state, io, interrupt_disable);
 
             io.read(address)
         }
@@ -173,7 +173,7 @@ pub fn get_data_with_interrupt_check<IO: CpuIO>(
                 io.phantom_read(intermediate);
             }
 
-            update_interrupt_state(interrupt_state, io, interrupt_disable);
+            update_interrupt_due_state(interrupt_due_state, io, interrupt_disable);
 
             io.read(address)
         }
@@ -189,7 +189,7 @@ pub fn get_data_with_interrupt_check<IO: CpuIO>(
                 io.phantom_read(intermediate);
             }
 
-            update_interrupt_state(interrupt_state, io, interrupt_disable);
+            update_interrupt_due_state(interrupt_due_state, io, interrupt_disable);
 
             io.read(address)
         }

@@ -1,4 +1,4 @@
-use super::interrupt_state::*;
+use super::interrupt_due_state::*;
 use super::registers::*;
 use crate::cpu_io::*;
 use crate::word::*;
@@ -20,12 +20,13 @@ use RegisterType::*;
 pub fn execute<IO: CpuIO>(
     io: &mut IO,
     registers: &mut Registers,
-    interrupt_state: &mut InterruptState,
+    interrupt_due_state: &mut InterruptDueState,
     allow_untested_in_wild: bool,
 ) {
-    let instruction = get_next_instruction(io, registers, interrupt_state, allow_untested_in_wild);
+    let instruction =
+        get_next_instruction(io, registers, interrupt_due_state, allow_untested_in_wild);
 
-    instruction.execute(io, registers, interrupt_state);
+    instruction.execute(io, registers, interrupt_due_state);
 
     io.complete();
 }
@@ -33,10 +34,10 @@ pub fn execute<IO: CpuIO>(
 fn get_next_instruction<IO: CpuIO>(
     io: &mut IO,
     registers: &mut Registers,
-    interrupt_state: &mut InterruptState,
+    interrupt_due_state: &mut InterruptDueState,
     allow_untested_in_wild: bool,
 ) -> Instruction {
-    if interrupt_state.interrupt_due == InterruptType::None {
+    if interrupt_due_state.interrupt_due == InterruptType::None {
         let opcode = immediate_fetch(io, &mut registers.program_counter);
 
         if [0x36, 0x41, 0x56, 0x5e, 0xe1].contains(&opcode) && !allow_untested_in_wild {
@@ -536,7 +537,7 @@ impl Instruction {
         &self,
         io: &mut IO,
         registers: &mut Registers,
-        interrupt_state: &mut InterruptState,
+        interrupt_due_state: &mut InterruptDueState,
     ) {
         match self {
             NopRead(address_mode) => {
@@ -545,12 +546,16 @@ impl Instruction {
                     &mut registers.program_counter,
                     address_mode,
                     registers.flags.interrupt_disable,
-                    interrupt_state,
+                    interrupt_due_state,
                 );
             }
 
             Nop => {
-                update_interrupt_state(interrupt_state, io, registers.flags.interrupt_disable);
+                update_interrupt_due_state(
+                    interrupt_due_state,
+                    io,
+                    registers.flags.interrupt_disable,
+                );
 
                 io.phantom_read(registers.program_counter);
             }
@@ -558,7 +563,11 @@ impl Instruction {
             Store(value, address_mode) => {
                 let address = get_address(io, &mut registers.program_counter, address_mode);
 
-                update_interrupt_state(interrupt_state, io, registers.flags.interrupt_disable);
+                update_interrupt_due_state(
+                    interrupt_due_state,
+                    io,
+                    registers.flags.interrupt_disable,
+                );
 
                 io.write(address, *value);
             }
@@ -572,7 +581,11 @@ impl Instruction {
 
                 let new_value = unary_op(&mut registers.flags, old_value);
 
-                update_interrupt_state(interrupt_state, io, registers.flags.interrupt_disable);
+                update_interrupt_due_state(
+                    interrupt_due_state,
+                    io,
+                    registers.flags.interrupt_disable,
+                );
 
                 io.write(address, new_value);
             }
@@ -586,7 +599,11 @@ impl Instruction {
 
                 let new_value = unary_op(&mut registers.flags, old_value);
 
-                update_interrupt_state(interrupt_state, io, registers.flags.interrupt_disable);
+                update_interrupt_due_state(
+                    interrupt_due_state,
+                    io,
+                    registers.flags.interrupt_disable,
+                );
 
                 io.write(address, new_value);
 
@@ -594,7 +611,11 @@ impl Instruction {
             }
 
             RegisterUnaryOp(unary_op, register_type) => {
-                update_interrupt_state(interrupt_state, io, registers.flags.interrupt_disable);
+                update_interrupt_due_state(
+                    interrupt_due_state,
+                    io,
+                    registers.flags.interrupt_disable,
+                );
 
                 io.phantom_read(registers.program_counter);
 
@@ -611,14 +632,18 @@ impl Instruction {
                     &mut registers.program_counter,
                     address_mode,
                     registers.flags.interrupt_disable,
-                    interrupt_state,
+                    interrupt_due_state,
                 );
 
                 accumulator_binary_op(&mut registers.flags, &mut registers.accumulator, operand);
             }
 
             SetFlag(set_flag_fn, value) => {
-                update_interrupt_state(interrupt_state, io, registers.flags.interrupt_disable);
+                update_interrupt_due_state(
+                    interrupt_due_state,
+                    io,
+                    registers.flags.interrupt_disable,
+                );
 
                 io.phantom_read(registers.program_counter);
 
@@ -636,18 +661,22 @@ impl Instruction {
 
                 let flags = u8::from(registers.flags) | (if *from_opcode { P_BREAK } else { 0 });
 
-                update_interrupt_state(interrupt_state, io, registers.flags.interrupt_disable);
+                update_interrupt_due_state(
+                    interrupt_due_state,
+                    io,
+                    registers.flags.interrupt_disable,
+                );
 
                 push(io, &mut registers.stack_pointer, flags);
 
                 registers.flags.interrupt_disable = true;
 
-                let vector = match interrupt_state.interrupt_due {
+                let vector = match interrupt_due_state.interrupt_due {
                     InterruptType::NMI => NMI_VECTOR,
                     _ => IRQ_BRK_VECTOR,
                 };
 
-                interrupt_state.interrupt_due = InterruptType::None;
+                interrupt_due_state.interrupt_due = InterruptType::None;
 
                 registers.program_counter = read_word(io, vector);
             }
@@ -659,7 +688,11 @@ impl Instruction {
 
                 push_word(io, &mut registers.stack_pointer, registers.program_counter);
 
-                update_interrupt_state(interrupt_state, io, registers.flags.interrupt_disable);
+                update_interrupt_due_state(
+                    interrupt_due_state,
+                    io,
+                    registers.flags.interrupt_disable,
+                );
 
                 let new_program_counter_high = immediate_fetch(io, &mut registers.program_counter);
 
@@ -672,7 +705,7 @@ impl Instruction {
                     &mut registers.program_counter,
                     address_mode,
                     registers.flags.interrupt_disable,
-                    interrupt_state,
+                    interrupt_due_state,
                 );
             }
 
@@ -687,7 +720,7 @@ impl Instruction {
                     io,
                     &mut registers.stack_pointer,
                     registers.flags.interrupt_disable,
-                    interrupt_state,
+                    interrupt_due_state,
                 );
             }
 
@@ -698,7 +731,11 @@ impl Instruction {
 
                 registers.program_counter = pop_word(io, &mut registers.stack_pointer);
 
-                update_interrupt_state(interrupt_state, io, registers.flags.interrupt_disable);
+                update_interrupt_due_state(
+                    interrupt_due_state,
+                    io,
+                    registers.flags.interrupt_disable,
+                );
 
                 io.phantom_read(registers.program_counter);
 
@@ -710,7 +747,11 @@ impl Instruction {
 
                 phantom_stack_read(io, registers.stack_pointer);
 
-                update_interrupt_state(interrupt_state, io, registers.flags.interrupt_disable);
+                update_interrupt_due_state(
+                    interrupt_due_state,
+                    io,
+                    registers.flags.interrupt_disable,
+                );
 
                 registers.accumulator = pop(io, &mut registers.stack_pointer);
 
@@ -720,7 +761,11 @@ impl Instruction {
             PushAccumulator => {
                 io.phantom_read(registers.program_counter);
 
-                update_interrupt_state(interrupt_state, io, registers.flags.interrupt_disable);
+                update_interrupt_due_state(
+                    interrupt_due_state,
+                    io,
+                    registers.flags.interrupt_disable,
+                );
 
                 push(io, &mut registers.stack_pointer, registers.accumulator);
             }
@@ -730,7 +775,11 @@ impl Instruction {
 
                 phantom_stack_read(io, registers.stack_pointer);
 
-                update_interrupt_state(interrupt_state, io, registers.flags.interrupt_disable);
+                update_interrupt_due_state(
+                    interrupt_due_state,
+                    io,
+                    registers.flags.interrupt_disable,
+                );
 
                 registers.flags = pop(io, &mut registers.stack_pointer).into();
             }
@@ -740,13 +789,21 @@ impl Instruction {
 
                 let flags = u8::from(registers.flags) | P_BREAK;
 
-                update_interrupt_state(interrupt_state, io, registers.flags.interrupt_disable);
+                update_interrupt_due_state(
+                    interrupt_due_state,
+                    io,
+                    registers.flags.interrupt_disable,
+                );
 
                 push(io, &mut registers.stack_pointer, flags);
             }
 
             Branch(condition) => {
-                update_interrupt_state(interrupt_state, io, registers.flags.interrupt_disable);
+                update_interrupt_due_state(
+                    interrupt_due_state,
+                    io,
+                    registers.flags.interrupt_disable,
+                );
 
                 if !condition {
                     io.phantom_read(registers.program_counter);
@@ -758,7 +815,7 @@ impl Instruction {
                         &mut registers.program_counter,
                         &Relative,
                         registers.flags.interrupt_disable,
-                        interrupt_state,
+                        interrupt_due_state,
                     );
                 }
             }
@@ -769,7 +826,7 @@ impl Instruction {
                     &mut registers.program_counter,
                     address_mode,
                     registers.flags.interrupt_disable,
-                    interrupt_state,
+                    interrupt_due_state,
                 );
 
                 registers.flags.carry = *register_value >= value;
@@ -785,7 +842,7 @@ impl Instruction {
                     &mut registers.program_counter,
                     address_mode,
                     registers.flags.interrupt_disable,
-                    interrupt_state,
+                    interrupt_due_state,
                 );
 
                 registers.set(register_type, value);
@@ -794,7 +851,11 @@ impl Instruction {
             }
 
             TransferRegister(value, register_type) => {
-                update_interrupt_state(interrupt_state, io, registers.flags.interrupt_disable);
+                update_interrupt_due_state(
+                    interrupt_due_state,
+                    io,
+                    registers.flags.interrupt_disable,
+                );
 
                 io.phantom_read(registers.program_counter);
 
@@ -804,7 +865,11 @@ impl Instruction {
             }
 
             TransferRegisterNoFlags(value, register_type) => {
-                update_interrupt_state(interrupt_state, io, registers.flags.interrupt_disable);
+                update_interrupt_due_state(
+                    interrupt_due_state,
+                    io,
+                    registers.flags.interrupt_disable,
+                );
 
                 io.phantom_read(registers.program_counter);
 
@@ -815,7 +880,11 @@ impl Instruction {
                 let (address, carried) =
                     address_with_carry(io, &mut registers.program_counter, address_mode);
 
-                update_interrupt_state(interrupt_state, io, registers.flags.interrupt_disable);
+                update_interrupt_due_state(
+                    interrupt_due_state,
+                    io,
+                    registers.flags.interrupt_disable,
+                );
 
                 let Word(low, high) = address;
 

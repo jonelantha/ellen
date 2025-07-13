@@ -1,5 +1,5 @@
 use executor::*;
-use interrupt_state::*;
+use interrupt_due_state::*;
 use js_sys::Function;
 use registers::*;
 use wasm_bindgen::prelude::*;
@@ -10,7 +10,7 @@ use crate::utils;
 use crate::word::Word;
 
 pub mod executor;
-pub mod interrupt_state;
+pub mod interrupt_due_state;
 pub mod registers;
 pub mod util;
 
@@ -19,7 +19,7 @@ pub struct Ch22Cpu {
     get_irq_nmi: Box<dyn Fn(u8) -> (bool, bool)>,
     do_phase_2: Box<dyn Fn(u8)>,
     registers: Registers,
-    interrupt_state: InterruptState,
+    interrupt_due_state: InterruptDueState,
 }
 
 #[wasm_bindgen]
@@ -48,7 +48,7 @@ impl Ch22Cpu {
             get_irq_nmi,
             do_phase_2,
             registers: Registers::default(),
-            interrupt_state: InterruptState::default(),
+            interrupt_due_state: InterruptDueState::default(),
         }
     }
 
@@ -65,7 +65,7 @@ impl Ch22Cpu {
             ..Default::default()
         };
 
-        self.interrupt_state = InterruptState::default();
+        self.interrupt_due_state = InterruptDueState::default();
     }
 
     pub fn handle_next_instruction(&mut self, memory: &mut Ch22Memory) -> u8 {
@@ -74,7 +74,7 @@ impl Ch22Cpu {
         execute(
             &mut cycle_manager,
             &mut self.registers,
-            &mut self.interrupt_state,
+            &mut self.interrupt_due_state,
             false,
         );
 
