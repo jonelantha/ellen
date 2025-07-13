@@ -9,6 +9,14 @@ pub struct Clock {
 }
 
 impl Clock {
+    #[cfg(test)]
+    pub fn new(cycles: u64) -> Self {
+        Clock {
+            cycles,
+            ..Default::default()
+        }
+    }
+
     pub fn get_cycles(&self) -> u64 {
         self.cycles
     }
