@@ -1,6 +1,8 @@
 use crate::interrupt_type::InterruptType;
 use crate::word::Word;
 
+pub mod cpu_io_mock;
+
 pub trait CpuIO {
     fn phantom_read(&mut self, address: Word);
     fn read(&mut self, address: Word) -> u8;

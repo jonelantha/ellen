@@ -1,44 +1,45 @@
-use ch22_core::cpu::cpu_io::*;
-use ch22_core::interrupt_type::*;
-use ch22_core::word::*;
+use crate::cpu::cpu_io::*;
+use crate::interrupt_type::*;
+use crate::word::*;
 
 use std::collections::HashMap;
 
-use super::json_data::TestInterruptOnOffList;
-
 #[derive(Default)]
-pub struct CycleManagerMock {
+pub struct CpuIOMock {
     memory: HashMap<u16, u8>,
-    irq_on_off_list: Option<TestInterruptOnOffList>,
-    nmi_on_off_list: Option<TestInterruptOnOffList>,
+    irq_on_cycles: Vec<u8>,
+    nmi_on_cycles: Vec<u8>,
     cycle_check_nmi: bool,
     cycle_check_irq: bool,
     pub cycles: Vec<(u16, u8, String)>,
     pub cycle_syncs: Vec<String>,
 }
 
-impl CycleManagerMock {
+impl CpuIOMock {
     pub fn new(
         initial_ram: &Vec<(u16, u8)>,
-        irq_on_off_list: Option<TestInterruptOnOffList>,
-        nmi_on_off_list: Option<TestInterruptOnOffList>,
-    ) -> CycleManagerMock {
+        irq_on_cycles: Option<Vec<u8>>,
+        nmi_on_cycles: Option<Vec<u8>>,
+    ) -> CpuIOMock {
         let mut memory = HashMap::new();
 
         for ram_location in initial_ram {
             memory.insert(ram_location.0, ram_location.1);
         }
 
-        CycleManagerMock {
+        let irq_on_off_list = irq_on_cycles.unwrap_or(Vec::new());
+        let nmi_on_off_list = nmi_on_cycles.unwrap_or(Vec::new());
+
+        CpuIOMock {
             memory,
-            irq_on_off_list,
-            nmi_on_off_list,
+            irq_on_cycles: irq_on_off_list,
+            nmi_on_cycles: nmi_on_off_list,
             ..Default::default()
         }
     }
 }
 
-impl CpuIO for CycleManagerMock {
+impl CpuIO for CpuIOMock {
     fn phantom_read(&mut self, address: Word) {
         self.read(address);
     }
@@ -87,18 +88,9 @@ impl CpuIO for CycleManagerMock {
         let current_cycle = self.cycles.len() as u8;
 
         match interrupt_type {
-            InterruptType::IRQ => is_in_on_off_range(&self.irq_on_off_list, current_cycle),
-            InterruptType::NMI => is_in_on_off_range(&self.nmi_on_off_list, current_cycle),
+            InterruptType::IRQ => self.irq_on_cycles.contains(&current_cycle),
+            InterruptType::NMI => self.nmi_on_cycles.contains(&current_cycle),
         }
-    }
-}
-
-fn is_in_on_off_range(on_off_list: &Option<TestInterruptOnOffList>, cycle: u8) -> bool {
-    if let Some(list) = on_off_list {
-        list.iter()
-            .any(|range| cycle >= range.on && cycle < range.off)
-    } else {
-        false
     }
 }
 

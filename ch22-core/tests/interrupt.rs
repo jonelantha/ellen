@@ -1,12 +1,12 @@
 mod common;
 
+use ch22_core::cpu::cpu_io::cpu_io_mock::CpuIOMock;
 use ch22_core::cpu::executor::*;
 use ch22_core::cpu::interrupt_due_state::*;
 use ch22_core::cpu::registers::*;
 use serde::Deserialize;
 use std::fs;
 
-use crate::common::cycle_manager_mock::CycleManagerMock;
 use crate::common::json_data::*;
 
 #[derive(Deserialize)]
@@ -14,8 +14,8 @@ struct InterruptTestParams {
     name: String,
     initial: CPUTestState,
     initial_interrupt_due_state: InterruptDueTestState,
-    irq: Option<TestInterruptOnOffList>,
-    nmi: Option<TestInterruptOnOffList>,
+    irq: Option<Vec<u8>>,
+    nmi: Option<Vec<u8>>,
     r#final: CPUTestState,
     final_interrupt_due_state: InterruptDueTestState,
     cycles: Option<CPUCycles>,
@@ -51,8 +51,8 @@ fn interrupt_tests_from_file() {
 fn interrupt_cycles_test(
     initial_state: &CPUTestState,
     initial_interrupt_due_state: &InterruptDueTestState,
-    irq_on_off: &Option<TestInterruptOnOffList>,
-    nmi_on_off: &Option<TestInterruptOnOffList>,
+    irq_on_cycles: &Option<Vec<u8>>,
+    nmi_on_cycles: &Option<Vec<u8>>,
     final_state: &CPUTestState,
     final_interrupt_due_state: &InterruptDueTestState,
     expected_cycles: &Option<CPUCycles>,
@@ -61,21 +61,21 @@ fn interrupt_cycles_test(
 
     let mut interrupt_due_state: InterruptDueState = initial_interrupt_due_state.into();
 
-    let mut cycle_manager_mock =
-        CycleManagerMock::new(&initial_state.ram, irq_on_off.clone(), nmi_on_off.clone());
+    let mut cpu_io_mock = CpuIOMock::new(
+        &initial_state.ram,
+        irq_on_cycles.clone(),
+        nmi_on_cycles.clone(),
+    );
 
     execute(
-        &mut cycle_manager_mock,
+        &mut cpu_io_mock,
         &mut registers,
         &mut interrupt_due_state,
         true,
     );
 
     if let Some(expected_cycles) = expected_cycles {
-        assert_eq!(
-            &cycle_manager_mock.cycles, expected_cycles,
-            "cycles mismatch"
-        );
+        assert_eq!(&cpu_io_mock.cycles, expected_cycles, "cycles mismatch");
     }
 
     assert_eq!(
