@@ -2,6 +2,9 @@ use crate::devices::timer_device::TimerDevice;
 
 pub type TimerDeviceID = usize;
 
+#[cfg(test)]
+mod tests;
+
 #[derive(Default)]
 pub struct TimerDeviceList {
     devices_and_triggers: Vec<(Box<dyn TimerDevice>, Option<u64>)>,
