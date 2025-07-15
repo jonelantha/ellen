@@ -165,7 +165,7 @@ fn setup_test_device(
         &[(TEST_ADDRESS, TEST_VALUE)],
         interrupt_on,
     ));
-    let test_device_accesses = test_device.get_memory_accesses();
+    let test_device_accesses = test_device.get_accesses();
 
     io_space.add_device(&[TEST_ADDRESS], test_device, interrupt_type, speed);
 

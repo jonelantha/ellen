@@ -25,7 +25,7 @@ impl IODeviceMock {
         }
     }
 
-    pub fn get_memory_accesses(&self) -> Rc<RefCell<IODeviceAccesses>> {
+    pub fn get_accesses(&self) -> Rc<RefCell<IODeviceAccesses>> {
         self.accesses.clone()
     }
 
