@@ -35,7 +35,7 @@ pub fn pop_word_with_interrupt_check<IO: CpuIO>(
 ) -> Word {
     let low = pop(io, stack_pointer);
 
-    update_interrupt_due_state(interrupt_due_state, io, interrupt_disable);
+    interrupt_due_state.update(io, interrupt_disable);
 
     let high = pop(io, stack_pointer);
 
@@ -65,7 +65,7 @@ pub fn immediate_fetch_word_with_interrupt_check<IO: CpuIO>(
 ) -> Word {
     let low = immediate_fetch(io, program_counter);
 
-    update_interrupt_due_state(interrupt_due_state, io, interrupt_disable);
+    interrupt_due_state.update(io, interrupt_disable);
 
     let high = immediate_fetch(io, program_counter);
 
@@ -84,7 +84,7 @@ pub fn read_word_with_interrupt_check<IO: CpuIO>(
 ) -> Word {
     let low = io.read(address);
 
-    update_interrupt_due_state(interrupt_due_state, io, interrupt_disable);
+    interrupt_due_state.update(io, interrupt_disable);
 
     let high = io.read(address.same_page_add(1));
 
