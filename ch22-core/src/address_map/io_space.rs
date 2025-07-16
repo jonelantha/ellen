@@ -72,7 +72,7 @@ impl IOSpace {
     }
 }
 
-pub fn access<F: FnOnce(u64) -> G, G>(access_fn: F, speed: &DeviceSpeed, clock: &mut Clock) -> G {
+pub fn access<F: FnOnce(u64) -> T, T>(access_fn: F, speed: &DeviceSpeed, clock: &mut Clock) -> T {
     match speed {
         DeviceSpeed::OneMhz => {
             clock.one_mhz_sync();
