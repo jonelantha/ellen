@@ -27,13 +27,10 @@ impl CpuIOMock {
             memory.insert(ram_location.0, ram_location.1);
         }
 
-        let irq_on_off_list = irq_on_cycles.unwrap_or_default();
-        let nmi_on_off_list = nmi_on_cycles.unwrap_or_default();
-
         CpuIOMock {
             memory,
-            irq_on_cycles: irq_on_off_list,
-            nmi_on_cycles: nmi_on_off_list,
+            irq_on_cycles: irq_on_cycles.unwrap_or_default(),
+            nmi_on_cycles: nmi_on_cycles.unwrap_or_default(),
             ..Default::default()
         }
     }
