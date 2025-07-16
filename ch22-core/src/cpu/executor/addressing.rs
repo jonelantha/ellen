@@ -104,7 +104,7 @@ pub fn get_address_with_interrupt_check<IO: CpuIO>(
             };
 
             if let OffsetResult::CrossedPage(intermediate) = offset_result {
-                update_interrupt_due_state(interrupt_due_state, io, interrupt_disable);
+                interrupt_due_state.update(io, interrupt_disable);
 
                 io.phantom_read(intermediate);
             }
@@ -151,7 +151,7 @@ pub fn get_data_with_interrupt_check<IO: CpuIO>(
 ) -> u8 {
     match address_mode {
         Immediate => {
-            update_interrupt_due_state(interrupt_due_state, io, interrupt_disable);
+            interrupt_due_state.update(io, interrupt_disable);
 
             immediate_fetch(io, program_counter)
         }
@@ -159,7 +159,7 @@ pub fn get_data_with_interrupt_check<IO: CpuIO>(
         ZeroPage | ZeroPageIndexed(_) | Absolute | IndexedIndirect(_) | Indirect => {
             let address = get_address(io, program_counter, address_mode);
 
-            update_interrupt_due_state(interrupt_due_state, io, interrupt_disable);
+            interrupt_due_state.update(io, interrupt_disable);
 
             io.read(address)
         }
@@ -173,7 +173,7 @@ pub fn get_data_with_interrupt_check<IO: CpuIO>(
                 io.phantom_read(intermediate);
             }
 
-            update_interrupt_due_state(interrupt_due_state, io, interrupt_disable);
+            interrupt_due_state.update(io, interrupt_disable);
 
             io.read(address)
         }
@@ -189,7 +189,7 @@ pub fn get_data_with_interrupt_check<IO: CpuIO>(
                 io.phantom_read(intermediate);
             }
 
-            update_interrupt_due_state(interrupt_due_state, io, interrupt_disable);
+            interrupt_due_state.update(io, interrupt_disable);
 
             io.read(address)
         }
