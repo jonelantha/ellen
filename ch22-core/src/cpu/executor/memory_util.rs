@@ -1,5 +1,5 @@
-use crate::cpu::interrupt_due_state::*;
-use crate::cpu_io::*;
+use super::super::cpu_io::CpuIO;
+use super::super::interrupt_due_state::*;
 use crate::word::*;
 
 pub fn phantom_stack_read<IO: CpuIO>(io: &mut IO, stack_pointer: u8) {

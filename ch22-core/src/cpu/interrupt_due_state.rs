@@ -1,17 +1,10 @@
-use crate::cpu_io::CpuIO;
+use super::cpu_io::*;
+use crate::interrupt_type::*;
 
 #[derive(PartialEq, Default, Debug)]
 pub struct InterruptDueState {
     pub previous_nmi: bool,
-    pub interrupt_due: InterruptType,
-}
-
-#[derive(PartialEq, Default, Clone, Copy, Debug)]
-pub enum InterruptType {
-    #[default]
-    None,
-    IRQ,
-    NMI,
+    pub interrupt_due: Option<InterruptType>,
 }
 
 pub fn update_interrupt_due_state<IO: CpuIO>(
@@ -19,16 +12,19 @@ pub fn update_interrupt_due_state<IO: CpuIO>(
     io: &mut IO,
     interrupt_disable: bool,
 ) {
-    let (irq, nmi) = io.get_irq_nmi(interrupt_disable);
+    let nmi = io.get_interrupt(InterruptType::NMI);
 
     if interrupt_due_state.previous_nmi != nmi {
         if nmi {
-            interrupt_due_state.interrupt_due = InterruptType::NMI;
+            interrupt_due_state.interrupt_due = Some(InterruptType::NMI);
         }
         interrupt_due_state.previous_nmi = nmi;
     }
 
-    if irq && interrupt_due_state.interrupt_due == InterruptType::None {
-        interrupt_due_state.interrupt_due = InterruptType::IRQ;
+    if !interrupt_disable
+        && interrupt_due_state.interrupt_due.is_none()
+        && io.get_interrupt(InterruptType::IRQ)
+    {
+        interrupt_due_state.interrupt_due = Some(InterruptType::IRQ);
     }
 }

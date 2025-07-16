@@ -1,10 +1,12 @@
-mod util;
-
+use ch22_core::cpu::cpu_io::cpu_io_mock::CpuIOMock;
 use ch22_core::cpu::executor::*;
 use ch22_core::cpu::interrupt_due_state::*;
 use serde::Deserialize;
 use std::fs;
-use util::{CPUTestState, CycleManagerMock};
+
+use crate::common::json_data::CPUTestState;
+
+mod common;
 
 #[derive(Deserialize)]
 struct CycleTestParams {
@@ -40,14 +42,14 @@ fn opcode_cycle_test(_name: &str, initial_state: &CPUTestState, cycle_syncs: &Ve
 
     let mut interrupt_due_state = InterruptDueState::default();
 
-    let mut cycle_manager_mock = CycleManagerMock::new(&initial_state.ram, &None, &None);
+    let mut cpu_io_mock = CpuIOMock::new(&initial_state.ram, None, None);
 
     execute(
-        &mut cycle_manager_mock,
+        &mut cpu_io_mock,
         &mut registers,
         &mut interrupt_due_state,
         true,
     );
 
-    assert_eq!(&cycle_manager_mock.cycle_syncs, cycle_syncs);
+    assert_eq!(&cpu_io_mock.cycle_syncs, cycle_syncs);
 }

@@ -1,6 +1,6 @@
+use super::super::cpu_io::*;
+use super::super::interrupt_due_state::*;
 use super::memory_util::*;
-use crate::cpu::interrupt_due_state::*;
-use crate::cpu_io::*;
 use crate::word::*;
 
 use AddressMode::*;

@@ -1,73 +1,41 @@
-use crate::cpu_io::*;
-use crate::memory::*;
+use crate::address_map::*;
+use crate::clock::Clock;
+use crate::cpu::cpu_io::*;
+use crate::interrupt_type::InterruptType;
 use crate::word::Word;
 
-pub struct CycleManager<'a> {
-    pub cycles: u8,
-    needs_phase_2: bool,
-    memory: &'a mut Ch22Memory,
-    get_irq_nmi: &'a (dyn Fn(u8) -> (bool, bool) + 'a),
-    do_phase_2: &'a (dyn Fn(u8) + 'a),
-    is_first: bool,
+#[derive(Default)]
+pub struct CycleManager {
+    pub clock: Clock,
+    pub address_map: AddressMap,
 }
 
-impl<'a> CycleManager<'a> {
-    pub fn new(
-        memory: &'a mut Ch22Memory,
-        get_irq_nmi: &'a (dyn Fn(u8) -> (bool, bool) + 'a),
-        do_phase_2: &'a (dyn Fn(u8) + 'a),
-    ) -> Self {
-        CycleManager {
-            cycles: 0,
-            memory,
-            get_irq_nmi,
-            do_phase_2,
-            needs_phase_2: false,
-            is_first: true,
-        }
-    }
-}
-
-impl CpuIO for CycleManager<'_> {
+impl CpuIO for CycleManager {
     fn phantom_read(&mut self, _address: Word) {
-        self.cycle_end();
+        self.end_previous_cycle();
     }
 
     fn read(&mut self, address: Word) -> u8 {
-        self.cycle_end();
+        self.end_previous_cycle();
 
-        self.memory.read(address.into(), self.cycles)
+        self.address_map.read(address, &mut self.clock)
     }
 
     fn write(&mut self, address: Word, value: u8) {
-        self.cycle_end();
+        self.end_previous_cycle();
 
-        self.needs_phase_2 = self.memory.write(address.into(), value, self.cycles);
+        self.address_map.write(address, value, &mut self.clock);
     }
 
-    fn complete(&mut self) {
-        self.cycle_end();
-    }
-
-    fn get_irq_nmi(&mut self, interrupt_disable: bool) -> (bool, bool) {
-        let (irq, nmi) = (self.get_irq_nmi)(self.cycles);
-
-        (irq & !interrupt_disable, nmi)
+    fn get_interrupt(&mut self, interrupt_type: InterruptType) -> bool {
+        self.address_map.get_interrupt(interrupt_type, &self.clock)
     }
 }
 
-impl CycleManager<'_> {
-    fn cycle_end(&mut self) {
-        if self.is_first {
-            self.is_first = false;
-            return;
-        };
+impl CycleManager {
+    fn end_previous_cycle(&mut self) {
+        self.address_map.phase_2(&self.clock);
 
-        if self.needs_phase_2 {
-            (self.do_phase_2)(self.cycles);
-            self.needs_phase_2 = false;
-        }
-
-        self.cycles += 1;
+        self.clock.inc();
     }
 }
