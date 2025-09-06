@@ -39,7 +39,7 @@ fn get_next_instruction<IO: CpuIO>(
     if interrupt_due_state.interrupt_due.is_none() {
         let opcode = immediate_fetch(io, &mut registers.program_counter);
 
-        if [0x36, 0x41, 0x56, 0x5e, 0xe1].contains(&opcode) && !allow_untested_in_wild {
+        if [0x36, 0x41, 0xe1].contains(&opcode) && !allow_untested_in_wild {
             panic!("untested opcode: {opcode:02x}");
         }
 

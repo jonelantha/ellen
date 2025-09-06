@@ -20,7 +20,7 @@ impl IODevice for RomSelect {
     }
 
     fn write(&mut self, _address: Word, value: u8, _cycles: u64) -> bool {
-        self.active_rom.set(value as usize);
+        self.active_rom.set((value & 0x0f) as usize); // 4 bit latch
 
         false
     }
