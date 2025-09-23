@@ -11,12 +11,17 @@ use crate::devices::js_timer_device::*;
 use crate::devices::static_device::StaticDevice;
 use crate::interrupt_type::InterruptType;
 use crate::utils;
+use crate::video::field_data::Field;
+use crate::video::video_memory_access::CRTCRangeType;
+use crate::video::video_memory_access::VideoMemoryAccess;
+use std::mem::size_of;
 
 #[wasm_bindgen]
 #[derive(Default)]
 pub struct System {
     cpu: Cpu,
     cycle_manager: CycleManager,
+    video_field: Field,
 }
 
 #[wasm_bindgen]
@@ -25,6 +30,51 @@ impl System {
         utils::set_panic_hook();
 
         System::default()
+    }
+
+    pub fn video_field_start(&self) -> *const Field {
+        &self.video_field as *const Field
+    }
+
+    pub fn video_field_size(&self) -> usize {
+        size_of::<Field>()
+    }
+
+    pub fn snapshot_char_data(
+        &mut self,
+        row_index: usize,
+        crtc_address: u16,
+        crtc_length: u8,
+        ic32_5_4: u8,
+        is_teletext: bool,
+    ) {
+        if crtc_length == 0 {
+            self.video_field.set_blank_line(row_index);
+            return;
+        }
+
+        let video_type = VideoMemoryAccess::get_crtc_range_type(crtc_address, crtc_length);
+
+        let required_type = match is_teletext {
+            true => CRTCRangeType::Teletext,
+            false => CRTCRangeType::HiRes,
+        };
+
+        if video_type != required_type {
+            self.video_field.set_blank_line(row_index);
+            return;
+        }
+
+        let (first_ram_range, second_ram_range) =
+            VideoMemoryAccess::translate_crtc_range(crtc_address, crtc_length, ic32_5_4.into());
+
+        let ram = &self.cycle_manager.address_map.ram;
+
+        let first_ram_slice = ram.slice(first_ram_range);
+        let second_ram_slice = second_ram_range.map(|range| ram.slice(range));
+
+        self.video_field
+            .set_char_data_line(row_index, first_ram_slice, second_ram_slice);
     }
 
     pub fn load_os_rom(&mut self, data: &[u8]) {

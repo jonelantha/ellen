@@ -65,8 +65,8 @@ ch22System.load_paged_rom(bank, pagedRom);
  */
 const memory = new Uint8Array(
   wasmMemory.buffer,
-  ch22Memory.ram_start(),
-  ch22Memory.ram_size(),
+  ch22System.ram_start(),
+  ch22System.ram_size(),
 );
 
 /**
@@ -128,8 +128,6 @@ ch22System.add_static_device(addresses, readValue, oneMhz, panicOnWrite);
 ### Executing instructions
 
 ```js
-import { Ch22Cpu } from "./ch22-core/pkg";
-
 /**
  * reset cpu
  */
@@ -140,6 +138,39 @@ ch22System.reset();
  * returns number of cycles
  */
 const cycleCount = ch22System.run(targetCycles);
+```
+
+### Snapshotting Video memory into a buffer
+
+```js
+/**
+ * get buffer of snapshotted scanline data
+ * each row is 801 bytes:
+ * - 1 byte     - 0 => empty line, 1 => line has data
+ * - 800 bytes  - snapshot of up to 800 bytes of video memory for the scanline
+ */
+const memory = new Uint8Array(
+  wasmMemory.buffer,
+  ch22System.video_field_start(),
+  ch22System.video_field_size(),
+);
+
+/**
+ * add a snapshot of the current video memory
+ * for a given CRTC address and CRTC length
+ * - bufferLine: destination line in buffer for snapshot
+ * - crtcAddress: crtc address for snapshot
+ * - crtcLength: length of crtc region for snapshot
+ * - ic32Bits5_6: IC32 bits for wrap behaviour (masked and right shifted)
+ * - isTeletext: crtc region should match this, if not snapshot a blank link
+ */
+ch22System.snapshot_char_data(
+  bufferLine,
+  crtcAddress,
+  crtcLength,
+  ic32Bits5_6,
+  isTeletext,
+);
 ```
 
 ## 🧪 Running tests
