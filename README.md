@@ -60,16 +60,6 @@ ch22System.load_os_rom(osRom);
 ch22System.load_paged_rom(bank, pagedRom);
 
 /**
- * full 64k machine memory space stored in webassembly
- * use to initialise roms etc or for rendering video
- */
-const memory = new Uint8Array(
-  wasmMemory.buffer,
-  ch22System.ram_start(),
-  ch22System.ram_size(),
-);
-
-/**
  * register a callback to be called at certain cycles
  * - handleTrigger: (cycles: bigint): bigint
  *   - cycles: machine cycles at time of callback

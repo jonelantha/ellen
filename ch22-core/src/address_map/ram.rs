@@ -14,14 +14,6 @@ impl Default for Ram {
 }
 
 impl Ram {
-    pub fn ram_start(&self) -> *const u8 {
-        self.ram.as_ptr()
-    }
-
-    pub fn ram_size(&self) -> usize {
-        RAM_SIZE
-    }
-
     pub fn read(&mut self, address: Word) -> u8 {
         self.ram[Into::<usize>::into(address)]
     }

@@ -147,14 +147,6 @@ impl System {
             .add_device(Box::new(JsTimerDevice::new(js_handle_trigger)))
     }
 
-    pub fn ram_start(&self) -> *const u8 {
-        self.cycle_manager.address_map.ram.ram_start()
-    }
-
-    pub fn ram_size(&self) -> usize {
-        self.cycle_manager.address_map.ram.ram_size()
-    }
-
     pub fn reset(&mut self) {
         self.cpu.reset(&mut self.cycle_manager);
     }
