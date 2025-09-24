@@ -32,11 +32,11 @@ impl VideoMemoryAccess {
         let (start, start_region) = translate_crtc_address(crtc_start, ic32_5_4);
         let (end, end_region) = translate_crtc_address(crtc_end, ic32_5_4);
 
-        // a length of <= 0x10 means crtc ranges will never span more than 2 regions
-        // for hires: neighbouring regions always have different region addresses
+        // a length of <= 0x10 (u8) means crtc ranges will never span more than 2 regions
+        // for hires: neighbouring regions always have different region ranges
         // for teletext: neighbouring regions can have the same region
         // but in case of wrap, end will be less than start
-        // (because length <= 0x10 <= 0x400 = teletext region size)
+        // (because length (u8) <= 0x10 <= 0x400 = teletext region size)
         // so this first case will be false for all wrap cases
         if start < end && start_region == end_region {
             (start..end, None)
@@ -54,7 +54,7 @@ fn translate_crtc_address(crtc_address: u16, ic32_5_4: IC32_5_4) -> TranslatedAd
     // https://beebwiki.mdfs.net/Address_translation
 
     // for hires wrap cases:
-    // example when video starts at 0x3000
+    // example when video starts at 0x3000 (ic32_5_4 == 0b10)
     // screen size is 0x5000 = 0x8000 - 0x3000
     // when address gets to wrap point (0x1000), subtract off adjustment 0x0a00 = 0x5000 / 8
     // at second wrap point 0x1a00 = adjustment + 0x1000 to wrap from 0x8000 to 0
