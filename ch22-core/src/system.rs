@@ -74,7 +74,7 @@ impl System {
         let (first_ram_range, second_ram_range) = VideoMemoryAccess::translate_crtc_range(
             crtc_address,
             crtc_length,
-            ((self.ic32_latch.get() & 0x30) >> 4).into(),
+            self.ic32_latch.get(),
         );
 
         let ram = &self.cycle_manager.address_map.ram;
