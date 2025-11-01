@@ -80,7 +80,7 @@ ch22System.set_device_trigger(deviceId, cycles);
  * - read: (address: number, cycles: bigint): bigint
  *   - returns: read value, next cycle sync and interrupt encoded as bigint
  * - write: (address: number, value: number, cycles: bigint): bigint
- *   - returns: next cycle sync and interrupt encoded as bigint
+ *   - returns: next cycle sync and interrupt and optionally ic32_latch encoded as bigint
  * - handleTrigger: (address: number, value: number, cycles: bigint): bigint
  *   - callback if sync is required
  *   - returns: next cycle sync and interrupt encoded as bigint
@@ -151,16 +151,9 @@ const memory = new Uint8Array(
  * - bufferLine: destination line in buffer for snapshot
  * - crtcAddress: crtc address for snapshot
  * - crtcLength: length of crtc region for snapshot
- * - ic32Bits5_6: IC32 bits for wrap behaviour (masked and right shifted)
  * - isTeletext: crtc region should match this, if not snapshot a blank link
  */
-ch22System.snapshot_char_data(
-  bufferLine,
-  crtcAddress,
-  crtcLength,
-  ic32Bits5_6,
-  isTeletext,
-);
+ch22System.snapshot_char_data(bufferLine, crtcAddress, crtcLength, isTeletext);
 ```
 
 ## 🧪 Running tests
