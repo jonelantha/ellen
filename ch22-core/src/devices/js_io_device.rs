@@ -1,3 +1,5 @@
+use std::{cell::Cell, rc::Rc};
+
 use js_sys::Function;
 use wasm_bindgen::JsValue;
 
@@ -10,6 +12,7 @@ pub struct JsIODevice {
     handle_trigger: Box<dyn Fn(u64) -> u64>,
     trigger: Option<u64>,
     interrupt: bool,
+    ic32_latch: Rc<Cell<u8>>,
     phase_2_write: bool,
 }
 
@@ -19,6 +22,7 @@ impl JsIODevice {
         js_write: Function,
         js_handle_trigger: Function,
         phase_2_write: bool,
+        ic32_latch: Rc<Cell<u8>>,
     ) -> Self {
         let read = Box::new(move |address: u16, cycles: u64| {
             js_read
@@ -56,6 +60,7 @@ impl JsIODevice {
             trigger: None,
             interrupt: false,
             phase_2_write,
+            ic32_latch,
         }
     }
 }
@@ -63,6 +68,7 @@ impl JsIODevice {
 impl IODevice for JsIODevice {
     fn read(&mut self, address: Word, cycles: u64) -> u8 {
         self.set_js_device_params((self.read)(address.into(), cycles))
+            .unwrap()
     }
 
     fn write(&mut self, address: Word, value: u8, cycles: u64) -> bool {
@@ -101,9 +107,9 @@ impl JsIODevice {
         }
     }
 
-    // trig trig trig trig trig trig flags value
+    // trig trig trig trig trig trig flags value|ic32
 
-    fn set_js_device_params(&mut self, params_and_value: u64) -> u8 {
+    fn set_js_device_params(&mut self, params_and_value: u64) -> Option<u8> {
         let [_, _, _, _, _, _, flags, value] = params_and_value.to_be_bytes();
 
         self.interrupt = flags & JS_IO_FLAG_INTERRUPT != 0;
@@ -114,9 +120,16 @@ impl JsIODevice {
             None
         };
 
-        value
+        if flags & JS_IO_FLAG_VALUE_IS_IC32 != 0 {
+            self.ic32_latch.set(value);
+
+            None
+        } else {
+            Some(value)
+        }
     }
 }
 
 const JS_IO_FLAG_HAS_TRIGGER: u8 = 0x01;
 const JS_IO_FLAG_INTERRUPT: u8 = 0x02;
+const JS_IO_FLAG_VALUE_IS_IC32: u8 = 0x04;
