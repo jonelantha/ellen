@@ -19,6 +19,7 @@ use std::mem::size_of;
 use std::rc::Rc;
 
 #[wasm_bindgen]
+#[derive(Default)]
 pub struct System {
     cpu: Cpu,
     cycle_manager: CycleManager,
@@ -31,12 +32,7 @@ impl System {
     pub fn new() -> System {
         utils::set_panic_hook();
 
-        System {
-            cpu: Cpu::default(),
-            cycle_manager: CycleManager::default(),
-            video_field: Field::default(),
-            ic32_latch: Rc::new(Cell::new(0)),
-        }
+        System::default()
     }
 
     pub fn video_field_start(&self) -> *const Field {
