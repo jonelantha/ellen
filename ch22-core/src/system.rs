@@ -14,7 +14,9 @@ use crate::utils;
 use crate::video::field_data::Field;
 use crate::video::video_memory_access::CRTCRangeType;
 use crate::video::video_memory_access::VideoMemoryAccess;
+use std::cell::Cell;
 use std::mem::size_of;
+use std::rc::Rc;
 
 #[wasm_bindgen]
 #[derive(Default)]
@@ -22,6 +24,7 @@ pub struct System {
     cpu: Cpu,
     cycle_manager: CycleManager,
     video_field: Field,
+    ic32_latch: Rc<Cell<u8>>,
 }
 
 #[wasm_bindgen]
@@ -45,7 +48,6 @@ impl System {
         row_index: usize,
         crtc_address: u16,
         crtc_length: u8,
-        ic32_5_4: u8,
         is_teletext: bool,
     ) {
         if crtc_length == 0 {
@@ -65,8 +67,11 @@ impl System {
             return;
         }
 
-        let (first_ram_range, second_ram_range) =
-            VideoMemoryAccess::translate_crtc_range(crtc_address, crtc_length, ic32_5_4.into());
+        let (first_ram_range, second_ram_range) = VideoMemoryAccess::translate_crtc_range(
+            crtc_address,
+            crtc_length,
+            self.ic32_latch.get(),
+        );
 
         let ram = &self.cycle_manager.address_map.ram;
 
@@ -134,6 +139,7 @@ impl System {
                 js_write,
                 js_handle_trigger,
                 flags & JS_DEVICE_PHASE_2_WRITE != 0,
+                Rc::clone(&self.ic32_latch),
             )),
             interrupt_type,
             speed,
