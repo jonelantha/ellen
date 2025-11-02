@@ -107,7 +107,8 @@ impl JsIODevice {
         }
     }
 
-    // trig trig trig trig trig trig flags value|ic32
+    // Encoding format: [trig trig trig trig trig trig flags (value or ic32)]
+    // The last byte contains either a value or ic32 data, depending on the JS_IO_FLAG_VALUE_IS_IC32 flag.
 
     fn set_js_device_params(&mut self, params_and_value: u64) -> Option<u8> {
         let [_, _, _, _, _, _, flags, value] = params_and_value.to_be_bytes();
