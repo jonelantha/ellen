@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use crate::clock::timer_device_list::*;
+use crate::devices::timer_device_list::*;
 use crate::devices::timer_device_mock::*;
 
 #[test]

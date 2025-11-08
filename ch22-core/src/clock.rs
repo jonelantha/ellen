@@ -1,6 +1,4 @@
-use timer_device_list::TimerDeviceList;
-
-pub mod timer_device_list;
+use crate::devices::timer_device_list::TimerDeviceList;
 
 pub struct Clock<'a> {
     cycles: u64,

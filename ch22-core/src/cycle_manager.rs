@@ -1,7 +1,7 @@
 use crate::address_map::*;
 use crate::clock::Clock;
-use crate::clock::timer_device_list::TimerDeviceList;
 use crate::cpu::cpu_io::*;
+use crate::devices::timer_device_list::TimerDeviceList;
 use crate::interrupt_type::InterruptType;
 use crate::word::Word;
 

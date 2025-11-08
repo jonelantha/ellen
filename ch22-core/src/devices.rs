@@ -4,6 +4,7 @@ pub mod js_timer_device;
 pub mod rom_select;
 pub mod static_device;
 pub mod timer_device;
+pub mod timer_device_list;
 
 #[cfg(test)]
 pub mod io_device_mock;
