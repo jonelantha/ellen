@@ -1,17 +1,25 @@
 use crate::address_map::*;
 use crate::clock::Clock;
+use crate::clock::timer_device_list::TimerDeviceList;
 use crate::cpu::cpu_io::*;
 use crate::interrupt_type::InterruptType;
 use crate::word::Word;
 
 pub struct CycleManager<'a> {
-    clock: &'a mut Clock<'a>,
+    clock: Clock<'a>,
     address_map: &'a mut AddressMap,
 }
 
 impl<'a> CycleManager<'a> {
-    pub fn new(clock: &'a mut Clock<'a>, address_map: &'a mut AddressMap) -> Self {
-        Self { clock, address_map }
+    pub fn new(
+        cycles: u64,
+        timer_devices: &'a mut TimerDeviceList,
+        address_map: &'a mut AddressMap,
+    ) -> Self {
+        Self {
+            clock: Clock::new(cycles, timer_devices),
+            address_map,
+        }
     }
 }
 

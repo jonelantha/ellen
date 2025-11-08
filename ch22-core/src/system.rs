@@ -4,7 +4,6 @@ use wasm_bindgen::prelude::*;
 use crate::address_map::AddressMap;
 use crate::address_map::io_space::DeviceSpeed;
 use crate::address_map::io_space::io_device_list::IODeviceID;
-use crate::clock::Clock;
 use crate::clock::timer_device_list::TimerDeviceID;
 use crate::clock::timer_device_list::TimerDeviceList;
 use crate::cpu::*;
@@ -157,8 +156,8 @@ impl System {
     }
 
     pub fn reset(&mut self) {
-        let mut clock = Clock::new(self.cycles, &mut self.timer_devices);
-        let mut cycle_manager = CycleManager::new(&mut clock, &mut self.address_map);
+        let mut cycle_manager =
+            CycleManager::new(self.cycles, &mut self.timer_devices, &mut self.address_map);
 
         self.cpu.reset(&mut cycle_manager);
 
@@ -166,8 +165,8 @@ impl System {
     }
 
     pub fn run(&mut self, until: u64) -> u64 {
-        let mut clock = Clock::new(self.cycles, &mut self.timer_devices);
-        let mut cycle_manager = CycleManager::new(&mut clock, &mut self.address_map);
+        let mut cycle_manager =
+            CycleManager::new(self.cycles, &mut self.timer_devices, &mut self.address_map);
 
         cycle_manager.repeat(until, |cycle_manager| {
             self.cpu.handle_next_instruction(cycle_manager);
