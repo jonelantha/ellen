@@ -1,8 +1,10 @@
 use js_sys::Function;
 use wasm_bindgen::prelude::*;
 
+use crate::address_map::AddressMap;
 use crate::address_map::io_space::DeviceSpeed;
 use crate::address_map::io_space::io_device_list::IODeviceID;
+use crate::clock::Clock;
 use crate::clock::timer_device_list::TimerDeviceID;
 use crate::cpu::*;
 use crate::cycle_manager::*;
@@ -22,9 +24,10 @@ use std::rc::Rc;
 #[derive(Default)]
 pub struct System {
     cpu: Cpu,
-    cycle_manager: CycleManager,
     video_field: Field,
     ic32_latch: Rc<Cell<u8>>,
+    clock: Clock,
+    address_map: AddressMap,
 }
 
 #[wasm_bindgen]
@@ -73,7 +76,7 @@ impl System {
             self.ic32_latch.get(),
         );
 
-        let ram = &self.cycle_manager.address_map.ram;
+        let ram = &self.address_map.ram;
 
         let first_ram_slice = ram.slice(first_ram_range);
         let second_ram_slice = second_ram_range.map(|range| ram.slice(range));
@@ -83,11 +86,11 @@ impl System {
     }
 
     pub fn load_os_rom(&mut self, data: &[u8]) {
-        self.cycle_manager.address_map.os_rom.load(data);
+        self.address_map.os_rom.load(data);
     }
 
     pub fn load_paged_rom(&mut self, bank: u8, data: &[u8]) {
-        self.cycle_manager.address_map.paged_rom.load(bank, data);
+        self.address_map.paged_rom.load(bank, data);
     }
 
     pub fn add_static_device(
@@ -102,7 +105,7 @@ impl System {
             false => DeviceSpeed::TwoMhz,
         };
 
-        self.cycle_manager.address_map.io_space.add_device(
+        self.address_map.io_space.add_device(
             addresses,
             Box::new(StaticDevice {
                 read_value,
@@ -132,7 +135,7 @@ impl System {
             _ => DeviceSpeed::TwoMhz,
         };
 
-        self.cycle_manager.address_map.io_space.add_device(
+        self.address_map.io_space.add_device(
             addresses,
             Box::new(JsIODevice::new(
                 js_read,
@@ -147,34 +150,35 @@ impl System {
     }
 
     pub fn add_js_timer_device(&mut self, js_handle_trigger: Function) -> TimerDeviceID {
-        self.cycle_manager
-            .clock
+        self.clock
             .timer_devices
             .add_device(Box::new(JsTimerDevice::new(js_handle_trigger)))
     }
 
     pub fn reset(&mut self) {
-        self.cpu.reset(&mut self.cycle_manager);
+        let mut cycle_manager = CycleManager::new(&mut self.clock, &mut self.address_map);
+
+        self.cpu.reset(&mut cycle_manager);
     }
 
-    pub fn run(&mut self, run_until: u64) -> u64 {
-        while self.cycle_manager.clock.get_cycles() < run_until {
-            self.cpu.handle_next_instruction(&mut self.cycle_manager);
-        }
+    pub fn run(&mut self, until: u64) -> u64 {
+        let mut cycle_manager = CycleManager::new(&mut self.clock, &mut self.address_map);
 
-        self.cycle_manager.clock.get_cycles()
+        cycle_manager.repeat(until, |cycle_manager| {
+            self.cpu.handle_next_instruction(cycle_manager);
+        });
+
+        self.clock.get_cycles()
     }
 
     pub fn set_device_interrupt(&mut self, device_id: IODeviceID, interrupt: bool) {
-        self.cycle_manager
-            .address_map
+        self.address_map
             .io_space
             .set_interrupt(device_id, interrupt);
     }
 
     pub fn set_device_trigger(&mut self, device_id: TimerDeviceID, trigger: Option<u64>) {
-        self.cycle_manager
-            .clock
+        self.clock
             .timer_devices
             .set_device_trigger(device_id, trigger);
     }

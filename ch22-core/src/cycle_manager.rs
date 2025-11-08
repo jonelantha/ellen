@@ -4,13 +4,18 @@ use crate::cpu::cpu_io::*;
 use crate::interrupt_type::InterruptType;
 use crate::word::Word;
 
-#[derive(Default)]
-pub struct CycleManager {
-    pub clock: Clock,
-    pub address_map: AddressMap,
+pub struct CycleManager<'a> {
+    clock: &'a mut Clock,
+    address_map: &'a mut AddressMap,
 }
 
-impl CpuIO for CycleManager {
+impl<'a> CycleManager<'a> {
+    pub fn new(clock: &'a mut Clock, address_map: &'a mut AddressMap) -> Self {
+        Self { clock, address_map }
+    }
+}
+
+impl CpuIO for CycleManager<'_> {
     fn phantom_read(&mut self, _address: Word) {
         self.end_previous_cycle();
     }
@@ -32,10 +37,21 @@ impl CpuIO for CycleManager {
     }
 }
 
-impl CycleManager {
+impl CycleManager<'_> {
     fn end_previous_cycle(&mut self) {
         self.address_map.phase_2(&self.clock);
 
         self.clock.inc();
+    }
+
+    pub fn repeat<F>(&mut self, run_until: u64, mut f: F) -> u64
+    where
+        F: FnMut(&mut Self) -> (),
+    {
+        while self.clock.get_cycles() < run_until {
+            f(self);
+        }
+
+        self.clock.get_cycles()
     }
 }
