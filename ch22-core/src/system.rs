@@ -6,6 +6,7 @@ use crate::address_map::io_space::DeviceSpeed;
 use crate::address_map::io_space::io_device_list::IODeviceID;
 use crate::clock::Clock;
 use crate::clock::timer_device_list::TimerDeviceID;
+use crate::clock::timer_device_list::TimerDeviceList;
 use crate::cpu::*;
 use crate::cycle_manager::*;
 use crate::devices::js_io_device::JsIODevice;
@@ -26,7 +27,8 @@ pub struct System {
     cpu: Cpu,
     video_field: Field,
     ic32_latch: Rc<Cell<u8>>,
-    clock: Clock,
+    cycles: u64,
+    timer_devices: TimerDeviceList,
     address_map: AddressMap,
 }
 
@@ -150,25 +152,30 @@ impl System {
     }
 
     pub fn add_js_timer_device(&mut self, js_handle_trigger: Function) -> TimerDeviceID {
-        self.clock
-            .timer_devices
+        self.timer_devices
             .add_device(Box::new(JsTimerDevice::new(js_handle_trigger)))
     }
 
     pub fn reset(&mut self) {
-        let mut cycle_manager = CycleManager::new(&mut self.clock, &mut self.address_map);
+        let mut clock = Clock::new(self.cycles, &mut self.timer_devices);
+        let mut cycle_manager = CycleManager::new(&mut clock, &mut self.address_map);
 
         self.cpu.reset(&mut cycle_manager);
+
+        self.cycles = cycle_manager.get_cycles();
     }
 
     pub fn run(&mut self, until: u64) -> u64 {
-        let mut cycle_manager = CycleManager::new(&mut self.clock, &mut self.address_map);
+        let mut clock = Clock::new(self.cycles, &mut self.timer_devices);
+        let mut cycle_manager = CycleManager::new(&mut clock, &mut self.address_map);
 
         cycle_manager.repeat(until, |cycle_manager| {
             self.cpu.handle_next_instruction(cycle_manager);
         });
 
-        self.clock.get_cycles()
+        self.cycles = cycle_manager.get_cycles();
+
+        self.cycles
     }
 
     pub fn set_device_interrupt(&mut self, device_id: IODeviceID, interrupt: bool) {
@@ -178,9 +185,7 @@ impl System {
     }
 
     pub fn set_device_trigger(&mut self, device_id: TimerDeviceID, trigger: Option<u64>) {
-        self.clock
-            .timer_devices
-            .set_device_trigger(device_id, trigger);
+        self.timer_devices.set_device_trigger(device_id, trigger);
     }
 }
 

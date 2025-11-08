@@ -2,18 +2,16 @@ use timer_device_list::TimerDeviceList;
 
 pub mod timer_device_list;
 
-#[derive(Default)]
-pub struct Clock {
+pub struct Clock<'a> {
     cycles: u64,
-    pub timer_devices: TimerDeviceList,
+    timer_devices: &'a mut TimerDeviceList,
 }
 
-impl Clock {
-    #[cfg(test)]
-    pub fn new(cycles: u64) -> Self {
+impl<'a> Clock<'a> {
+    pub fn new(cycles: u64, timer_devices: &'a mut TimerDeviceList) -> Self {
         Clock {
             cycles,
-            ..Default::default()
+            timer_devices,
         }
     }
 

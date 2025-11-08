@@ -5,12 +5,12 @@ use crate::interrupt_type::InterruptType;
 use crate::word::Word;
 
 pub struct CycleManager<'a> {
-    clock: &'a mut Clock,
+    clock: &'a mut Clock<'a>,
     address_map: &'a mut AddressMap,
 }
 
 impl<'a> CycleManager<'a> {
-    pub fn new(clock: &'a mut Clock, address_map: &'a mut AddressMap) -> Self {
+    pub fn new(clock: &'a mut Clock<'a>, address_map: &'a mut AddressMap) -> Self {
         Self { clock, address_map }
     }
 }
@@ -42,6 +42,10 @@ impl CycleManager<'_> {
         self.address_map.phase_2(&self.clock);
 
         self.clock.inc();
+    }
+
+    pub fn get_cycles(&self) -> u64 {
+        self.clock.get_cycles()
     }
 
     pub fn repeat<F>(&mut self, run_until: u64, mut f: F) -> u64
