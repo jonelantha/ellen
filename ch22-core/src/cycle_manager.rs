@@ -12,7 +12,7 @@ pub struct CycleManager<'a> {
 
 impl<'a> CycleManager<'a> {
     pub fn new(
-        cycles: u64,
+        cycles: &'a mut u64,
         timer_devices: &'a mut TimerDeviceList,
         address_map: &'a mut AddressMap,
     ) -> Self {
@@ -50,10 +50,6 @@ impl CycleManager<'_> {
         self.address_map.phase_2(&self.clock);
 
         self.clock.inc();
-    }
-
-    pub fn get_cycles(&self) -> u64 {
-        self.clock.get_cycles()
     }
 
     pub fn repeat<F>(&mut self, run_until: u64, mut f: F) -> u64

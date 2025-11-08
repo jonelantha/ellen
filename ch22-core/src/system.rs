@@ -156,23 +156,25 @@ impl System {
     }
 
     pub fn reset(&mut self) {
-        let mut cycle_manager =
-            CycleManager::new(self.cycles, &mut self.timer_devices, &mut self.address_map);
+        let mut cycle_manager = CycleManager::new(
+            &mut self.cycles,
+            &mut self.timer_devices,
+            &mut self.address_map,
+        );
 
         self.cpu.reset(&mut cycle_manager);
-
-        self.cycles = cycle_manager.get_cycles();
     }
 
     pub fn run(&mut self, until: u64) -> u64 {
-        let mut cycle_manager =
-            CycleManager::new(self.cycles, &mut self.timer_devices, &mut self.address_map);
+        let mut cycle_manager = CycleManager::new(
+            &mut self.cycles,
+            &mut self.timer_devices,
+            &mut self.address_map,
+        );
 
         cycle_manager.repeat(until, |cycle_manager| {
             self.cpu.handle_next_instruction(cycle_manager);
         });
-
-        self.cycles = cycle_manager.get_cycles();
 
         self.cycles
     }
