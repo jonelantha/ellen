@@ -1,4 +1,5 @@
 pub mod address_map;
+pub mod assembled_system;
 mod clock;
 pub mod cpu;
 pub mod cycle_manager;

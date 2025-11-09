@@ -4,8 +4,8 @@ use wasm_bindgen::prelude::*;
 use crate::address_map::AddressMap;
 use crate::address_map::io_space::DeviceSpeed;
 use crate::address_map::io_space::io_device_list::IODeviceID;
+use crate::assembled_system::*;
 use crate::cpu::*;
-use crate::cycle_manager::*;
 use crate::devices::js_io_device::JsIODevice;
 use crate::devices::js_timer_device::*;
 use crate::devices::static_device::StaticDevice;
@@ -156,25 +156,25 @@ impl System {
     }
 
     pub fn reset(&mut self) {
-        let mut cycle_manager = CycleManager::new(
+        let mut assembled_system = AssembledSystem::new(
             &mut self.cycles,
+            &mut self.cpu,
             &mut self.timer_devices,
             &mut self.address_map,
         );
 
-        self.cpu.reset(&mut cycle_manager);
+        assembled_system.reset();
     }
 
     pub fn run(&mut self, until: u64) -> u64 {
-        let mut cycle_manager = CycleManager::new(
+        let mut assembled_system = AssembledSystem::new(
             &mut self.cycles,
+            &mut self.cpu,
             &mut self.timer_devices,
             &mut self.address_map,
         );
 
-        cycle_manager.repeat(until, |cycle_manager| {
-            self.cpu.handle_next_instruction(cycle_manager);
-        });
+        assembled_system.run(until);
 
         self.cycles
     }
