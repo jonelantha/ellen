@@ -1,5 +1,4 @@
-use ch22_core::cpu::{InterruptDueState, Registers};
-use ch22_core::interrupt_type::InterruptType;
+use ch22_core::cpu::{InterruptDueState, InterruptType, Registers};
 
 use serde::Deserialize;
 

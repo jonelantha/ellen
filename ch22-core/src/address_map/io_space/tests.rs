@@ -2,8 +2,8 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use super::*;
+use crate::cpu::InterruptType;
 use crate::devices::{IODeviceAccesses, IODeviceMock, MemoryAccess, TimerDeviceList};
-use crate::interrupt_type::InterruptType;
 use crate::system::Clock;
 
 use DeviceSpeed::*;
