@@ -6,7 +6,7 @@ use crate::devices::io_device::IODevice;
 use crate::devices::timer_device::TimerDevice;
 use crate::devices::timer_device_list::*;
 use crate::interrupt_type::InterruptType;
-use crate::system_runner::*;
+use crate::system::system_runner::*;
 use crate::video::field_data::Field;
 use crate::video::video_memory_access::*;
 use std::cell::Cell;

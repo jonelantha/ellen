@@ -3,9 +3,9 @@ pub mod io_device_list;
 #[cfg(test)]
 mod tests;
 
-use crate::clock::Clock;
 use crate::devices::io_device::IODevice;
 use crate::interrupt_type::InterruptType;
+use crate::system::clock::Clock;
 use crate::word::Word;
 use io_device_list::*;
 

@@ -2,10 +2,10 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use super::*;
-use crate::clock::*;
 use crate::devices::io_device_mock::*;
 use crate::devices::timer_device_list::TimerDeviceList;
 use crate::interrupt_type::*;
+use crate::system::clock::*;
 
 use DeviceSpeed::*;
 use InterruptType::*;

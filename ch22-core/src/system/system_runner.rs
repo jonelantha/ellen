@@ -1,11 +1,13 @@
 use crate::{
-    address_map::AddressMap, clock::Clock, cpu::Cpu, cycle_manager::CycleManager,
+    address_map::AddressMap,
+    cpu::Cpu,
     devices::timer_device_list::TimerDeviceList,
+    system::{clock::Clock, cpu_bus::CpuBus},
 };
 
 pub struct SystemRunner<'a> {
     cpu: &'a mut Cpu,
-    cycle_manager: CycleManager<'a>,
+    cpu_bus: CpuBus<'a>,
 }
 
 impl<'a> SystemRunner<'a> {
@@ -16,18 +18,18 @@ impl<'a> SystemRunner<'a> {
         address_map: &'a mut AddressMap,
     ) -> Self {
         let clock = Clock::new(cycles, timer_devices);
-        let cycle_manager = CycleManager::new(clock, address_map);
+        let cpu_bus = CpuBus::new(clock, address_map);
 
-        Self { cpu, cycle_manager }
+        Self { cpu, cpu_bus }
     }
 
     pub fn reset(&mut self) {
-        self.cpu.reset(&mut self.cycle_manager);
+        self.cpu.reset(&mut self.cpu_bus);
     }
 
     pub fn run(&mut self, until: u64) {
-        while self.cycle_manager.get_clock().get_cycles() < until {
-            self.cpu.handle_next_instruction(&mut self.cycle_manager);
+        while self.cpu_bus.get_clock().get_cycles() < until {
+            self.cpu.handle_next_instruction(&mut self.cpu_bus);
         }
     }
 }

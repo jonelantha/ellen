@@ -8,11 +8,16 @@ use crate::devices::js_timer_device::*;
 use crate::devices::static_device::StaticDevice;
 use crate::devices::timer_device_list::TimerDeviceID;
 use crate::interrupt_type::InterruptType;
-use crate::system_state::SystemState;
 use crate::utils;
 use crate::video::field_data::Field;
 use crate::video::video_memory_access::CRTCRangeType;
 use std::mem::size_of;
+use system_state::SystemState;
+
+pub mod clock;
+mod cpu_bus;
+mod system_runner;
+mod system_state;
 
 #[wasm_bindgen]
 #[derive(Default)]

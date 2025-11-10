@@ -3,7 +3,7 @@ use interrupt_due_state::*;
 use registers::*;
 
 use crate::word::Word;
-use cpu_io::*;
+pub use cpu_io::CpuIO;
 
 pub mod cpu_io;
 pub mod executor;
