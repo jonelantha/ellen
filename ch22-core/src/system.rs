@@ -9,8 +9,8 @@ use js_sys::Function;
 use wasm_bindgen::prelude::*;
 
 use crate::address_map::{DeviceSpeed, IODeviceID};
+use crate::cpu::InterruptType;
 use crate::devices::{JsIODevice, JsTimerDevice, StaticDevice, TimerDeviceID};
-use crate::interrupt_type::InterruptType;
 use crate::utils;
 use crate::video::{CRTCRangeType, Field};
 

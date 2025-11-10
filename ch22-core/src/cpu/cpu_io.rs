@@ -1,6 +1,6 @@
 mod cpu_io_mock;
 
-use crate::interrupt_type::InterruptType;
+use super::interrupt_type::InterruptType;
 use crate::word::Word;
 
 pub use cpu_io_mock::CpuIOMock;

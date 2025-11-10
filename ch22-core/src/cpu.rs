@@ -1,6 +1,7 @@
 mod cpu_io;
 mod executor;
 mod interrupt_due_state;
+mod interrupt_type;
 mod registers;
 mod util;
 
@@ -11,6 +12,7 @@ use executor::RESET_VECTOR;
 pub use cpu_io::{CpuIO, CpuIOMock};
 pub use executor::execute;
 pub use interrupt_due_state::InterruptDueState;
+pub use interrupt_type::InterruptType;
 pub use registers::{P_BREAK, ProcessorFlags, Registers};
 
 #[derive(Default)]

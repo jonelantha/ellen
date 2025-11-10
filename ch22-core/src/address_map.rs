@@ -3,8 +3,8 @@ mod paged_rom;
 mod ram;
 mod rom;
 
+use crate::cpu::InterruptType;
 use crate::devices::RomSelect;
-use crate::interrupt_type::InterruptType;
 use crate::system::Clock;
 use crate::word::Word;
 

@@ -3,8 +3,8 @@ mod io_device_list;
 #[cfg(test)]
 mod tests;
 
+use crate::cpu::InterruptType;
 use crate::devices::IODevice;
-use crate::interrupt_type::InterruptType;
 use crate::system::Clock;
 use crate::word::Word;
 

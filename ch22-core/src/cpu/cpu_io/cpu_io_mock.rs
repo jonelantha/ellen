@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::cpu::cpu_io::CpuIO;
-use crate::interrupt_type::InterruptType;
+use crate::cpu::interrupt_type::InterruptType;
 use crate::word::Word;
 
 #[derive(Default)]

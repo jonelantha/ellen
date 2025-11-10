@@ -1,6 +1,5 @@
 use crate::address_map::AddressMap;
-use crate::cpu::CpuIO;
-use crate::interrupt_type::InterruptType;
+use crate::cpu::{CpuIO, InterruptType};
 use crate::system::clock::Clock;
 use crate::word::Word;
 
