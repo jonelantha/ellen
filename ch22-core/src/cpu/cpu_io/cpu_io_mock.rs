@@ -1,8 +1,8 @@
+use std::collections::HashMap;
+
 use crate::cpu::cpu_io::CpuIO;
 use crate::interrupt_type::InterruptType;
 use crate::word::Word;
-
-use std::collections::HashMap;
 
 #[derive(Default)]
 pub struct CpuIOMock {

@@ -1,11 +1,12 @@
+use std::cell::Cell;
+use std::rc::Rc;
+
 use crate::address_map::{AddressMap, DeviceSpeed, IODeviceID};
 use crate::cpu::Cpu;
 use crate::devices::{IODevice, TimerDevice, TimerDeviceID, TimerDeviceList};
 use crate::interrupt_type::InterruptType;
 use crate::system::system_runner::SystemRunner;
 use crate::video::{CRTCRangeType, Field, VideoMemoryAccess};
-use std::cell::Cell;
-use std::rc::Rc;
 
 #[derive(Default)]
 pub struct SystemState {

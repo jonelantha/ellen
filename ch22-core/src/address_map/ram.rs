@@ -1,5 +1,6 @@
-use crate::word::Word;
 use std::ops::Range;
+
+use crate::word::Word;
 
 const RAM_SIZE: usize = 0x8000;
 

@@ -1,7 +1,8 @@
+use crate::word::{OffsetResult, Word};
+
 use super::super::cpu_io::CpuIO;
 use super::super::interrupt_due_state::InterruptDueState;
 use super::memory_util::*;
-use crate::word::{OffsetResult, Word};
 
 use AddressMode::*;
 

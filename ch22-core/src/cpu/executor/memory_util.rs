@@ -1,6 +1,7 @@
+use crate::word::Word;
+
 use super::super::cpu_io::CpuIO;
 use super::super::interrupt_due_state::InterruptDueState;
-use crate::word::Word;
 
 pub fn phantom_stack_read<IO: CpuIO>(io: &mut IO, stack_pointer: u8) {
     io.phantom_read(Word::stack_page(stack_pointer));

@@ -1,3 +1,10 @@
+mod clock;
+mod cpu_bus;
+mod system_runner;
+mod system_state;
+
+use std::mem::size_of;
+
 use js_sys::Function;
 use wasm_bindgen::prelude::*;
 
@@ -6,13 +13,8 @@ use crate::devices::{JsIODevice, JsTimerDevice, StaticDevice, TimerDeviceID};
 use crate::interrupt_type::InterruptType;
 use crate::utils;
 use crate::video::{CRTCRangeType, Field};
-use std::mem::size_of;
-use system_state::SystemState;
 
-mod clock;
-mod cpu_bus;
-mod system_runner;
-mod system_state;
+use system_state::SystemState;
 
 pub use clock::Clock;
 
