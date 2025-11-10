@@ -3,12 +3,12 @@ use crate::{
     devices::timer_device_list::TimerDeviceList,
 };
 
-pub struct AssembledSystem<'a> {
+pub struct SystemRunner<'a> {
     cpu: &'a mut Cpu,
     cycle_manager: CycleManager<'a>,
 }
 
-impl<'a> AssembledSystem<'a> {
+impl<'a> SystemRunner<'a> {
     pub fn new(
         cycles: &'a mut u64,
         cpu: &'a mut Cpu,

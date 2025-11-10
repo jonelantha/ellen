@@ -1,34 +1,23 @@
 use js_sys::Function;
 use wasm_bindgen::prelude::*;
 
-use crate::address_map::AddressMap;
 use crate::address_map::io_space::DeviceSpeed;
 use crate::address_map::io_space::io_device_list::IODeviceID;
-use crate::assembled_system::*;
-use crate::cpu::*;
 use crate::devices::js_io_device::JsIODevice;
 use crate::devices::js_timer_device::*;
 use crate::devices::static_device::StaticDevice;
 use crate::devices::timer_device_list::TimerDeviceID;
-use crate::devices::timer_device_list::TimerDeviceList;
 use crate::interrupt_type::InterruptType;
+use crate::system_state::SystemState;
 use crate::utils;
 use crate::video::field_data::Field;
 use crate::video::video_memory_access::CRTCRangeType;
-use crate::video::video_memory_access::VideoMemoryAccess;
-use std::cell::Cell;
 use std::mem::size_of;
-use std::rc::Rc;
 
 #[wasm_bindgen]
 #[derive(Default)]
 pub struct System {
-    cpu: Cpu,
-    video_field: Field,
-    ic32_latch: Rc<Cell<u8>>,
-    cycles: u64,
-    timer_devices: TimerDeviceList,
-    address_map: AddressMap,
+    system_state: SystemState,
 }
 
 #[wasm_bindgen]
@@ -40,7 +29,7 @@ impl System {
     }
 
     pub fn video_field_start(&self) -> *const Field {
-        &self.video_field as *const Field
+        self.system_state.video_field_start()
     }
 
     pub fn video_field_size(&self) -> usize {
@@ -54,44 +43,23 @@ impl System {
         crtc_length: u8,
         is_teletext: bool,
     ) {
-        if crtc_length == 0 {
-            self.video_field.set_blank_line(row_index);
-            return;
-        }
-
-        let video_type = VideoMemoryAccess::get_crtc_range_type(crtc_address, crtc_length);
-
-        let required_type = match is_teletext {
-            true => CRTCRangeType::Teletext,
-            false => CRTCRangeType::HiRes,
-        };
-
-        if video_type != required_type {
-            self.video_field.set_blank_line(row_index);
-            return;
-        }
-
-        let (first_ram_range, second_ram_range) = VideoMemoryAccess::translate_crtc_range(
+        self.system_state.snapshot_char_data(
+            row_index,
             crtc_address,
             crtc_length,
-            self.ic32_latch.get(),
+            match is_teletext {
+                true => CRTCRangeType::Teletext,
+                false => CRTCRangeType::HiRes,
+            },
         );
-
-        let ram = &self.address_map.ram;
-
-        let first_ram_slice = ram.slice(first_ram_range);
-        let second_ram_slice = second_ram_range.map(|range| ram.slice(range));
-
-        self.video_field
-            .set_char_data_line(row_index, first_ram_slice, second_ram_slice);
     }
 
     pub fn load_os_rom(&mut self, data: &[u8]) {
-        self.address_map.os_rom.load(data);
+        self.system_state.load_os_rom(data);
     }
 
     pub fn load_paged_rom(&mut self, bank: u8, data: &[u8]) {
-        self.address_map.paged_rom.load(bank, data);
+        self.system_state.load_paged_rom(bank, data);
     }
 
     pub fn add_static_device(
@@ -106,7 +74,7 @@ impl System {
             false => DeviceSpeed::TwoMhz,
         };
 
-        self.address_map.io_space.add_device(
+        self.system_state.add_io_device(
             addresses,
             Box::new(StaticDevice {
                 read_value,
@@ -136,14 +104,14 @@ impl System {
             _ => DeviceSpeed::TwoMhz,
         };
 
-        self.address_map.io_space.add_device(
+        self.system_state.add_io_device(
             addresses,
             Box::new(JsIODevice::new(
                 js_read,
                 js_write,
                 js_handle_trigger,
                 flags & JS_DEVICE_PHASE_2_WRITE != 0,
-                Rc::clone(&self.ic32_latch),
+                self.system_state.clone_ic32_latch(),
             )),
             interrupt_type,
             speed,
@@ -151,42 +119,24 @@ impl System {
     }
 
     pub fn add_js_timer_device(&mut self, js_handle_trigger: Function) -> TimerDeviceID {
-        self.timer_devices
-            .add_device(Box::new(JsTimerDevice::new(js_handle_trigger)))
+        self.system_state
+            .add_timer_device(Box::new(JsTimerDevice::new(js_handle_trigger)))
     }
 
     pub fn reset(&mut self) {
-        let mut assembled_system = AssembledSystem::new(
-            &mut self.cycles,
-            &mut self.cpu,
-            &mut self.timer_devices,
-            &mut self.address_map,
-        );
-
-        assembled_system.reset();
+        self.system_state.reset();
     }
 
     pub fn run(&mut self, until: u64) -> u64 {
-        let mut assembled_system = AssembledSystem::new(
-            &mut self.cycles,
-            &mut self.cpu,
-            &mut self.timer_devices,
-            &mut self.address_map,
-        );
-
-        assembled_system.run(until);
-
-        self.cycles
+        self.system_state.run(until)
     }
 
     pub fn set_device_interrupt(&mut self, device_id: IODeviceID, interrupt: bool) {
-        self.address_map
-            .io_space
-            .set_interrupt(device_id, interrupt);
+        self.system_state.set_device_interrupt(device_id, interrupt);
     }
 
     pub fn set_device_trigger(&mut self, device_id: TimerDeviceID, trigger: Option<u64>) {
-        self.timer_devices.set_device_trigger(device_id, trigger);
+        self.system_state.set_device_trigger(device_id, trigger);
     }
 }
 
