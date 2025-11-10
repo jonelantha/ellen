@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::address_map::io_space::DeviceSpeed;
+use crate::address_map::DeviceSpeed;
 use crate::cpu::InterruptType;
 use crate::devices::IODevice;
 use crate::word::Word;

@@ -13,7 +13,8 @@ use paged_rom::PagedRom;
 use ram::Ram;
 use rom::Rom;
 
-pub use io_space::{DeviceSpeed, IODeviceID};
+pub use crate::devices::IODeviceID;
+pub use io_space::DeviceSpeed;
 
 pub struct AddressMap {
     pub ram: Ram,
