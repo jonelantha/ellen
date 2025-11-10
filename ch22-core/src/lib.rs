@@ -1,7 +1,7 @@
-pub mod address_map;
+mod address_map;
 pub mod cpu;
 mod devices;
-pub mod system;
+mod system;
 mod utils;
-pub mod video;
-pub mod word;
+mod video;
+mod word;
