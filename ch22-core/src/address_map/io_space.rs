@@ -2,7 +2,7 @@
 mod tests;
 
 use crate::cpu::InterruptType;
-use crate::devices::{IODevice, IODeviceID, IODeviceList};
+use crate::devices::{DeviceSpeed, IODevice, IODeviceID, IODeviceList};
 use crate::system::Clock;
 use crate::word::Word;
 
@@ -82,9 +82,4 @@ pub fn access<F: FnOnce(u64) -> T, T>(access_fn: F, speed: &DeviceSpeed, clock: 
         }
         DeviceSpeed::TwoMhz => access_fn(clock.get_cycles()),
     }
-}
-
-pub enum DeviceSpeed {
-    OneMhz,
-    TwoMhz,
 }
