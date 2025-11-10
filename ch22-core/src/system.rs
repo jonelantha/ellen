@@ -1,23 +1,20 @@
 use js_sys::Function;
 use wasm_bindgen::prelude::*;
 
-use crate::address_map::io_space::DeviceSpeed;
-use crate::address_map::io_space::io_device_list::IODeviceID;
-use crate::devices::js_io_device::JsIODevice;
-use crate::devices::js_timer_device::*;
-use crate::devices::static_device::StaticDevice;
-use crate::devices::timer_device_list::TimerDeviceID;
+use crate::address_map::{DeviceSpeed, IODeviceID};
+use crate::devices::{JsIODevice, JsTimerDevice, StaticDevice, TimerDeviceID};
 use crate::interrupt_type::InterruptType;
 use crate::utils;
-use crate::video::field_data::Field;
-use crate::video::video_memory_access::CRTCRangeType;
+use crate::video::{CRTCRangeType, Field};
 use std::mem::size_of;
 use system_state::SystemState;
 
-pub mod clock;
+mod clock;
 mod cpu_bus;
 mod system_runner;
 mod system_state;
+
+pub use clock::Clock;
 
 #[wasm_bindgen]
 #[derive(Default)]

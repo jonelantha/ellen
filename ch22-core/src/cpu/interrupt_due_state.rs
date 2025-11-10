@@ -1,5 +1,5 @@
-use super::cpu_io::*;
-use crate::interrupt_type::*;
+use super::cpu_io::CpuIO;
+use crate::interrupt_type::InterruptType;
 
 #[derive(PartialEq, Default, Debug)]
 pub struct InterruptDueState {

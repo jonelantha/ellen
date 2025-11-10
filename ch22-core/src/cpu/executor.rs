@@ -1,8 +1,8 @@
 use super::cpu_io::CpuIO;
-use super::interrupt_due_state::*;
+use super::interrupt_due_state::InterruptDueState;
 use super::registers::*;
-use crate::interrupt_type::*;
-use crate::word::*;
+use crate::interrupt_type::InterruptType;
+use crate::word::Word;
 
 mod accumulator_binary_ops;
 mod addressing;

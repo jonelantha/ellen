@@ -1,6 +1,6 @@
-use crate::cpu::cpu_io::*;
-use crate::interrupt_type::*;
-use crate::word::*;
+use crate::cpu::cpu_io::CpuIO;
+use crate::interrupt_type::InterruptType;
+use crate::word::Word;
 
 use std::collections::HashMap;
 

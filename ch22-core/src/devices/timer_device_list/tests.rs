@@ -1,7 +1,9 @@
 use std::{cell::RefCell, rc::Rc};
 
-use crate::devices::timer_device_list::*;
-use crate::devices::timer_device_mock::*;
+use crate::devices::{
+    TimerDeviceID, TimerDeviceList,
+    timer_device_mock::{TimerDeviceAccessess, TimerDeviceMock},
+};
 
 #[test]
 fn it_needs_sync_for_the_earliest_timing_only() {

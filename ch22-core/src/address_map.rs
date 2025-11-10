@@ -1,16 +1,18 @@
-pub mod io_space;
-pub mod paged_rom;
-pub mod ram;
-pub mod rom;
+mod io_space;
+mod paged_rom;
+mod ram;
+mod rom;
 
-use crate::devices::rom_select::*;
+use crate::devices::RomSelect;
 use crate::interrupt_type::InterruptType;
-use crate::system::clock::Clock;
+use crate::system::Clock;
 use crate::word::Word;
-use io_space::*;
-use paged_rom::*;
-use ram::*;
-use rom::*;
+use io_space::IOSpace;
+use paged_rom::PagedRom;
+use ram::Ram;
+use rom::Rom;
+
+pub use io_space::{DeviceSpeed, IODeviceID};
 
 pub struct AddressMap {
     pub ram: Ram,

@@ -1,4 +1,4 @@
-use crate::address_map::*;
+use crate::address_map::AddressMap;
 use crate::cpu::CpuIO;
 use crate::interrupt_type::InterruptType;
 use crate::system::clock::Clock;

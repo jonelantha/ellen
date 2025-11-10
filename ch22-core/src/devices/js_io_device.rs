@@ -3,7 +3,7 @@ use std::{cell::Cell, rc::Rc};
 use js_sys::Function;
 use wasm_bindgen::JsValue;
 
-use super::io_device::*;
+use super::io_device::IODevice;
 use crate::word::Word;
 
 pub struct JsIODevice {

@@ -1,15 +1,17 @@
-use executor::*;
-use interrupt_due_state::*;
-use registers::*;
+use executor::RESET_VECTOR;
 
 use crate::word::Word;
-pub use cpu_io::CpuIO;
 
-pub mod cpu_io;
-pub mod executor;
-pub mod interrupt_due_state;
-pub mod registers;
-pub mod util;
+pub use cpu_io::{CpuIO, CpuIOMock};
+pub use executor::execute;
+pub use interrupt_due_state::InterruptDueState;
+pub use registers::{P_BREAK, ProcessorFlags, Registers};
+
+mod cpu_io;
+mod executor;
+mod interrupt_due_state;
+mod registers;
+mod util;
 
 #[derive(Default)]
 pub struct Cpu {

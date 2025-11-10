@@ -1,4 +1,4 @@
-use crate::devices::timer_device::TimerDevice;
+use super::timer_device::TimerDevice;
 
 pub type TimerDeviceID = usize;
 

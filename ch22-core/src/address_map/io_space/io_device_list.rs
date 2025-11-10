@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::address_map::io_space::DeviceSpeed;
-use crate::devices::io_device::IODevice;
+use crate::devices::IODevice;
 use crate::interrupt_type::InterruptType;
 use crate::word::Word;
 

@@ -1,13 +1,14 @@
-pub mod io_device_list;
+mod io_device_list;
 
 #[cfg(test)]
 mod tests;
 
-use crate::devices::io_device::IODevice;
+use crate::devices::IODevice;
 use crate::interrupt_type::InterruptType;
-use crate::system::clock::Clock;
+use crate::system::Clock;
 use crate::word::Word;
-use io_device_list::*;
+
+pub use io_device_list::{IODeviceID, IODeviceList};
 
 #[derive(Default)]
 pub struct IOSpace {

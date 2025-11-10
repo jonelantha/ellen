@@ -1,6 +1,6 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-use super::io_device::*;
+use super::io_device::IODevice;
 use crate::word::Word;
 
 #[derive(Default)]

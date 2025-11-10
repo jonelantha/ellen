@@ -1,14 +1,9 @@
-use crate::address_map::AddressMap;
-use crate::address_map::io_space::DeviceSpeed;
-use crate::address_map::io_space::io_device_list::IODeviceID;
-use crate::cpu::*;
-use crate::devices::io_device::IODevice;
-use crate::devices::timer_device::TimerDevice;
-use crate::devices::timer_device_list::*;
+use crate::address_map::{AddressMap, DeviceSpeed, IODeviceID};
+use crate::cpu::Cpu;
+use crate::devices::{IODevice, TimerDevice, TimerDeviceID, TimerDeviceList};
 use crate::interrupt_type::InterruptType;
-use crate::system::system_runner::*;
-use crate::video::field_data::Field;
-use crate::video::video_memory_access::*;
+use crate::system::system_runner::SystemRunner;
+use crate::video::{CRTCRangeType, Field, VideoMemoryAccess};
 use std::cell::Cell;
 use std::rc::Rc;
 

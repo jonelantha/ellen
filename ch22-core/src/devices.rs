@@ -1,12 +1,22 @@
-pub mod io_device;
-pub mod js_io_device;
-pub mod js_timer_device;
-pub mod rom_select;
-pub mod static_device;
-pub mod timer_device;
-pub mod timer_device_list;
+mod io_device;
+mod js_io_device;
+mod js_timer_device;
+mod rom_select;
+mod static_device;
+mod timer_device;
+mod timer_device_list;
+
+pub use io_device::IODevice;
+pub use js_io_device::JsIODevice;
+pub use js_timer_device::JsTimerDevice;
+pub use rom_select::RomSelect;
+pub use static_device::StaticDevice;
+pub use timer_device::TimerDevice;
+pub use timer_device_list::{TimerDeviceID, TimerDeviceList};
 
 #[cfg(test)]
-pub mod io_device_mock;
+mod io_device_mock;
 #[cfg(test)]
-pub mod timer_device_mock;
+pub use io_device_mock::{IODeviceAccesses, IODeviceMock, MemoryAccess};
+#[cfg(test)]
+mod timer_device_mock;
