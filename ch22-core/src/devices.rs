@@ -17,8 +17,6 @@ pub use timer_device::TimerDevice;
 pub use timer_device_list::{TimerDeviceID, TimerDeviceList};
 
 #[cfg(test)]
-mod io_device_mock;
-#[cfg(test)]
-pub use io_device_mock::{IODeviceAccesses, IODeviceMock, MemoryAccess};
+pub mod io_device_mock;
 #[cfg(test)]
 mod timer_device_mock;
