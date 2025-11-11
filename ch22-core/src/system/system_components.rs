@@ -10,7 +10,7 @@ use crate::system::system_runner::SystemRunner;
 use crate::video::{CRTCRangeType, Field, VideoMemoryAccess};
 
 #[derive(Default)]
-pub struct SystemState {
+pub struct SystemComponents {
     cpu: Cpu,
     video_field: Field,
     ic32_latch: Rc<Cell<u8>>,
@@ -19,7 +19,7 @@ pub struct SystemState {
     address_map: AddressMap,
 }
 
-impl SystemState {
+impl SystemComponents {
     pub fn video_field_start(&self) -> *const Field {
         &self.video_field as *const Field
     }

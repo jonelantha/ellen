@@ -1,7 +1,7 @@
 mod clock;
 mod cpu_bus;
+mod system_components;
 mod system_runner;
-mod system_state;
 
 use std::mem::size_of;
 
@@ -15,14 +15,14 @@ use crate::devices::{
 use crate::utils;
 use crate::video::{CRTCRangeType, Field};
 
-use system_state::SystemState;
+use system_components::SystemComponents;
 
 pub use clock::Clock;
 
 #[wasm_bindgen]
 #[derive(Default)]
 pub struct System {
-    system_state: SystemState,
+    system_components: SystemComponents,
 }
 
 #[wasm_bindgen]
@@ -34,7 +34,7 @@ impl System {
     }
 
     pub fn video_field_start(&self) -> *const Field {
-        self.system_state.video_field_start()
+        self.system_components.video_field_start()
     }
 
     pub fn video_field_size(&self) -> usize {
@@ -48,7 +48,7 @@ impl System {
         crtc_length: u8,
         is_teletext: bool,
     ) {
-        self.system_state.snapshot_char_data(
+        self.system_components.snapshot_char_data(
             row_index,
             crtc_address,
             crtc_length,
@@ -60,11 +60,11 @@ impl System {
     }
 
     pub fn load_os_rom(&mut self, data: &[u8]) {
-        self.system_state.load_os_rom(data);
+        self.system_components.load_os_rom(data);
     }
 
     pub fn load_paged_rom(&mut self, bank: u8, data: &[u8]) {
-        self.system_state.load_paged_rom(bank, data);
+        self.system_components.load_paged_rom(bank, data);
     }
 
     pub fn add_static_device(
@@ -79,7 +79,7 @@ impl System {
             false => DeviceSpeed::TwoMhz,
         };
 
-        self.system_state.add_io_device(
+        self.system_components.add_io_device(
             addresses,
             Box::new(StaticDevice {
                 read_value,
@@ -109,14 +109,14 @@ impl System {
             _ => DeviceSpeed::TwoMhz,
         };
 
-        self.system_state.add_io_device(
+        self.system_components.add_io_device(
             addresses,
             Box::new(JsIODevice::new(
                 js_read,
                 js_write,
                 js_handle_trigger,
                 flags & JS_DEVICE_PHASE_2_WRITE != 0,
-                self.system_state.clone_ic32_latch(),
+                self.system_components.clone_ic32_latch(),
             )),
             interrupt_type,
             speed,
@@ -124,24 +124,26 @@ impl System {
     }
 
     pub fn add_js_timer_device(&mut self, js_handle_trigger: Function) -> TimerDeviceID {
-        self.system_state
+        self.system_components
             .add_timer_device(Box::new(JsTimerDevice::new(js_handle_trigger)))
     }
 
     pub fn reset(&mut self) {
-        self.system_state.reset();
+        self.system_components.reset();
     }
 
     pub fn run(&mut self, until: u64) -> u64 {
-        self.system_state.run(until)
+        self.system_components.run(until)
     }
 
     pub fn set_device_interrupt(&mut self, device_id: IODeviceID, interrupt: bool) {
-        self.system_state.set_device_interrupt(device_id, interrupt);
+        self.system_components
+            .set_device_interrupt(device_id, interrupt);
     }
 
     pub fn set_device_trigger(&mut self, device_id: TimerDeviceID, trigger: Option<u64>) {
-        self.system_state.set_device_trigger(device_id, trigger);
+        self.system_components
+            .set_device_trigger(device_id, trigger);
     }
 }
 
