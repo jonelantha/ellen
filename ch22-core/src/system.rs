@@ -8,9 +8,10 @@ use std::mem::size_of;
 use js_sys::Function;
 use wasm_bindgen::prelude::*;
 
-use crate::address_map::{DeviceSpeed, IODeviceID};
 use crate::cpu::InterruptType;
-use crate::devices::{JsIODevice, JsTimerDevice, StaticDevice, TimerDeviceID};
+use crate::devices::{
+    DeviceSpeed, IODeviceID, JsIODevice, JsTimerDevice, StaticDevice, TimerDeviceID,
+};
 use crate::utils;
 use crate::video::{CRTCRangeType, Field};
 

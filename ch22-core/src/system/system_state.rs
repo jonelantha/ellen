@@ -1,9 +1,11 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
-use crate::address_map::{AddressMap, DeviceSpeed, IODeviceID};
+use crate::address_map::AddressMap;
 use crate::cpu::{Cpu, InterruptType};
-use crate::devices::{IODevice, TimerDevice, TimerDeviceID, TimerDeviceList};
+use crate::devices::{
+    DeviceSpeed, IODevice, IODeviceID, TimerDevice, TimerDeviceID, TimerDeviceList,
+};
 use crate::system::system_runner::SystemRunner;
 use crate::video::{CRTCRangeType, Field, VideoMemoryAccess};
 

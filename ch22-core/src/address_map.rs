@@ -4,7 +4,7 @@ mod ram;
 mod rom;
 
 use crate::cpu::InterruptType;
-use crate::devices::RomSelect;
+use crate::devices::{DeviceSpeed, RomSelect};
 use crate::system::Clock;
 use crate::word::Word;
 
@@ -12,8 +12,6 @@ use io_space::IOSpace;
 use paged_rom::PagedRom;
 use ram::Ram;
 use rom::Rom;
-
-pub use crate::devices::{DeviceSpeed, IODeviceID};
 
 pub struct AddressMap {
     pub ram: Ram,
