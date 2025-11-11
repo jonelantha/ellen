@@ -1,13 +1,10 @@
-pub mod io_device_list;
-
 #[cfg(test)]
 mod tests;
 
-use crate::clock::Clock;
-use crate::devices::io_device::IODevice;
-use crate::interrupt_type::InterruptType;
+use crate::cpu::InterruptType;
+use crate::devices::{DeviceSpeed, IODevice, IODeviceID, IODeviceList};
+use crate::system::Clock;
 use crate::word::Word;
-use io_device_list::*;
 
 #[derive(Default)]
 pub struct IOSpace {
@@ -85,9 +82,4 @@ pub fn access<F: FnOnce(u64) -> T, T>(access_fn: F, speed: &DeviceSpeed, clock: 
         }
         DeviceSpeed::TwoMhz => access_fn(clock.get_cycles()),
     }
-}
-
-pub enum DeviceSpeed {
-    OneMhz,
-    TwoMhz,
 }

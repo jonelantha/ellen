@@ -1,6 +1,4 @@
-use ch22_core::cpu::cpu_io::cpu_io_mock::CpuIOMock;
-use ch22_core::cpu::executor::*;
-use ch22_core::cpu::interrupt_due_state::*;
+use ch22_core::cpu::{CpuIOMock, InterruptDueState, execute};
 use serde::Deserialize;
 use std::fs;
 

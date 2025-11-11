@@ -1,7 +1,9 @@
-use crate::interrupt_type::InterruptType;
+mod cpu_io_mock;
+
+use super::interrupt_type::InterruptType;
 use crate::word::Word;
 
-pub mod cpu_io_mock;
+pub use cpu_io_mock::CpuIOMock;
 
 pub trait CpuIO {
     fn phantom_read(&mut self, address: Word);

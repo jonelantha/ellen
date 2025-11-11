@@ -1,5 +1,4 @@
 const MAX_LINES: usize = 320;
-pub const MODE7_CHARS_PER_LINE: usize = 80;
 
 #[repr(C)]
 pub struct Field {

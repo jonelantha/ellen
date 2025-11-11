@@ -1,6 +1,6 @@
 use crate::word::Word;
 
-use super::util::*;
+use super::util::is_negative;
 
 #[derive(Default)]
 pub struct Registers {

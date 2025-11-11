@@ -1,16 +1,20 @@
-use crate::address_map::*;
-use crate::clock::Clock;
-use crate::cpu::cpu_io::*;
-use crate::interrupt_type::InterruptType;
+use crate::address_map::AddressMap;
+use crate::cpu::{CpuIO, InterruptType};
+use crate::system::clock::Clock;
 use crate::word::Word;
 
-#[derive(Default)]
-pub struct CycleManager {
-    pub clock: Clock,
-    pub address_map: AddressMap,
+pub struct CpuBus<'a> {
+    clock: Clock<'a>,
+    address_map: &'a mut AddressMap,
 }
 
-impl CpuIO for CycleManager {
+impl<'a> CpuBus<'a> {
+    pub fn new(clock: Clock<'a>, address_map: &'a mut AddressMap) -> Self {
+        Self { clock, address_map }
+    }
+}
+
+impl CpuIO for CpuBus<'_> {
     fn phantom_read(&mut self, _address: Word) {
         self.end_previous_cycle();
     }
@@ -32,10 +36,14 @@ impl CpuIO for CycleManager {
     }
 }
 
-impl CycleManager {
+impl CpuBus<'_> {
     fn end_previous_cycle(&mut self) {
         self.address_map.phase_2(&self.clock);
 
         self.clock.inc();
+    }
+
+    pub fn get_clock(&'_ self) -> &'_ Clock<'_> {
+        &self.clock
     }
 }

@@ -1,13 +1,10 @@
 mod common;
 
-use ch22_core::cpu::cpu_io::cpu_io_mock::CpuIOMock;
-use ch22_core::cpu::executor::*;
-use ch22_core::cpu::interrupt_due_state::*;
-use ch22_core::cpu::registers::*;
+use ch22_core::cpu::{CpuIOMock, InterruptDueState, ProcessorFlags, Registers, execute};
 use serde::Deserialize;
 use std::fs;
 
-use crate::common::json_data::*;
+use crate::common::json_data::{CPUCycles, CPUTestState, InterruptDueTestState};
 
 #[derive(Deserialize)]
 struct InterruptTestParams {

@@ -1,11 +1,15 @@
 use std::collections::HashMap;
 
-use crate::address_map::io_space::DeviceSpeed;
-use crate::devices::io_device::IODevice;
-use crate::interrupt_type::InterruptType;
+use crate::cpu::InterruptType;
+use crate::devices::IODevice;
 use crate::word::Word;
 
 pub type IODeviceID = usize;
+
+pub enum DeviceSpeed {
+    OneMhz,
+    TwoMhz,
+}
 
 #[derive(Default)]
 pub struct IODeviceList {

@@ -3,8 +3,9 @@ use std::{cell::Cell, rc::Rc};
 use js_sys::Function;
 use wasm_bindgen::JsValue;
 
-use super::io_device::*;
 use crate::word::Word;
+
+use super::io_device::IODevice;
 
 pub struct JsIODevice {
     read: Box<dyn Fn(u16, u64) -> u64>,

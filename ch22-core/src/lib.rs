@@ -1,10 +1,7 @@
-pub mod address_map;
-mod clock;
+mod address_map;
 pub mod cpu;
-pub mod cycle_manager;
 mod devices;
-pub mod interrupt_type;
-pub mod system;
+mod system;
 mod utils;
-pub mod video;
-pub mod word;
+mod video;
+mod word;

@@ -1,7 +1,8 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-use super::io_device::*;
 use crate::word::Word;
+
+use super::io_device::IODevice;
 
 #[derive(Default)]
 pub struct IODeviceMock {

@@ -1,7 +1,8 @@
-use crate::video::video_memory_access::*;
+use crate::video::{CRTCRangeType, video_memory_access::VideoMemoryAccess};
 
 #[cfg(test)]
 mod test_get_crtc_range_type {
+
     use super::*;
 
     #[test]
