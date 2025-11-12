@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use super::Clock;
 use super::system_runner::SystemRunner;
-use crate::address_map::{IOSpace, PagedRom, Ram, Rom};
+use crate::address_spaces::{IOSpace, PagedRom, Ram, Rom};
 use crate::cpu::{Cpu, InterruptType};
 use crate::devices::{
     DeviceSpeed, IODevice, IODeviceID, RomSelect, TimerDevice, TimerDeviceID, TimerDeviceList,
