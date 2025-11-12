@@ -1,8 +1,7 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
-use super::Clock;
-use super::system_runner::SystemRunner;
+use super::{Clock, cpu_bus::CpuBus};
 use crate::address_spaces::{IOSpace, PagedRom, Ram, Rom};
 use crate::cpu::{Cpu, InterruptType};
 use crate::devices::{
@@ -96,39 +95,35 @@ impl SystemComponents {
     }
 
     pub fn reset(&mut self) {
-        let mut address_map = AddressMap {
-            ram: &mut self.ram,
-            paged_rom: &mut self.paged_rom,
-            io_space: &mut self.io_space,
-            os_rom: &mut self.os_rom,
-        };
-
-        let mut system_runner = SystemRunner::new(
-            &mut self.cycles,
-            &mut self.cpu,
-            &mut self.timer_devices,
-            &mut address_map,
-        );
-
-        system_runner.reset();
+        self.with_runner(|cpu, cpu_bus| {
+            cpu.reset(cpu_bus);
+        });
     }
 
     pub fn run(&mut self, until: u64) -> u64 {
-        let mut address_map = AddressMap {
+        self.with_runner(|cpu, cpu_bus| {
+            while cpu_bus.get_clock().get_cycles() < until {
+                cpu.handle_next_instruction(cpu_bus);
+            }
+        })
+    }
+
+    pub fn with_runner<F>(&mut self, f: F) -> u64
+    where
+        F: FnOnce(&mut Cpu, &mut CpuBus),
+    {
+        let clock = Clock::new(&mut self.cycles, &mut self.timer_devices);
+
+        let address_map = AddressMap {
             ram: &mut self.ram,
             paged_rom: &mut self.paged_rom,
             io_space: &mut self.io_space,
             os_rom: &mut self.os_rom,
         };
 
-        let mut system_runner = SystemRunner::new(
-            &mut self.cycles,
-            &mut self.cpu,
-            &mut self.timer_devices,
-            &mut address_map,
-        );
+        let mut cpu_bus = CpuBus::new(clock, address_map);
 
-        system_runner.run(until);
+        f(&mut self.cpu, &mut cpu_bus);
 
         self.cycles
     }

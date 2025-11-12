@@ -5,11 +5,11 @@ use crate::word::Word;
 
 pub struct CpuBus<'a> {
     clock: Clock<'a>,
-    address_map: &'a mut AddressMap<'a>,
+    address_map: AddressMap<'a>,
 }
 
 impl<'a> CpuBus<'a> {
-    pub fn new(clock: Clock<'a>, address_map: &'a mut AddressMap<'a>) -> Self {
+    pub fn new(clock: Clock<'a>, address_map: AddressMap<'a>) -> Self {
         Self { clock, address_map }
     }
 }

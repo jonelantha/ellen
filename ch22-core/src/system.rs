@@ -1,7 +1,6 @@
 mod clock;
 mod cpu_bus;
 mod system_components;
-mod system_runner;
 
 use std::mem::size_of;
 
@@ -20,6 +19,7 @@ use system_components::SystemComponents;
 pub use clock::Clock;
 
 #[wasm_bindgen]
+#[derive(Default)]
 pub struct System {
     system_components: SystemComponents,
 }
@@ -29,10 +29,11 @@ impl System {
     pub fn new() -> System {
         utils::set_panic_hook();
 
-        let mut system_components = SystemComponents::default();
-        system_components.setup();
+        let mut system = System::default();
 
-        System { system_components }
+        system.system_components.setup();
+
+        system
     }
 
     pub fn video_field_start(&self) -> *const Field {
