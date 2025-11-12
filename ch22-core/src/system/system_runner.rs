@@ -1,5 +1,6 @@
+use super::system_components::AddressMap;
 use super::{clock::Clock, cpu_bus::CpuBus};
-use crate::{address_map::AddressMap, cpu::Cpu, devices::TimerDeviceList};
+use crate::{cpu::Cpu, devices::TimerDeviceList};
 
 pub struct SystemRunner<'a> {
     cpu: &'a mut Cpu,

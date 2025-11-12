@@ -1,13 +1,15 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
-use crate::address_map::{AddressMap, IOSpace, PagedRom, Ram, Rom};
+use super::Clock;
+use super::system_runner::SystemRunner;
+use crate::address_map::{IOSpace, PagedRom, Ram, Rom};
 use crate::cpu::{Cpu, InterruptType};
 use crate::devices::{
     DeviceSpeed, IODevice, IODeviceID, RomSelect, TimerDevice, TimerDeviceID, TimerDeviceList,
 };
-use crate::system::system_runner::SystemRunner;
 use crate::video::{CRTCRangeType, Field, VideoMemoryAccess};
+use crate::word::Word;
 
 #[derive(Default)]
 pub struct SystemComponents {
@@ -94,12 +96,12 @@ impl SystemComponents {
     }
 
     pub fn reset(&mut self) {
-        let mut address_map = AddressMap::new(
-            &mut self.ram,
-            &mut self.paged_rom,
-            &mut self.io_space,
-            &mut self.os_rom,
-        );
+        let mut address_map = AddressMap {
+            ram: &mut self.ram,
+            paged_rom: &mut self.paged_rom,
+            io_space: &mut self.io_space,
+            os_rom: &mut self.os_rom,
+        };
 
         let mut system_runner = SystemRunner::new(
             &mut self.cycles,
@@ -112,12 +114,12 @@ impl SystemComponents {
     }
 
     pub fn run(&mut self, until: u64) -> u64 {
-        let mut address_map = AddressMap::new(
-            &mut self.ram,
-            &mut self.paged_rom,
-            &mut self.io_space,
-            &mut self.os_rom,
-        );
+        let mut address_map = AddressMap {
+            ram: &mut self.ram,
+            paged_rom: &mut self.paged_rom,
+            io_space: &mut self.io_space,
+            os_rom: &mut self.os_rom,
+        };
 
         let mut system_runner = SystemRunner::new(
             &mut self.cycles,
@@ -141,5 +143,38 @@ impl SystemComponents {
 
     pub fn clone_ic32_latch(&self) -> Rc<Cell<u8>> {
         Rc::clone(&self.ic32_latch)
+    }
+}
+
+pub struct AddressMap<'a> {
+    ram: &'a mut Ram,
+    paged_rom: &'a mut PagedRom,
+    io_space: &'a mut IOSpace,
+    os_rom: &'a mut Rom,
+}
+
+impl AddressMap<'_> {
+    pub fn io_space_mut(&mut self) -> &mut IOSpace {
+        self.io_space
+    }
+
+    pub fn read(&mut self, address: Word, clock: &mut Clock) -> u8 {
+        match address.1 {
+            ..0x80 => self.ram.read(address),
+            0x80..0xc0 => self.paged_rom.read(address.rebased_to(0x80)),
+            0xc0..0xfc => self.os_rom.read(address.rebased_to(0xc0)),
+            0xfc..0xff => self.io_space.read(address, clock),
+            0xff.. => self.os_rom.read(address.rebased_to(0xc0)),
+        }
+    }
+
+    pub fn write(&mut self, address: Word, value: u8, clock: &mut Clock) {
+        match address.1 {
+            ..0x80 => self.ram.write(address, value),
+            0x80..0xc0 => (), // paged rom
+            0xc0..0xfc => (), // os rom
+            0xfc..0xff => self.io_space.write(address, value, clock),
+            0xff.. => (), // os rom
+        }
     }
 }

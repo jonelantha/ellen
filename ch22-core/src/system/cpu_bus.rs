@@ -1,6 +1,6 @@
-use crate::address_map::AddressMap;
 use crate::cpu::{CpuIO, InterruptType};
 use crate::system::clock::Clock;
+use crate::system::system_components::AddressMap;
 use crate::word::Word;
 
 pub struct CpuBus<'a> {
