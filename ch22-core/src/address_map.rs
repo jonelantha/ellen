@@ -24,8 +24,8 @@ impl Default for AddressMap {
     fn default() -> Self {
         let mut io_space = IOSpace::default();
         let ram = Ram::default();
-        let os_rom = Rom::new(0xc000);
-        let paged_rom = PagedRom::new(0x8000);
+        let os_rom = Rom::default();
+        let paged_rom = PagedRom::default();
 
         io_space.add_device(
             &[0xfe30, 0xfe31, 0xfe32, 0xfe33],
@@ -47,10 +47,10 @@ impl AddressMap {
     pub fn read(&mut self, address: Word, clock: &mut Clock) -> u8 {
         match address.1 {
             ..0x80 => self.ram.read(address),
-            0x80..0xc0 => self.paged_rom.read(address),
-            0xc0..0xfc => self.os_rom.read(address),
+            0x80..0xc0 => self.paged_rom.read(address.rebased_to(0x80)),
+            0xc0..0xfc => self.os_rom.read(address.rebased_to(0xc0)),
             0xfc..0xff => self.io_space.read(address, clock),
-            0xff.. => self.os_rom.read(address),
+            0xff.. => self.os_rom.read(address.rebased_to(0xc0)),
         }
     }
 
