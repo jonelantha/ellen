@@ -1,25 +1,37 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
-use crate::address_map::AddressMap;
+use crate::address_map::{AddressMap, IOSpace, PagedRom, Ram, Rom};
 use crate::cpu::{Cpu, InterruptType};
 use crate::devices::{
-    DeviceSpeed, IODevice, IODeviceID, TimerDevice, TimerDeviceID, TimerDeviceList,
+    DeviceSpeed, IODevice, IODeviceID, RomSelect, TimerDevice, TimerDeviceID, TimerDeviceList,
 };
 use crate::system::system_runner::SystemRunner;
 use crate::video::{CRTCRangeType, Field, VideoMemoryAccess};
 
 #[derive(Default)]
 pub struct SystemComponents {
+    cycles: u64,
     cpu: Cpu,
+    ram: Ram,
+    paged_rom: PagedRom,
+    io_space: IOSpace,
+    os_rom: Rom,
     video_field: Field,
     ic32_latch: Rc<Cell<u8>>,
-    cycles: u64,
     timer_devices: TimerDeviceList,
-    address_map: AddressMap,
 }
 
 impl SystemComponents {
+    pub fn setup(&mut self) {
+        self.io_space.add_device(
+            &[0xfe30, 0xfe31, 0xfe32, 0xfe33],
+            Box::new(RomSelect::new(self.paged_rom.get_active_rom())),
+            None,
+            DeviceSpeed::TwoMhz,
+        );
+    }
+
     pub fn video_field_start(&self) -> *const Field {
         &self.video_field as *const Field
     }
@@ -49,7 +61,7 @@ impl SystemComponents {
             self.ic32_latch.get(),
         );
 
-        let ram = &self.address_map.ram;
+        let ram = &self.ram;
 
         let first_ram_slice = ram.slice(first_ram_range);
         let second_ram_slice = second_ram_range.map(|range| ram.slice(range));
@@ -59,11 +71,11 @@ impl SystemComponents {
     }
 
     pub fn load_os_rom(&mut self, data: &[u8]) {
-        self.address_map.os_rom.load(data);
+        self.os_rom.load(data);
     }
 
     pub fn load_paged_rom(&mut self, bank: u8, data: &[u8]) {
-        self.address_map.paged_rom.load(bank, data);
+        self.paged_rom.load(bank, data);
     }
 
     pub fn add_io_device(
@@ -73,8 +85,7 @@ impl SystemComponents {
         interrupt_type: Option<InterruptType>,
         speed: DeviceSpeed,
     ) -> IODeviceID {
-        self.address_map
-            .io_space
+        self.io_space
             .add_device(addresses, device, interrupt_type, speed)
     }
 
@@ -83,22 +94,36 @@ impl SystemComponents {
     }
 
     pub fn reset(&mut self) {
+        let mut address_map = AddressMap::new(
+            &mut self.ram,
+            &mut self.paged_rom,
+            &mut self.io_space,
+            &mut self.os_rom,
+        );
+
         let mut system_runner = SystemRunner::new(
             &mut self.cycles,
             &mut self.cpu,
             &mut self.timer_devices,
-            &mut self.address_map,
+            &mut address_map,
         );
 
         system_runner.reset();
     }
 
     pub fn run(&mut self, until: u64) -> u64 {
+        let mut address_map = AddressMap::new(
+            &mut self.ram,
+            &mut self.paged_rom,
+            &mut self.io_space,
+            &mut self.os_rom,
+        );
+
         let mut system_runner = SystemRunner::new(
             &mut self.cycles,
             &mut self.cpu,
             &mut self.timer_devices,
-            &mut self.address_map,
+            &mut address_map,
         );
 
         system_runner.run(until);
@@ -107,9 +132,7 @@ impl SystemComponents {
     }
 
     pub fn set_device_interrupt(&mut self, device_id: IODeviceID, interrupt: bool) {
-        self.address_map
-            .io_space
-            .set_interrupt(device_id, interrupt);
+        self.io_space.set_interrupt(device_id, interrupt);
     }
 
     pub fn set_device_trigger(&mut self, device_id: TimerDeviceID, trigger: Option<u64>) {

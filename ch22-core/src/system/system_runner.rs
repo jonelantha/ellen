@@ -11,7 +11,7 @@ impl<'a> SystemRunner<'a> {
         cycles: &'a mut u64,
         cpu: &'a mut Cpu,
         timer_devices: &'a mut TimerDeviceList,
-        address_map: &'a mut AddressMap,
+        address_map: &'a mut AddressMap<'a>,
     ) -> Self {
         let clock = Clock::new(cycles, timer_devices);
         let cpu_bus = CpuBus::new(clock, address_map);

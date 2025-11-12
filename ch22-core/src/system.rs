@@ -20,7 +20,6 @@ use system_components::SystemComponents;
 pub use clock::Clock;
 
 #[wasm_bindgen]
-#[derive(Default)]
 pub struct System {
     system_components: SystemComponents,
 }
@@ -30,7 +29,10 @@ impl System {
     pub fn new() -> System {
         utils::set_panic_hook();
 
-        System::default()
+        let mut system_components = SystemComponents::default();
+        system_components.setup();
+
+        System { system_components }
     }
 
     pub fn video_field_start(&self) -> *const Field {

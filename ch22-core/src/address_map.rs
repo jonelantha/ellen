@@ -4,46 +4,36 @@ mod ram;
 mod rom;
 
 use crate::cpu::InterruptType;
-use crate::devices::{DeviceSpeed, RomSelect};
 use crate::system::Clock;
 use crate::word::Word;
 
-use io_space::IOSpace;
-use paged_rom::PagedRom;
-use ram::Ram;
-use rom::Rom;
+pub use io_space::IOSpace;
+pub use paged_rom::PagedRom;
+pub use ram::Ram;
+pub use rom::Rom;
 
-pub struct AddressMap {
-    pub ram: Ram,
-    pub paged_rom: PagedRom,
-    pub io_space: IOSpace,
-    pub os_rom: Rom,
+pub struct AddressMap<'a> {
+    ram: &'a mut Ram,
+    paged_rom: &'a mut PagedRom,
+    io_space: &'a mut IOSpace,
+    os_rom: &'a mut Rom,
 }
 
-impl Default for AddressMap {
-    fn default() -> Self {
-        let mut io_space = IOSpace::default();
-        let ram = Ram::default();
-        let os_rom = Rom::default();
-        let paged_rom = PagedRom::default();
-
-        io_space.add_device(
-            &[0xfe30, 0xfe31, 0xfe32, 0xfe33],
-            Box::new(RomSelect::new(paged_rom.get_active_rom())),
-            None,
-            DeviceSpeed::TwoMhz,
-        );
-
-        AddressMap {
+impl<'a> AddressMap<'a> {
+    pub fn new(
+        ram: &'a mut Ram,
+        paged_rom: &'a mut PagedRom,
+        io_space: &'a mut IOSpace,
+        os_rom: &'a mut Rom,
+    ) -> Self {
+        Self {
             ram,
             paged_rom,
             io_space,
             os_rom,
         }
     }
-}
 
-impl AddressMap {
     pub fn read(&mut self, address: Word, clock: &mut Clock) -> u8 {
         match address.1 {
             ..0x80 => self.ram.read(address),
