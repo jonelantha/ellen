@@ -32,13 +32,15 @@ impl CpuIO for CpuBus<'_> {
     }
 
     fn get_interrupt(&mut self, interrupt_type: InterruptType) -> bool {
-        self.address_map.get_interrupt(interrupt_type, &self.clock)
+        self.address_map
+            .io_space_mut()
+            .get_interrupt(interrupt_type, &self.clock)
     }
 }
 
 impl CpuBus<'_> {
     fn end_previous_cycle(&mut self) {
-        self.address_map.phase_2(&self.clock);
+        self.address_map.io_space_mut().phase_2(&self.clock);
 
         self.clock.inc();
     }

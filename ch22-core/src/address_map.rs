@@ -3,7 +3,6 @@ mod paged_rom;
 mod ram;
 mod rom;
 
-use crate::cpu::InterruptType;
 use crate::system::Clock;
 use crate::word::Word;
 
@@ -34,6 +33,10 @@ impl<'a> AddressMap<'a> {
         }
     }
 
+    pub fn io_space_mut(&mut self) -> &mut IOSpace {
+        self.io_space
+    }
+
     pub fn read(&mut self, address: Word, clock: &mut Clock) -> u8 {
         match address.1 {
             ..0x80 => self.ram.read(address),
@@ -52,13 +55,5 @@ impl<'a> AddressMap<'a> {
             0xfc..0xff => self.io_space.write(address, value, clock),
             0xff.. => (), // os rom
         }
-    }
-
-    pub fn phase_2(&mut self, clock: &Clock) {
-        self.io_space.phase_2(clock);
-    }
-
-    pub fn get_interrupt(&mut self, interrupt_type: InterruptType, clock: &Clock) -> bool {
-        self.io_space.get_interrupt(interrupt_type, clock)
     }
 }
