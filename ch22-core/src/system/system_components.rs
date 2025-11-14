@@ -3,10 +3,8 @@ use std::rc::Rc;
 
 use super::{Clock, cpu_bus::CpuBus};
 use crate::address_spaces::{IOSpace, PagedRom, Ram, Rom};
-use crate::cpu::{Cpu, InterruptType};
-use crate::devices::{
-    DeviceSpeed, IODevice, IODeviceID, RomSelect, TimerDevice, TimerDeviceID, TimerDeviceList,
-};
+use crate::cpu::Cpu;
+use crate::devices::TimerDeviceList;
 use crate::video::{CRTCRangeType, Field};
 use crate::word::Word;
 
@@ -24,17 +22,24 @@ pub struct SystemComponents {
 }
 
 impl SystemComponents {
-    pub fn setup(&mut self) {
-        self.io_space.add_device(
-            &[0xfe30, 0xfe31, 0xfe32, 0xfe33],
-            Box::new(RomSelect::new(self.paged_rom.get_active_rom())),
-            None,
-            DeviceSpeed::TwoMhz,
-        );
+    pub fn paged_rom(&mut self) -> &mut PagedRom {
+        &mut self.paged_rom
     }
 
-    pub fn video_field_start(&self) -> *const Field {
-        &self.video_field as *const Field
+    pub fn io_space(&mut self) -> &mut IOSpace {
+        &mut self.io_space
+    }
+
+    pub fn os_rom(&mut self) -> &mut Rom {
+        &mut self.os_rom
+    }
+
+    pub fn video_field(&mut self) -> &mut Field {
+        &mut self.video_field
+    }
+
+    pub fn timer_devices(&mut self) -> &mut TimerDeviceList {
+        &mut self.timer_devices
     }
 
     pub fn snapshot_char_data(
@@ -52,29 +57,6 @@ impl SystemComponents {
             required_type,
             |range| self.ram.slice(range),
         );
-    }
-
-    pub fn load_os_rom(&mut self, data: &[u8]) {
-        self.os_rom.load(data);
-    }
-
-    pub fn load_paged_rom(&mut self, bank: u8, data: &[u8]) {
-        self.paged_rom.load(bank, data);
-    }
-
-    pub fn add_io_device(
-        &mut self,
-        addresses: &[u16],
-        device: Box<dyn IODevice>,
-        interrupt_type: Option<InterruptType>,
-        speed: DeviceSpeed,
-    ) -> IODeviceID {
-        self.io_space
-            .add_device(addresses, device, interrupt_type, speed)
-    }
-
-    pub fn add_timer_device(&mut self, timer_device: Box<dyn TimerDevice>) -> TimerDeviceID {
-        self.timer_devices.add_device(timer_device)
     }
 
     pub fn reset(&mut self) {
@@ -109,14 +91,6 @@ impl SystemComponents {
         f(&mut self.cpu, &mut cpu_bus);
 
         self.cycles
-    }
-
-    pub fn set_device_interrupt(&mut self, device_id: IODeviceID, interrupt: bool) {
-        self.io_space.set_interrupt(device_id, interrupt);
-    }
-
-    pub fn set_device_trigger(&mut self, device_id: TimerDeviceID, trigger: Option<u64>) {
-        self.timer_devices.set_device_trigger(device_id, trigger);
     }
 
     pub fn clone_ic32_latch(&self) -> Rc<Cell<u8>> {
