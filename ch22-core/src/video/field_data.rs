@@ -1,3 +1,5 @@
+use crate::video::{CRTCRangeType, VideoMemoryAccess};
+
 const MAX_LINES: usize = 320;
 
 #[repr(C)]
@@ -14,6 +16,38 @@ impl Default for Field {
 }
 
 impl Field {
+    pub fn snapshot_char_data<'a, F>(
+        &mut self,
+        row_index: usize,
+        crtc_address: u16,
+        crtc_length: u8,
+        ic32_latch: u8,
+        required_type: CRTCRangeType,
+        get_buffer: F,
+    ) where
+        F: Fn(std::ops::Range<u16>) -> &'a [u8],
+    {
+        if crtc_length == 0 {
+            self.set_blank_line(row_index);
+            return;
+        }
+
+        let video_type = VideoMemoryAccess::get_crtc_range_type(crtc_address, crtc_length);
+
+        if video_type != required_type {
+            self.set_blank_line(row_index);
+            return;
+        }
+
+        let (first_ram_range, second_ram_range) =
+            VideoMemoryAccess::translate_crtc_range(crtc_address, crtc_length, ic32_latch);
+
+        let first_ram_slice = get_buffer(first_ram_range);
+        let second_ram_slice = second_ram_range.map(|range| get_buffer(range));
+
+        self.set_char_data_line(row_index, first_ram_slice, second_ram_slice);
+    }
+
     pub fn set_blank_line(&mut self, row_index: usize) {
         self.lines[row_index] = None;
     }

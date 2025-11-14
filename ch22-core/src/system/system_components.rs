@@ -7,7 +7,7 @@ use crate::cpu::{Cpu, InterruptType};
 use crate::devices::{
     DeviceSpeed, IODevice, IODeviceID, RomSelect, TimerDevice, TimerDeviceID, TimerDeviceList,
 };
-use crate::video::{CRTCRangeType, Field, VideoMemoryAccess};
+use crate::video::{CRTCRangeType, Field};
 use crate::word::Word;
 
 #[derive(Default)]
@@ -44,31 +44,14 @@ impl SystemComponents {
         crtc_length: u8,
         required_type: CRTCRangeType,
     ) {
-        if crtc_length == 0 {
-            self.video_field.set_blank_line(row_index);
-            return;
-        }
-
-        let video_type = VideoMemoryAccess::get_crtc_range_type(crtc_address, crtc_length);
-
-        if video_type != required_type {
-            self.video_field.set_blank_line(row_index);
-            return;
-        }
-
-        let (first_ram_range, second_ram_range) = VideoMemoryAccess::translate_crtc_range(
+        self.video_field.snapshot_char_data(
+            row_index,
             crtc_address,
             crtc_length,
             self.ic32_latch.get(),
+            required_type,
+            |range| self.ram.slice(range),
         );
-
-        let ram = &self.ram;
-
-        let first_ram_slice = ram.slice(first_ram_range);
-        let second_ram_slice = second_ram_range.map(|range| ram.slice(range));
-
-        self.video_field
-            .set_char_data_line(row_index, first_ram_slice, second_ram_slice);
     }
 
     pub fn load_os_rom(&mut self, data: &[u8]) {
