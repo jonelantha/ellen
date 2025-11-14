@@ -43,7 +43,7 @@ impl Field {
             VideoMemoryAccess::translate_crtc_range(crtc_address, crtc_length, ic32_latch);
 
         let first_ram_slice = get_buffer(first_ram_range);
-        let second_ram_slice = second_ram_range.map(|range| get_buffer(range));
+        let second_ram_slice = second_ram_range.map(get_buffer);
 
         self.set_char_data_line(row_index, first_ram_slice, second_ram_slice);
     }
