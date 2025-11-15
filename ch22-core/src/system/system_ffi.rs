@@ -3,7 +3,7 @@ use std::mem::size_of;
 use js_sys::Function;
 use wasm_bindgen::prelude::*;
 
-use super::{core::Core, core::OS_ROM};
+use super::core::Core;
 use crate::cpu::InterruptType;
 use crate::devices::{
     DeviceSpeed, IODeviceID, JsIODevice, JsTimerDevice, StaticDevice, TimerDeviceID,
