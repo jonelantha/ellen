@@ -1,4 +1,4 @@
-mod address_map;
+mod address_spaces;
 pub mod cpu;
 mod devices;
 mod system;

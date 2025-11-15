@@ -6,20 +6,20 @@ use crate::word::Word;
 const ROM_SIZE: usize = 0x4000;
 
 pub struct PagedRom {
-    base_address: usize,
     roms: [[u8; ROM_SIZE]; 16],
     active_rom: Rc<Cell<usize>>,
 }
 
-impl PagedRom {
-    pub fn new(base_address: usize) -> Self {
+impl Default for PagedRom {
+    fn default() -> Self {
         PagedRom {
-            base_address,
             roms: [[0; ROM_SIZE]; 16],
             active_rom: Rc::new(Cell::new(15)),
         }
     }
+}
 
+impl PagedRom {
     pub fn get_active_rom(&self) -> Rc<Cell<usize>> {
         self.active_rom.clone()
     }
@@ -33,6 +33,6 @@ impl PagedRom {
     }
 
     pub fn read(&mut self, address: Word) -> u8 {
-        self.roms[self.active_rom.get()][Into::<usize>::into(address) - self.base_address]
+        self.roms[self.active_rom.get()][Into::<usize>::into(address)]
     }
 }

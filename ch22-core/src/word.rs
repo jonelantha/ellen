@@ -77,6 +77,10 @@ impl Word {
             self.1 = self.1.wrapping_add(1);
         }
     }
+
+    pub fn rebased_to(&self, base_page: u8) -> Word {
+        Word(self.0, self.1 - base_page)
+    }
 }
 
 pub enum OffsetResult {

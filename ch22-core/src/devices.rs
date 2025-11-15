@@ -13,7 +13,6 @@ pub use js_io_device::JsIODevice;
 pub use js_timer_device::JsTimerDevice;
 pub use rom_select::RomSelect;
 pub use static_device::StaticDevice;
-pub use timer_device::TimerDevice;
 pub use timer_device_list::{TimerDeviceID, TimerDeviceList};
 
 #[cfg(test)]
