@@ -21,7 +21,7 @@ impl Rom {
         self.rom.copy_from_slice(data);
     }
 
-    pub fn read(&mut self, address: Word) -> u8 {
+    pub fn read(&self, address: Word) -> u8 {
         self.rom[Into::<usize>::into(address)]
     }
 }

@@ -7,7 +7,7 @@ use super::{
     cpu_bus::CpuBus,
     runner::{Runner, RunnerTrait},
 };
-use crate::address_spaces::{IOSpace, PagedRom, Ram, Rom};
+use crate::address_spaces::{IOSpace, Ram, Rom};
 use crate::devices::{RomSelect, TimerDeviceList};
 use crate::video::{CRTCRangeType, Field};
 use crate::{cpu::Cpu, devices::DeviceSpeed};
@@ -17,19 +17,21 @@ pub struct Core {
     cycles: u64,
     cpu: Cpu,
     ram: Ram,
-    pub paged_rom: PagedRom,
+    pub roms: [Rom; ROMS_LEN],
     pub io_space: IOSpace,
-    pub os_rom: Rom,
     pub video_field: Field,
     pub ic32_latch: Rc<Cell<u8>>,
+    pub rom_select_latch: Rc<Cell<usize>>,
     pub timer_devices: TimerDeviceList,
 }
 
 impl Core {
     pub fn setup(&mut self) {
+        self.rom_select_latch.set(15);
+
         self.io_space.add_device(
             &[0xfe30, 0xfe31, 0xfe32, 0xfe33],
-            Box::new(RomSelect::new(self.paged_rom.get_active_rom())),
+            Box::new(RomSelect::new(self.rom_select_latch.clone())),
             None,
             DeviceSpeed::TwoMhz,
         );
@@ -37,12 +39,12 @@ impl Core {
 
     fn address_map() -> impl AddressMap {
         FnAddressMap {
-            read: |address, clock, ram, paged_rom, io_space, os_rom| match address.1 {
+            read: |address, clock, ram, roms, io_space, rom_select_latch| match address.1 {
                 ..0x80 => ram.read(address),
-                0x80..0xc0 => paged_rom.read(address.rebased_to(0x80)),
-                0xc0..0xfc => os_rom.read(address.rebased_to(0xc0)),
+                0x80..0xc0 => roms[rom_select_latch.get()].read(address.rebased_to(0x80)),
+                0xc0..0xfc => roms[OS_ROM].read(address.rebased_to(0xc0)),
                 0xfc..0xff => io_space.read(address, clock),
-                0xff.. => os_rom.read(address.rebased_to(0xc0)),
+                0xff.. => roms[OS_ROM].read(address.rebased_to(0xc0)),
             },
             write: |address, value, clock, ram, io_space| {
                 match address.1 {
@@ -94,9 +96,9 @@ impl Core {
         let cpu_bus = CpuBus::new(
             clock,
             &mut self.ram,
-            &mut self.paged_rom,
+            &self.roms,
             &mut self.io_space,
-            &mut self.os_rom,
+            &self.rom_select_latch,
             Self::address_map(),
         );
 
@@ -110,3 +112,6 @@ impl Core {
         self.cycles
     }
 }
+
+pub const OS_ROM: usize = 16;
+pub const ROMS_LEN: usize = 17;

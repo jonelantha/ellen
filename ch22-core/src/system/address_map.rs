@@ -1,5 +1,7 @@
-use super::Clock;
-use crate::address_spaces::{IOSpace, PagedRom, Ram, Rom};
+use std::cell::Cell;
+
+use super::{clock::Clock, core::ROMS_LEN};
+use crate::address_spaces::{IOSpace, Ram, Rom};
 use crate::word::Word;
 
 pub trait AddressMap {
@@ -8,9 +10,9 @@ pub trait AddressMap {
         address: Word,
         clock: &mut Clock,
         ram: &mut Ram,
-        paged_rom: &mut PagedRom,
+        roms: &[Rom; ROMS_LEN],
         io_space: &mut IOSpace,
-        os_rom: &mut Rom,
+        rom_select_latch: &Cell<usize>,
     ) -> u8;
 
     fn write(
@@ -25,7 +27,7 @@ pub trait AddressMap {
 
 pub struct FnAddressMap<FRead, FWrite>
 where
-    FRead: FnMut(Word, &mut Clock, &mut Ram, &mut PagedRom, &mut IOSpace, &mut Rom) -> u8,
+    FRead: FnMut(Word, &mut Clock, &mut Ram, &[Rom; ROMS_LEN], &mut IOSpace, &Cell<usize>) -> u8,
     FWrite: FnMut(Word, u8, &mut Clock, &mut Ram, &mut IOSpace),
 {
     pub read: FRead,
@@ -34,7 +36,7 @@ where
 
 impl<FRead, FWrite> AddressMap for FnAddressMap<FRead, FWrite>
 where
-    FRead: FnMut(Word, &mut Clock, &mut Ram, &mut PagedRom, &mut IOSpace, &mut Rom) -> u8,
+    FRead: FnMut(Word, &mut Clock, &mut Ram, &[Rom; ROMS_LEN], &mut IOSpace, &Cell<usize>) -> u8,
     FWrite: FnMut(Word, u8, &mut Clock, &mut Ram, &mut IOSpace),
 {
     fn read(
@@ -42,11 +44,11 @@ where
         address: Word,
         clock: &mut Clock,
         ram: &mut Ram,
-        paged_rom: &mut PagedRom,
+        roms: &[Rom; ROMS_LEN],
         io_space: &mut IOSpace,
-        os_rom: &mut Rom,
+        rom_select_latch: &Cell<usize>,
     ) -> u8 {
-        (self.read)(address, clock, ram, paged_rom, io_space, os_rom)
+        (self.read)(address, clock, ram, roms, io_space, rom_select_latch)
     }
 
     fn write(
