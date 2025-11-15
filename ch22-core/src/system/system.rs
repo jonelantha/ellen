@@ -13,7 +13,7 @@ use crate::video::{CRTCRangeType, Field};
 use crate::{cpu::Cpu, devices::DeviceSpeed};
 
 #[derive(Default)]
-pub struct SystemComponents {
+pub struct System {
     cycles: u64,
     cpu: Cpu,
     ram: Ram,
@@ -25,7 +25,7 @@ pub struct SystemComponents {
     pub timer_devices: TimerDeviceList,
 }
 
-impl SystemComponents {
+impl System {
     pub fn setup(&mut self) {
         self.io_space.add_device(
             &[0xfe30, 0xfe31, 0xfe32, 0xfe33],
@@ -85,7 +85,7 @@ impl SystemComponents {
         })
     }
 
-    pub fn with_runner<F>(&mut self, f: F) -> u64
+    fn with_runner<F>(&mut self, f: F) -> u64
     where
         F: FnOnce(&mut dyn SystemRunnerTrait),
     {
