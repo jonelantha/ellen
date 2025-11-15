@@ -3,7 +3,7 @@ use std::mem::size_of;
 use js_sys::Function;
 use wasm_bindgen::prelude::*;
 
-use super::system::System;
+use super::core::Core;
 use crate::cpu::InterruptType;
 use crate::devices::{
     DeviceSpeed, IODeviceID, JsIODevice, JsTimerDevice, StaticDevice, TimerDeviceID,
@@ -13,24 +13,24 @@ use crate::video::{CRTCRangeType, Field};
 
 #[wasm_bindgen(js_name = System)]
 #[derive(Default)]
-pub struct SystemFFI {
-    system: System,
+pub struct SystemFfi {
+    core: Core,
 }
 
 #[wasm_bindgen(js_class = System)]
-impl SystemFFI {
-    pub fn new() -> SystemFFI {
+impl SystemFfi {
+    pub fn new() -> SystemFfi {
         utils::set_panic_hook();
 
-        let mut system = Self::default();
+        let mut system_ffi = Self::default();
 
-        system.system.setup();
+        system_ffi.core.setup();
 
-        system
+        system_ffi
     }
 
     pub fn video_field_start(&mut self) -> *const Field {
-        &self.system.video_field as *const Field
+        &self.core.video_field as *const Field
     }
 
     pub fn video_field_size(&self) -> usize {
@@ -44,7 +44,7 @@ impl SystemFFI {
         crtc_length: u8,
         is_teletext: bool,
     ) {
-        self.system.snapshot_char_data(
+        self.core.snapshot_char_data(
             row_index,
             crtc_address,
             crtc_length,
@@ -56,11 +56,11 @@ impl SystemFFI {
     }
 
     pub fn load_os_rom(&mut self, data: &[u8]) {
-        self.system.os_rom.load(data);
+        self.core.os_rom.load(data);
     }
 
     pub fn load_paged_rom(&mut self, bank: u8, data: &[u8]) {
-        self.system.paged_rom.load(bank, data);
+        self.core.paged_rom.load(bank, data);
     }
 
     pub fn add_static_device(
@@ -75,7 +75,7 @@ impl SystemFFI {
             false => DeviceSpeed::TwoMhz,
         };
 
-        self.system.io_space.add_device(
+        self.core.io_space.add_device(
             addresses,
             Box::new(StaticDevice {
                 read_value,
@@ -105,8 +105,8 @@ impl SystemFFI {
             _ => DeviceSpeed::TwoMhz,
         };
 
-        let ic32_latch = self.system.ic32_latch.clone();
-        self.system.io_space.add_device(
+        let ic32_latch = self.core.ic32_latch.clone();
+        self.core.io_space.add_device(
             addresses,
             Box::new(JsIODevice::new(
                 js_read,
@@ -121,25 +121,25 @@ impl SystemFFI {
     }
 
     pub fn add_js_timer_device(&mut self, js_handle_trigger: Function) -> TimerDeviceID {
-        self.system
+        self.core
             .timer_devices
             .add_device(Box::new(JsTimerDevice::new(js_handle_trigger)))
     }
 
     pub fn reset(&mut self) {
-        self.system.reset();
+        self.core.reset();
     }
 
     pub fn run(&mut self, until: u64) -> u64 {
-        self.system.run(until)
+        self.core.run(until)
     }
 
     pub fn set_device_interrupt(&mut self, device_id: IODeviceID, interrupt: bool) {
-        self.system.io_space.set_interrupt(device_id, interrupt);
+        self.core.io_space.set_interrupt(device_id, interrupt);
     }
 
     pub fn set_device_trigger(&mut self, device_id: TimerDeviceID, trigger: Option<u64>) {
-        self.system
+        self.core
             .timer_devices
             .set_device_trigger(device_id, trigger);
     }

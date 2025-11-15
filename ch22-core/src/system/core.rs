@@ -5,7 +5,7 @@ use super::{
     Clock,
     address_map::{AddressMap, FnAddressMap},
     cpu_bus::CpuBus,
-    system_runner::{SystemRunner, SystemRunnerTrait},
+    runner::{Runner, RunnerTrait},
 };
 use crate::address_spaces::{IOSpace, PagedRom, Ram, Rom};
 use crate::devices::{RomSelect, TimerDeviceList};
@@ -13,7 +13,7 @@ use crate::video::{CRTCRangeType, Field};
 use crate::{cpu::Cpu, devices::DeviceSpeed};
 
 #[derive(Default)]
-pub struct System {
+pub struct Core {
     cycles: u64,
     cpu: Cpu,
     ram: Ram,
@@ -25,7 +25,7 @@ pub struct System {
     pub timer_devices: TimerDeviceList,
 }
 
-impl System {
+impl Core {
     pub fn setup(&mut self) {
         self.io_space.add_device(
             &[0xfe30, 0xfe31, 0xfe32, 0xfe33],
@@ -87,7 +87,7 @@ impl System {
 
     fn with_runner<F>(&mut self, f: F) -> u64
     where
-        F: FnOnce(&mut dyn SystemRunnerTrait),
+        F: FnOnce(&mut dyn RunnerTrait),
     {
         let clock = Clock::new(&mut self.cycles, &mut self.timer_devices);
 
@@ -100,7 +100,7 @@ impl System {
             Self::address_map(),
         );
 
-        let mut runner = SystemRunner::new(cpu_bus, &mut self.cpu);
+        let mut runner = Runner::new(cpu_bus, &mut self.cpu);
 
         f(&mut runner);
 

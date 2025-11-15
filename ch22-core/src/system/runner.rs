@@ -1,23 +1,23 @@
 use super::{address_map::AddressMap, cpu_bus::CpuBus};
 use crate::cpu::Cpu;
 
-pub struct SystemRunner<'a, A: AddressMap> {
+pub struct Runner<'a, A: AddressMap> {
     cpu_bus: CpuBus<'a, A>,
     cpu: &'a mut Cpu,
 }
 
-pub trait SystemRunnerTrait {
+pub trait RunnerTrait {
     fn reset(&mut self);
     fn run(&mut self, until: u64);
 }
 
-impl<'a, A: AddressMap> SystemRunner<'a, A> {
+impl<'a, A: AddressMap> Runner<'a, A> {
     pub fn new(cpu_bus: CpuBus<'a, A>, cpu: &'a mut Cpu) -> Self {
-        SystemRunner { cpu_bus, cpu }
+        Runner { cpu_bus, cpu }
     }
 }
 
-impl<'a, A: AddressMap> SystemRunnerTrait for SystemRunner<'a, A> {
+impl<'a, A: AddressMap> RunnerTrait for Runner<'a, A> {
     fn reset(&mut self) {
         self.cpu.reset(&mut self.cpu_bus);
     }
