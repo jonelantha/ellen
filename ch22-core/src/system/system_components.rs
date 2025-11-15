@@ -1,12 +1,16 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
-use super::{Clock, cpu_bus::CpuBus};
+use super::{
+    Clock,
+    address_map::{AddressMap, FnAddressMap},
+    cpu_bus::CpuBus,
+    system_runner::{SystemRunner, SystemRunnerTrait},
+};
 use crate::address_spaces::{IOSpace, PagedRom, Ram, Rom};
 use crate::cpu::Cpu;
 use crate::devices::TimerDeviceList;
 use crate::video::{CRTCRangeType, Field};
-use crate::word::Word;
 
 #[derive(Default)]
 pub struct SystemComponents {
@@ -22,6 +26,27 @@ pub struct SystemComponents {
 }
 
 impl SystemComponents {
+    fn address_map() -> impl AddressMap {
+        FnAddressMap {
+            read: |address, clock, ram, paged_rom, io_space, os_rom| match address.1 {
+                ..0x80 => ram.read(address),
+                0x80..0xc0 => paged_rom.read(address.rebased_to(0x80)),
+                0xc0..0xfc => os_rom.read(address.rebased_to(0xc0)),
+                0xfc..0xff => io_space.read(address, clock),
+                0xff.. => os_rom.read(address.rebased_to(0xc0)),
+            },
+            write: |address, value, clock, ram, io_space| {
+                match address.1 {
+                    ..0x80 => ram.write(address, value),
+                    0x80..0xc0 => (), // paged rom
+                    0xc0..0xfc => (), // os rom
+                    0xfc..0xff => io_space.write(address, value, clock),
+                    0xff.. => (), // os rom
+                }
+            },
+        }
+    }
+
     pub fn paged_rom(&mut self) -> &mut PagedRom {
         &mut self.paged_rom
     }
@@ -60,73 +85,40 @@ impl SystemComponents {
     }
 
     pub fn reset(&mut self) {
-        self.with_runner(|cpu, cpu_bus| {
-            cpu.reset(cpu_bus);
+        self.with_runner(|runner| {
+            runner.reset();
         });
     }
 
     pub fn run(&mut self, until: u64) -> u64 {
-        self.with_runner(|cpu, cpu_bus| {
-            while cpu_bus.get_clock().get_cycles() < until {
-                cpu.handle_next_instruction(cpu_bus);
-            }
+        self.with_runner(|runner| {
+            runner.run(until);
         })
     }
 
     pub fn with_runner<F>(&mut self, f: F) -> u64
     where
-        F: FnOnce(&mut Cpu, &mut CpuBus),
+        F: FnOnce(&mut dyn SystemRunnerTrait),
     {
         let clock = Clock::new(&mut self.cycles, &mut self.timer_devices);
 
-        let address_map = AddressMap {
-            ram: &mut self.ram,
-            paged_rom: &mut self.paged_rom,
-            io_space: &mut self.io_space,
-            os_rom: &mut self.os_rom,
-        };
+        let cpu_bus = CpuBus::new(
+            clock,
+            &mut self.ram,
+            &mut self.paged_rom,
+            &mut self.io_space,
+            &mut self.os_rom,
+            Self::address_map(),
+        );
 
-        let mut cpu_bus = CpuBus::new(clock, address_map);
+        let mut runner = SystemRunner::new(cpu_bus, &mut self.cpu);
 
-        f(&mut self.cpu, &mut cpu_bus);
+        f(&mut runner);
 
         self.cycles
     }
 
     pub fn clone_ic32_latch(&self) -> Rc<Cell<u8>> {
         Rc::clone(&self.ic32_latch)
-    }
-}
-
-pub struct AddressMap<'a> {
-    ram: &'a mut Ram,
-    paged_rom: &'a mut PagedRom,
-    io_space: &'a mut IOSpace,
-    os_rom: &'a mut Rom,
-}
-
-impl AddressMap<'_> {
-    pub fn io_space_mut(&mut self) -> &mut IOSpace {
-        self.io_space
-    }
-
-    pub fn read(&mut self, address: Word, clock: &mut Clock) -> u8 {
-        match address.1 {
-            ..0x80 => self.ram.read(address),
-            0x80..0xc0 => self.paged_rom.read(address.rebased_to(0x80)),
-            0xc0..0xfc => self.os_rom.read(address.rebased_to(0xc0)),
-            0xfc..0xff => self.io_space.read(address, clock),
-            0xff.. => self.os_rom.read(address.rebased_to(0xc0)),
-        }
-    }
-
-    pub fn write(&mut self, address: Word, value: u8, clock: &mut Clock) {
-        match address.1 {
-            ..0x80 => self.ram.write(address, value),
-            0x80..0xc0 => (), // paged rom
-            0xc0..0xfc => (), // os rom
-            0xfc..0xff => self.io_space.write(address, value, clock),
-            0xff.. => (), // os rom
-        }
     }
 }
