@@ -17,12 +17,12 @@ pub struct SystemComponents {
     cycles: u64,
     cpu: Cpu,
     ram: Ram,
-    paged_rom: PagedRom,
-    io_space: IOSpace,
-    os_rom: Rom,
-    video_field: Field,
-    ic32_latch: Rc<Cell<u8>>,
-    timer_devices: TimerDeviceList,
+    pub paged_rom: PagedRom,
+    pub io_space: IOSpace,
+    pub os_rom: Rom,
+    pub video_field: Field,
+    pub ic32_latch: Rc<Cell<u8>>,
+    pub timer_devices: TimerDeviceList,
 }
 
 impl SystemComponents {
@@ -54,26 +54,6 @@ impl SystemComponents {
                 }
             },
         }
-    }
-
-    pub fn paged_rom(&mut self) -> &mut PagedRom {
-        &mut self.paged_rom
-    }
-
-    pub fn io_space(&mut self) -> &mut IOSpace {
-        &mut self.io_space
-    }
-
-    pub fn os_rom(&mut self) -> &mut Rom {
-        &mut self.os_rom
-    }
-
-    pub fn video_field(&mut self) -> &mut Field {
-        &mut self.video_field
-    }
-
-    pub fn timer_devices(&mut self) -> &mut TimerDeviceList {
-        &mut self.timer_devices
     }
 
     pub fn snapshot_char_data(
@@ -125,9 +105,5 @@ impl SystemComponents {
         f(&mut runner);
 
         self.cycles
-    }
-
-    pub fn clone_ic32_latch(&self) -> Rc<Cell<u8>> {
-        Rc::clone(&self.ic32_latch)
     }
 }

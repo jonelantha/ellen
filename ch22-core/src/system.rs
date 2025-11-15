@@ -39,7 +39,7 @@ impl System {
     }
 
     pub fn video_field_start(&mut self) -> *const Field {
-        self.system_components.video_field() as *const Field
+        &self.system_components.video_field as *const Field
     }
 
     pub fn video_field_size(&self) -> usize {
@@ -65,11 +65,11 @@ impl System {
     }
 
     pub fn load_os_rom(&mut self, data: &[u8]) {
-        self.system_components.os_rom().load(data);
+        self.system_components.os_rom.load(data);
     }
 
     pub fn load_paged_rom(&mut self, bank: u8, data: &[u8]) {
-        self.system_components.paged_rom().load(bank, data);
+        self.system_components.paged_rom.load(bank, data);
     }
 
     pub fn add_static_device(
@@ -84,7 +84,7 @@ impl System {
             false => DeviceSpeed::TwoMhz,
         };
 
-        self.system_components.io_space().add_device(
+        self.system_components.io_space.add_device(
             addresses,
             Box::new(StaticDevice {
                 read_value,
@@ -114,8 +114,8 @@ impl System {
             _ => DeviceSpeed::TwoMhz,
         };
 
-        let ic32_latch = self.system_components.clone_ic32_latch();
-        self.system_components.io_space().add_device(
+        let ic32_latch = self.system_components.ic32_latch.clone();
+        self.system_components.io_space.add_device(
             addresses,
             Box::new(JsIODevice::new(
                 js_read,
@@ -131,7 +131,7 @@ impl System {
 
     pub fn add_js_timer_device(&mut self, js_handle_trigger: Function) -> TimerDeviceID {
         self.system_components
-            .timer_devices()
+            .timer_devices
             .add_device(Box::new(JsTimerDevice::new(js_handle_trigger)))
     }
 
@@ -145,13 +145,13 @@ impl System {
 
     pub fn set_device_interrupt(&mut self, device_id: IODeviceID, interrupt: bool) {
         self.system_components
-            .io_space()
+            .io_space
             .set_interrupt(device_id, interrupt);
     }
 
     pub fn set_device_trigger(&mut self, device_id: TimerDeviceID, trigger: Option<u64>) {
         self.system_components
-            .timer_devices()
+            .timer_devices
             .set_device_trigger(device_id, trigger);
     }
 }
