@@ -70,7 +70,7 @@ impl<A: AddressMap> CpuBus<'_, A> {
         self.clock.inc();
     }
 
-    pub fn get_cycles(&'_ self) -> u64 {
+    pub fn get_cycles(&self) -> u64 {
         self.clock.get_cycles()
     }
 }

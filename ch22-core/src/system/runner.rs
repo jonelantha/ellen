@@ -2,19 +2,13 @@ use super::{address_map::AddressMap, cpu_bus::CpuBus};
 use crate::cpu::Cpu;
 
 pub struct Runner<'a, A: AddressMap> {
-    cpu_bus: CpuBus<'a, A>,
-    cpu: &'a mut Cpu,
+    pub cpu_bus: CpuBus<'a, A>,
+    pub cpu: &'a mut Cpu,
 }
 
 pub trait RunnerTrait {
     fn reset(&mut self);
     fn run(&mut self, until: u64);
-}
-
-impl<'a, A: AddressMap> Runner<'a, A> {
-    pub fn new(cpu_bus: CpuBus<'a, A>, cpu: &'a mut Cpu) -> Self {
-        Runner { cpu_bus, cpu }
-    }
 }
 
 impl<'a, A: AddressMap> RunnerTrait for Runner<'a, A> {

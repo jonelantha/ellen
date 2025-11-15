@@ -100,7 +100,10 @@ impl Core {
             Self::address_map(),
         );
 
-        let mut runner = Runner::new(cpu_bus, &mut self.cpu);
+        let mut runner = Runner {
+            cpu_bus,
+            cpu: &mut self.cpu,
+        };
 
         f(&mut runner);
 
