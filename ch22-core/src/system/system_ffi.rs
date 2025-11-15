@@ -3,7 +3,7 @@ use std::mem::size_of;
 use js_sys::Function;
 use wasm_bindgen::prelude::*;
 
-use super::core::Core;
+use super::core::{Core, ROMS_LEN};
 use crate::cpu::InterruptType;
 use crate::devices::{
     DeviceSpeed, IODeviceID, JsIODevice, JsTimerDevice, StaticDevice, TimerDeviceID,
@@ -55,8 +55,12 @@ impl SystemFfi {
         );
     }
 
-    pub fn load_rom(&mut self, bank: u8, data: &[u8]) {
-        self.core.roms[bank as usize].load(data);
+    pub fn load_rom(&mut self, bank: usize, data: &[u8]) {
+        if bank >= ROMS_LEN {
+            panic!("Invalid ROM bank: {bank}");
+        }
+
+        self.core.roms[bank].load(data);
     }
 
     pub fn add_static_device(
