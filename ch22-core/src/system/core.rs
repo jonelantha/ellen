@@ -27,6 +27,8 @@ pub struct Core {
 
 impl Core {
     pub fn setup(&mut self) {
+        self.rom_select_latch.set(15);
+
         self.io_space.add_device(
             &[0xfe30, 0xfe31, 0xfe32, 0xfe33],
             Box::new(RomSelect::new(self.rom_select_latch.clone())),
