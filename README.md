@@ -47,17 +47,11 @@ const { memory: wasmMemory } = await initCh22();
 const ch22System = System.new();
 
 /**
- * set the OS Rom
- * - osRom: 16k Uint6Array
- */
-ch22System.load_os_rom(osRom);
-
-/**
  * set one of the paged Roms
- * - bank: bank to populate, 0-15
+ * - bank: bank to populate, 0-16, 16 = OS Rom
  * - pagedRom: 16k Uint8Array
  */
-ch22System.load_paged_rom(bank, pagedRom);
+ch22System.load_rom(bank, pagedRom);
 
 /**
  * register a callback to be called at certain cycles

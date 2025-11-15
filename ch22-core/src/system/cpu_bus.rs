@@ -1,14 +1,16 @@
-use super::{address_map::AddressMap, clock::Clock};
-use crate::address_spaces::{IOSpace, PagedRom, Ram, Rom};
+use std::cell::Cell;
+
+use super::{address_map::AddressMap, clock::Clock, core::ROMS_LEN};
+use crate::address_spaces::{IOSpace, Ram, Rom};
 use crate::cpu::{CpuIO, InterruptType};
 use crate::word::Word;
 
 pub struct CpuBus<'a, A: AddressMap> {
     clock: Clock<'a>,
     ram: &'a mut Ram,
-    paged_rom: &'a mut PagedRom,
+    roms: &'a [Rom; ROMS_LEN],
     io_space: &'a mut IOSpace,
-    os_rom: &'a mut Rom,
+    rom_select_latch: &'a Cell<usize>,
     address_map: A,
 }
 
@@ -16,17 +18,17 @@ impl<'a, A: AddressMap> CpuBus<'a, A> {
     pub fn new(
         clock: Clock<'a>,
         ram: &'a mut Ram,
-        paged_rom: &'a mut PagedRom,
+        roms: &'a [Rom; ROMS_LEN],
         io_space: &'a mut IOSpace,
-        os_rom: &'a mut Rom,
+        rom_select_latch: &'a Cell<usize>,
         address_map: A,
     ) -> Self {
         Self {
             clock,
             ram,
-            paged_rom,
+            roms,
             io_space,
-            os_rom,
+            rom_select_latch,
             address_map,
         }
     }
@@ -44,9 +46,9 @@ impl<A: AddressMap> CpuIO for CpuBus<'_, A> {
             address,
             &mut self.clock,
             self.ram,
-            self.paged_rom,
+            self.roms,
             self.io_space,
-            self.os_rom,
+            self.rom_select_latch,
         )
     }
 

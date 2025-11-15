@@ -3,7 +3,7 @@ use std::mem::size_of;
 use js_sys::Function;
 use wasm_bindgen::prelude::*;
 
-use super::core::Core;
+use super::{core::Core, core::OS_ROM};
 use crate::cpu::InterruptType;
 use crate::devices::{
     DeviceSpeed, IODeviceID, JsIODevice, JsTimerDevice, StaticDevice, TimerDeviceID,
@@ -55,12 +55,8 @@ impl SystemFfi {
         );
     }
 
-    pub fn load_os_rom(&mut self, data: &[u8]) {
-        self.core.os_rom.load(data);
-    }
-
-    pub fn load_paged_rom(&mut self, bank: u8, data: &[u8]) {
-        self.core.paged_rom.load(bank, data);
+    pub fn load_rom(&mut self, bank: u8, data: &[u8]) {
+        self.core.roms[bank as usize].load(data);
     }
 
     pub fn add_static_device(
