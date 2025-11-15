@@ -11,7 +11,7 @@ use wasm_bindgen::prelude::*;
 
 use crate::cpu::InterruptType;
 use crate::devices::{
-    DeviceSpeed, IODeviceID, JsIODevice, JsTimerDevice, RomSelect, StaticDevice, TimerDeviceID,
+    DeviceSpeed, IODeviceID, JsIODevice, JsTimerDevice, StaticDevice, TimerDeviceID,
 };
 use crate::utils;
 use crate::video::{CRTCRangeType, Field};
@@ -33,14 +33,7 @@ impl System {
 
         let mut system = Self::default();
 
-        let paged_rom_select = system.system_components.paged_rom().get_active_rom();
-
-        system.system_components.io_space().add_device(
-            &[0xfe30, 0xfe31, 0xfe32, 0xfe33],
-            Box::new(RomSelect::new(paged_rom_select)),
-            None,
-            DeviceSpeed::TwoMhz,
-        );
+        system.system_components.setup();
 
         system
     }

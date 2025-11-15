@@ -8,9 +8,9 @@ use super::{
     system_runner::{SystemRunner, SystemRunnerTrait},
 };
 use crate::address_spaces::{IOSpace, PagedRom, Ram, Rom};
-use crate::cpu::Cpu;
-use crate::devices::TimerDeviceList;
+use crate::devices::{RomSelect, TimerDeviceList};
 use crate::video::{CRTCRangeType, Field};
+use crate::{cpu::Cpu, devices::DeviceSpeed};
 
 #[derive(Default)]
 pub struct SystemComponents {
@@ -26,6 +26,15 @@ pub struct SystemComponents {
 }
 
 impl SystemComponents {
+    pub fn setup(&mut self) {
+        self.io_space.add_device(
+            &[0xfe30, 0xfe31, 0xfe32, 0xfe33],
+            Box::new(RomSelect::new(self.paged_rom.get_active_rom())),
+            None,
+            DeviceSpeed::TwoMhz,
+        );
+    }
+
     fn address_map() -> impl AddressMap {
         FnAddressMap {
             read: |address, clock, ram, paged_rom, io_space, os_rom| match address.1 {
