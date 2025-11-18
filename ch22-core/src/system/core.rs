@@ -9,7 +9,7 @@ use super::{
 };
 use crate::address_spaces::{IOSpace, Ram, Rom};
 use crate::devices::{RomSelect, TimerDeviceList};
-use crate::video::{CRTCRangeType, Field};
+use crate::video::{CRTCRangeType, Field, FieldLineAdditionalData};
 use crate::{cpu::Cpu, devices::DeviceSpeed};
 
 #[derive(Default)]
@@ -63,6 +63,7 @@ impl Core {
         row_index: usize,
         crtc_address: u16,
         crtc_length: u8,
+        field_line_additional_data: FieldLineAdditionalData,
         required_type: CRTCRangeType,
     ) {
         self.video_field.snapshot_char_data(
@@ -70,6 +71,7 @@ impl Core {
             crtc_address,
             crtc_length,
             self.ic32_latch.get(),
+            field_line_additional_data,
             required_type,
             |range| self.ram.slice(range),
         );
