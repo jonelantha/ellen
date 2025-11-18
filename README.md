@@ -129,9 +129,13 @@ const cycleCount = ch22System.run(targetCycles);
 ```js
 /**
  * get buffer of snapshotted scanline data
- * each row is 801 bytes:
+ * each row is 827 bytes:
  * - 1 byte     - 0 => empty line, 1 => line has data
  * - 800 bytes  - snapshot of up to 800 bytes of video memory for the scanline
+ * - 2 bytes    - crtcAddress of snapshot
+ * - 8 bytes    - d0 64bit additional data passed from snapshot
+ * - 8 bytes    - d1 64bit additional data passed from snapshot
+ * - 8 bytes    - d2 64bit additional data passed from snapshot
  */
 const memory = new Uint8Array(
   wasmMemory.buffer,
@@ -140,14 +144,28 @@ const memory = new Uint8Array(
 );
 
 /**
+ * clear the buffer
+ */
+ch22System.video_field_clear();
+
+/**
  * add a snapshot of the current video memory
  * for a given CRTC address and CRTC length
  * - bufferLine: destination line in buffer for snapshot
  * - crtcAddress: crtc address for snapshot
  * - crtcLength: length of crtc region for snapshot
+ * - d0, d1, d2: 3x 64bit data to be stored with the snapshot
  * - isTeletext: crtc region should match this, if not snapshot a blank link
  */
-ch22System.snapshot_char_data(bufferLine, crtcAddress, crtcLength, isTeletext);
+ch22System.snapshot_char_data(
+  bufferLine,
+  crtcAddress,
+  crtcLength,
+  d0,
+  d1,
+  d2,
+  isTeletext,
+);
 ```
 
 ## 🧪 Running tests

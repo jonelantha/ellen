@@ -9,7 +9,7 @@ use crate::devices::{
     DeviceSpeed, IODeviceID, JsIODevice, JsTimerDevice, StaticDevice, TimerDeviceID,
 };
 use crate::utils;
-use crate::video::{CRTCRangeType, Field};
+use crate::video::{CRTCRangeType, Field, FieldLineAdditionalData};
 
 #[wasm_bindgen(js_name = System)]
 #[derive(Default)]
@@ -37,17 +37,25 @@ impl SystemFfi {
         size_of::<Field>()
     }
 
+    pub fn video_field_clear(&mut self) {
+        self.core.video_field.clear();
+    }
+
     pub fn snapshot_char_data(
         &mut self,
         row_index: usize,
         crtc_address: u16,
         crtc_length: u8,
+        d0: u64,
+        d1: u64,
+        d2: u64,
         is_teletext: bool,
     ) {
         self.core.snapshot_char_data(
             row_index,
             crtc_address,
             crtc_length,
+            FieldLineAdditionalData { d0, d1, d2 },
             match is_teletext {
                 true => CRTCRangeType::Teletext,
                 false => CRTCRangeType::HiRes,
