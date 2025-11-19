@@ -27,6 +27,7 @@ impl Field {
         line_index: usize,
         crtc_address: u16,
         crtc_length: u8,
+        character_line: u8,
         ic32_latch: u8,
         video_registers: &VideoRegisters,
         additional_data: FieldLineAdditionalData,
@@ -53,6 +54,7 @@ impl Field {
 
             self.lines[line_index].set_data(
                 crtc_address,
+                character_line,
                 video_registers,
                 additional_data,
                 first_ram_slice,
@@ -71,14 +73,29 @@ struct FieldLine {
     has_data: bool,
     char_data: [u8; MAX_CHAR_DATA],
     crtc_address: u16,
+    character_line: u8,
     video_registers: VideoRegisters,
     additional_data: FieldLineAdditionalData,
+}
+
+impl Default for FieldLine {
+    fn default() -> Self {
+        FieldLine {
+            has_data: false,
+            char_data: [0; MAX_CHAR_DATA],
+            crtc_address: 0,
+            character_line: 0,
+            video_registers: VideoRegisters::default(),
+            additional_data: FieldLineAdditionalData::default(),
+        }
+    }
 }
 
 impl FieldLine {
     fn set_data(
         &mut self,
         crtc_address: u16,
+        character_line: u8,
         video_registers: &VideoRegisters,
         additional_data: FieldLineAdditionalData,
         first_slice: &[u8],
@@ -86,6 +103,7 @@ impl FieldLine {
     ) {
         self.has_data = true;
         self.crtc_address = crtc_address;
+        self.character_line = character_line;
         self.video_registers = *video_registers;
         self.additional_data = additional_data;
 
@@ -106,18 +124,6 @@ impl FieldLine {
         self.char_data[start..new_length].copy_from_slice(chunk);
 
         new_length
-    }
-}
-
-impl Default for FieldLine {
-    fn default() -> Self {
-        FieldLine {
-            has_data: false,
-            char_data: [0; MAX_CHAR_DATA],
-            crtc_address: 0,
-            video_registers: VideoRegisters::default(),
-            additional_data: FieldLineAdditionalData::default(),
-        }
     }
 }
 

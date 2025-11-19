@@ -46,6 +46,7 @@ impl SystemFfi {
         line_index: usize,
         crtc_address: u16,
         crtc_length: u8,
+        character_line: u8,
         d0: u64,
         d1: u64,
     ) {
@@ -53,6 +54,7 @@ impl SystemFfi {
             line_index,
             crtc_address,
             crtc_length,
+            character_line,
             FieldLineAdditionalData { d0, d1 },
         );
     }

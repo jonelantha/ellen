@@ -73,12 +73,14 @@ impl Core {
         line_index: usize,
         crtc_address: u16,
         crtc_length: u8,
+        character_line: u8,
         field_line_additional_data: FieldLineAdditionalData,
     ) {
         self.video_field.snapshot_scanline(
             line_index,
             crtc_address,
             crtc_length,
+            character_line,
             self.ic32_latch.get(),
             &self.video_registers.borrow(),
             field_line_additional_data,

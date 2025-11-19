@@ -138,10 +138,11 @@ const ula_control = ch22System.get_ula_control();
 ```js
 /**
  * get buffer of snapshotted scanline data
- * each line is 828 bytes:
+ * each line is 829 bytes:
  * - 1 byte     - 0 => empty line, 1 => line has data
  * - 800 bytes  - snapshot of up to 800 bytes of video memory for the scanline
  * - 2 bytes    - crtcAddress of snapshot
+ * - 1 byte     - line index relative to current character row
  * - 1 byte     - ula control register
  * - 8 bytes    - ula palette (16 nibbles)
  * - 8 bytes    - d0 64bit additional data passed from snapshot call
@@ -164,17 +165,16 @@ ch22System.video_field_clear();
  * - bufferLine: destination line in buffer for snapshot
  * - crtcAddress: crtc address for snapshot
  * - crtcLength: length of crtc region for snapshot
- * - d0, d1, d2: 3x 64bit data to be stored with the snapshot
- * - isTeletext: crtc region should match this, if not snapshot a blank link
+ * - characterLine: line index relative to current character row
+ * - d0, d1: 2x 64bit data to be stored with the snapshot
  */
 ch22System.snapshot_scanline(
   bufferLine,
   crtcAddress,
   crtcLength,
+  characterLine,
   d0,
   d1,
-  d2,
-  isTeletext,
 );
 ```
 
