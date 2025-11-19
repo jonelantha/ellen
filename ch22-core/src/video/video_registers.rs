@@ -1,4 +1,4 @@
-#[derive(Default, Clone)]
+#[derive(Default, Copy, Clone)]
 #[repr(C, packed)]
 pub struct VideoRegisters {
     pub ula_control: u8,

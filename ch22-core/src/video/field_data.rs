@@ -4,20 +4,22 @@ const MAX_LINES: usize = 320;
 
 #[repr(C, packed)]
 pub struct Field {
-    lines: [Option<FieldLine>; MAX_LINES],
+    lines: [FieldLine; MAX_LINES],
 }
 
 impl Default for Field {
     fn default() -> Self {
         Field {
-            lines: std::array::from_fn(|_| None),
+            lines: std::array::from_fn(|_| FieldLine::default()),
         }
     }
 }
 
 impl Field {
     pub fn clear(&mut self) {
-        self.lines = std::array::from_fn(|_| None);
+        for line in &mut self.lines {
+            line.has_data = false;
+        }
     }
 
     pub fn snapshot_char_data<'a, F>(
@@ -42,45 +44,21 @@ impl Field {
             _ => false,
         };
 
-        if !is_line_valid {
-            self.clear_line(row_index);
-        } else {
+        if is_line_valid {
             let (first_ram_range, second_ram_range) =
                 VideoMemoryAccess::translate_crtc_range(crtc_address, crtc_length, ic32_latch);
 
             let first_ram_slice = get_buffer(first_ram_range);
             let second_ram_slice = second_ram_range.map(get_buffer);
 
-            self.set_line(
-                row_index,
-                first_ram_slice,
-                second_ram_slice,
+            self.lines[row_index].set_data(
                 crtc_address,
                 video_registers,
                 additional_data,
+                first_ram_slice,
+                second_ram_slice,
             );
-        }
-    }
-
-    pub fn clear_line(&mut self, row_index: usize) {
-        self.lines[row_index] = None;
-    }
-
-    pub fn set_line(
-        &mut self,
-        row_index: usize,
-        first_slice: &[u8],
-        second_slice: Option<&[u8]>,
-        crtc_address: u16,
-        video_registers: &VideoRegisters,
-        additional_data: FieldLineAdditionalData,
-    ) {
-        let row = self.lines[row_index].get_or_insert_default();
-
-        row.set_char_data(first_slice, second_slice);
-        row.crtc_address = crtc_address;
-        row.video_registers = video_registers.clone();
-        row.additional_data = additional_data;
+        };
     }
 }
 
@@ -90,6 +68,7 @@ const MAX_CHAR_DATA: usize = MAX_CHARS * MAX_BYTES_PER_CHAR;
 
 #[repr(C, packed)]
 struct FieldLine {
+    has_data: bool,
     char_data: [u8; MAX_CHAR_DATA],
     crtc_address: u16,
     video_registers: VideoRegisters,
@@ -97,7 +76,19 @@ struct FieldLine {
 }
 
 impl FieldLine {
-    fn set_char_data(&mut self, first_slice: &[u8], second_slice: Option<&[u8]>) {
+    fn set_data(
+        &mut self,
+        crtc_address: u16,
+        video_registers: &VideoRegisters,
+        additional_data: FieldLineAdditionalData,
+        first_slice: &[u8],
+        second_slice: Option<&[u8]>,
+    ) {
+        self.has_data = true;
+        self.crtc_address = crtc_address;
+        self.video_registers = *video_registers;
+        self.additional_data = additional_data;
+
         let first_length = self.set_char_data_chunk(0, first_slice);
 
         if let Some(second_slice) = second_slice {
@@ -121,6 +112,7 @@ impl FieldLine {
 impl Default for FieldLine {
     fn default() -> Self {
         FieldLine {
+            has_data: false,
             char_data: [0; MAX_CHAR_DATA],
             crtc_address: 0,
             video_registers: VideoRegisters::default(),
