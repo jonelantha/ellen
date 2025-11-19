@@ -1,4 +1,4 @@
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 use super::{
@@ -9,7 +9,7 @@ use super::{
 };
 use crate::address_spaces::{IOSpace, Ram, Rom};
 use crate::devices::{RomSelect, TimerDeviceList};
-use crate::video::{CRTCRangeType, Field, FieldLineAdditionalData};
+use crate::video::{Field, FieldLineAdditionalData, VideoDevice, VideoRegisters};
 use crate::{cpu::Cpu, devices::DeviceSpeed};
 
 #[derive(Default)]
@@ -22,11 +22,21 @@ pub struct Core {
     pub video_field: Field,
     pub ic32_latch: Rc<Cell<u8>>,
     pub rom_select_latch: Rc<Cell<usize>>,
+    pub video_registers: Rc<RefCell<VideoRegisters>>,
     pub timer_devices: TimerDeviceList,
 }
 
 impl Core {
     pub fn setup(&mut self) {
+        self.video_registers.borrow_mut().ula_control = 0x9c;
+
+        self.io_space.add_device(
+            &[0xfe20, 0xfe21, 0xfe22, 0xfe23],
+            Box::new(VideoDevice::new(self.video_registers.clone())),
+            None,
+            DeviceSpeed::OneMhz,
+        );
+
         self.rom_select_latch.set(15);
 
         self.io_space.add_device(
@@ -64,15 +74,14 @@ impl Core {
         crtc_address: u16,
         crtc_length: u8,
         field_line_additional_data: FieldLineAdditionalData,
-        required_type: CRTCRangeType,
     ) {
         self.video_field.snapshot_char_data(
             row_index,
             crtc_address,
             crtc_length,
             self.ic32_latch.get(),
+            &self.video_registers.borrow(),
             field_line_additional_data,
-            required_type,
             |range| self.ram.slice(range),
         );
     }

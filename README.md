@@ -124,18 +124,28 @@ ch22System.reset();
 const cycleCount = ch22System.run(targetCycles);
 ```
 
+### Getting current state
+
+```js
+/**
+ * get video ula control byte
+ */
+const ula_control = ch22System.get_ula_control();
+```
+
 ### Snapshotting Video memory into a buffer
 
 ```js
 /**
  * get buffer of snapshotted scanline data
- * each row is 827 bytes:
+ * each row is 828 bytes:
  * - 1 byte     - 0 => empty line, 1 => line has data
  * - 800 bytes  - snapshot of up to 800 bytes of video memory for the scanline
  * - 2 bytes    - crtcAddress of snapshot
- * - 8 bytes    - d0 64bit additional data passed from snapshot
- * - 8 bytes    - d1 64bit additional data passed from snapshot
- * - 8 bytes    - d2 64bit additional data passed from snapshot
+ * - 1 byte     - ula control register
+ * - 8 bytes    - ula palette (16 nibbles)
+ * - 8 bytes    - d0 64bit additional data passed from snapshot call
+ * - 8 bytes    - d1 64bit additional data passed from snapshot call
  */
 const memory = new Uint8Array(
   wasmMemory.buffer,

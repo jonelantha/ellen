@@ -9,7 +9,7 @@ use crate::devices::{
     DeviceSpeed, IODeviceID, JsIODevice, JsTimerDevice, StaticDevice, TimerDeviceID,
 };
 use crate::utils;
-use crate::video::{CRTCRangeType, Field, FieldLineAdditionalData};
+use crate::video::{Field, FieldLineAdditionalData};
 
 #[wasm_bindgen(js_name = System)]
 #[derive(Default)]
@@ -48,18 +48,12 @@ impl SystemFfi {
         crtc_length: u8,
         d0: u64,
         d1: u64,
-        d2: u64,
-        is_teletext: bool,
     ) {
         self.core.snapshot_char_data(
             row_index,
             crtc_address,
             crtc_length,
-            FieldLineAdditionalData { d0, d1, d2 },
-            match is_teletext {
-                true => CRTCRangeType::Teletext,
-                false => CRTCRangeType::HiRes,
-            },
+            FieldLineAdditionalData { d0, d1 },
         );
     }
 
@@ -150,6 +144,10 @@ impl SystemFfi {
         self.core
             .timer_devices
             .set_device_trigger(device_id, trigger);
+    }
+
+    pub fn get_ula_control(&self) -> u8 {
+        self.core.video_registers.borrow().ula_control
     }
 }
 

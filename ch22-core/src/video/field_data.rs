@@ -1,4 +1,4 @@
-use crate::video::{CRTCRangeType, VideoMemoryAccess};
+use crate::video::{CRTCRangeType, VideoMemoryAccess, VideoRegisters};
 
 const MAX_LINES: usize = 320;
 
@@ -26,8 +26,8 @@ impl Field {
         crtc_address: u16,
         crtc_length: u8,
         ic32_latch: u8,
+        video_registers: &VideoRegisters,
         additional_data: FieldLineAdditionalData,
-        required_type: CRTCRangeType,
         get_buffer: F,
     ) where
         F: Fn(std::ops::Range<u16>) -> &'a [u8],
@@ -38,6 +38,11 @@ impl Field {
         }
 
         let video_type = VideoMemoryAccess::get_crtc_range_type(crtc_address, crtc_length);
+
+        let required_type = match video_registers.is_teletext() {
+            true => CRTCRangeType::Teletext,
+            false => CRTCRangeType::HiRes,
+        };
 
         if video_type != required_type {
             self.clear_line(row_index);
@@ -55,6 +60,7 @@ impl Field {
             first_ram_slice,
             second_ram_slice,
             crtc_address,
+            video_registers,
             additional_data,
         );
     }
@@ -69,12 +75,14 @@ impl Field {
         first_slice: &[u8],
         second_slice: Option<&[u8]>,
         crtc_address: u16,
+        video_registers: &VideoRegisters,
         additional_data: FieldLineAdditionalData,
     ) {
         let row = self.lines[row_index].get_or_insert_default();
 
         row.set_char_data(first_slice, second_slice);
         row.crtc_address = crtc_address;
+        row.video_registers = video_registers.clone();
         row.additional_data = additional_data;
     }
 }
@@ -87,6 +95,7 @@ const MAX_CHAR_DATA: usize = MAX_CHARS * MAX_BYTES_PER_CHAR;
 struct FieldLine {
     char_data: [u8; MAX_CHAR_DATA],
     crtc_address: u16,
+    video_registers: VideoRegisters,
     additional_data: FieldLineAdditionalData,
 }
 
@@ -117,6 +126,7 @@ impl Default for FieldLine {
         FieldLine {
             char_data: [0; MAX_CHAR_DATA],
             crtc_address: 0,
+            video_registers: VideoRegisters::default(),
             additional_data: FieldLineAdditionalData::default(),
         }
     }
@@ -127,5 +137,4 @@ impl Default for FieldLine {
 pub struct FieldLineAdditionalData {
     pub d0: u64,
     pub d1: u64,
-    pub d2: u64,
 }
