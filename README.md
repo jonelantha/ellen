@@ -138,7 +138,7 @@ const ula_control = ch22System.get_ula_control();
 ```js
 /**
  * get buffer of snapshotted scanline data
- * each row is 828 bytes:
+ * each line is 828 bytes:
  * - 1 byte     - 0 => empty line, 1 => line has data
  * - 800 bytes  - snapshot of up to 800 bytes of video memory for the scanline
  * - 2 bytes    - crtcAddress of snapshot

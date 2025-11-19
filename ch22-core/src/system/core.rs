@@ -70,13 +70,13 @@ impl Core {
 
     pub fn snapshot_char_data(
         &mut self,
-        row_index: usize,
+        line_index: usize,
         crtc_address: u16,
         crtc_length: u8,
         field_line_additional_data: FieldLineAdditionalData,
     ) {
         self.video_field.snapshot_char_data(
-            row_index,
+            line_index,
             crtc_address,
             crtc_length,
             self.ic32_latch.get(),

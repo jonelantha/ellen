@@ -24,7 +24,7 @@ impl Field {
 
     pub fn snapshot_char_data<'a, F>(
         &mut self,
-        row_index: usize,
+        line_index: usize,
         crtc_address: u16,
         crtc_length: u8,
         ic32_latch: u8,
@@ -51,7 +51,7 @@ impl Field {
             let first_ram_slice = get_buffer(first_ram_range);
             let second_ram_slice = second_ram_range.map(get_buffer);
 
-            self.lines[row_index].set_data(
+            self.lines[line_index].set_data(
                 crtc_address,
                 video_registers,
                 additional_data,

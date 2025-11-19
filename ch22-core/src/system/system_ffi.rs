@@ -43,14 +43,14 @@ impl SystemFfi {
 
     pub fn snapshot_char_data(
         &mut self,
-        row_index: usize,
+        line_index: usize,
         crtc_address: u16,
         crtc_length: u8,
         d0: u64,
         d1: u64,
     ) {
         self.core.snapshot_char_data(
-            row_index,
+            line_index,
             crtc_address,
             crtc_length,
             FieldLineAdditionalData { d0, d1 },
