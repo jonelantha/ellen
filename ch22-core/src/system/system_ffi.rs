@@ -41,7 +41,7 @@ impl SystemFfi {
         self.core.video_field.clear();
     }
 
-    pub fn snapshot_char_data(
+    pub fn snapshot_scanline(
         &mut self,
         line_index: usize,
         crtc_address: u16,
@@ -49,7 +49,7 @@ impl SystemFfi {
         d0: u64,
         d1: u64,
     ) {
-        self.core.snapshot_char_data(
+        self.core.snapshot_scanline(
             line_index,
             crtc_address,
             crtc_length,

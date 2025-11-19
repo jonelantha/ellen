@@ -68,14 +68,14 @@ impl Core {
         }
     }
 
-    pub fn snapshot_char_data(
+    pub fn snapshot_scanline(
         &mut self,
         line_index: usize,
         crtc_address: u16,
         crtc_length: u8,
         field_line_additional_data: FieldLineAdditionalData,
     ) {
-        self.video_field.snapshot_char_data(
+        self.video_field.snapshot_scanline(
             line_index,
             crtc_address,
             crtc_length,

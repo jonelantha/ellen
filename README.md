@@ -167,7 +167,7 @@ ch22System.video_field_clear();
  * - d0, d1, d2: 3x 64bit data to be stored with the snapshot
  * - isTeletext: crtc region should match this, if not snapshot a blank link
  */
-ch22System.snapshot_char_data(
+ch22System.snapshot_scanline(
   bufferLine,
   crtcAddress,
   crtcLength,

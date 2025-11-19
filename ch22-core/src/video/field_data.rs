@@ -22,7 +22,7 @@ impl Field {
         }
     }
 
-    pub fn snapshot_char_data<'a, F>(
+    pub fn snapshot_scanline<'a, F>(
         &mut self,
         line_index: usize,
         crtc_address: u16,
