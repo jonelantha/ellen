@@ -32,37 +32,34 @@ impl Field {
     ) where
         F: Fn(std::ops::Range<u16>) -> &'a [u8],
     {
-        if crtc_length == 0 {
-            self.clear_line(row_index);
-            return;
-        }
+        let video_range_type = VideoMemoryAccess::get_crtc_range_type(crtc_address, crtc_length);
 
-        let video_type = VideoMemoryAccess::get_crtc_range_type(crtc_address, crtc_length);
+        let ula_is_teletext = video_registers.is_teletext();
 
-        let required_type = match video_registers.is_teletext() {
-            true => CRTCRangeType::Teletext,
-            false => CRTCRangeType::HiRes,
+        let is_line_valid = match (video_range_type, ula_is_teletext) {
+            (CRTCRangeType::Teletext, true) => true,
+            (CRTCRangeType::HiRes, false) => true,
+            _ => false,
         };
 
-        if video_type != required_type {
+        if !is_line_valid {
             self.clear_line(row_index);
-            return;
+        } else {
+            let (first_ram_range, second_ram_range) =
+                VideoMemoryAccess::translate_crtc_range(crtc_address, crtc_length, ic32_latch);
+
+            let first_ram_slice = get_buffer(first_ram_range);
+            let second_ram_slice = second_ram_range.map(get_buffer);
+
+            self.set_line(
+                row_index,
+                first_ram_slice,
+                second_ram_slice,
+                crtc_address,
+                video_registers,
+                additional_data,
+            );
         }
-
-        let (first_ram_range, second_ram_range) =
-            VideoMemoryAccess::translate_crtc_range(crtc_address, crtc_length, ic32_latch);
-
-        let first_ram_slice = get_buffer(first_ram_range);
-        let second_ram_slice = second_ram_range.map(get_buffer);
-
-        self.set_line(
-            row_index,
-            first_ram_slice,
-            second_ram_slice,
-            crtc_address,
-            video_registers,
-            additional_data,
-        );
     }
 
     pub fn clear_line(&mut self, row_index: usize) {

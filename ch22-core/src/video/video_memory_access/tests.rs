@@ -8,6 +8,9 @@ mod test_get_crtc_range_type {
     #[test]
     fn test_ranges() {
         let test_cases = [
+            (0x0000, 0, CRTCRangeType::Empty),
+            (0x1ffe, 0, CRTCRangeType::Empty),
+            (0x3000, 0, CRTCRangeType::Empty),
             (0x0000, 1, CRTCRangeType::HiRes),
             (0x0500, 5, CRTCRangeType::HiRes),
             (0x1000, 8, CRTCRangeType::HiRes),

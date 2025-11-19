@@ -6,6 +6,10 @@ pub struct VideoMemoryAccess {}
 
 impl VideoMemoryAccess {
     pub fn get_crtc_range_type(crtc_start: u16, crtc_length: u8) -> CRTCRangeType {
+        if crtc_length == 0 {
+            return CRTCRangeType::Empty;
+        }
+
         let crtc_start = crtc_start & 0x3fff;
 
         // end is inclusive as exclusive may be in the next range
@@ -87,6 +91,7 @@ pub enum CRTCRangeType {
     HiRes,
     Teletext,
     Mixed,
+    Empty,
 }
 
 type TranslatedAddress = (u16, Range<u16>);
