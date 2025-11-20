@@ -10,22 +10,22 @@ impl VideoRegisters {
     pub fn reset(&mut self) {
         self.ula_control = 0x9c;
 
-        self.crtc_registers[0] = 127;
-        self.crtc_registers[1] = 80;
-        self.crtc_registers[2] = 98;
+        self.crtc_registers[0] = 0x7f;
+        self.crtc_registers[1] = 0x50;
+        self.crtc_registers[2] = 0x62;
         self.crtc_registers[3] = 0x28;
-        self.crtc_registers[4] = 38;
-        self.crtc_registers[5] = 0;
-        self.crtc_registers[6] = 32;
-        self.crtc_registers[7] = 34;
-        self.crtc_registers[8] = 0;
-        self.crtc_registers[9] = 7;
-        self.crtc_registers[10] = 0;
-        self.crtc_registers[11] = 0;
-        self.crtc_registers[12] = 6;
-        self.crtc_registers[13] = 0;
-        self.crtc_registers[14] = 0;
-        self.crtc_registers[15] = 0;
+        self.crtc_registers[4] = 0x26;
+        self.crtc_registers[5] = 0x00;
+        self.crtc_registers[6] = 0x20;
+        self.crtc_registers[7] = 0x22;
+        self.crtc_registers[8] = 0x00;
+        self.crtc_registers[9] = 0x07;
+        self.crtc_registers[10] = 0x00;
+        self.crtc_registers[11] = 0x00;
+        self.crtc_registers[12] = 0x06;
+        self.crtc_registers[13] = 0x00;
+        self.crtc_registers[14] = 0x00;
+        self.crtc_registers[15] = 0x00;
     }
 
     pub fn set_ula_palette(&mut self, entry: u8, value: u8) {
