@@ -9,7 +9,7 @@ use super::{
 };
 use crate::address_spaces::{IOSpace, Ram, Rom};
 use crate::devices::{RomSelect, TimerDeviceList};
-use crate::video::{Field, FieldLineAdditionalData, VideoDevice, VideoRegisters};
+use crate::video::{Field, FieldLineAdditionalData, VideoRegisters, VideoULARegistersDevice};
 use crate::{cpu::Cpu, devices::DeviceSpeed};
 
 #[derive(Default)]
@@ -32,7 +32,7 @@ impl Core {
 
         self.io_space.add_device(
             &[0xfe20, 0xfe21, 0xfe22, 0xfe23],
-            Box::new(VideoDevice::new(self.video_registers.clone())),
+            Box::new(VideoULARegistersDevice::new(self.video_registers.clone())),
             None,
             DeviceSpeed::OneMhz,
         );

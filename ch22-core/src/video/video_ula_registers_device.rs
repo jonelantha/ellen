@@ -5,17 +5,17 @@ use crate::devices::IODevice;
 use crate::video::VideoRegisters;
 use crate::word::Word;
 
-pub struct VideoDevice {
+pub struct VideoULARegistersDevice {
     video_registers: Rc<RefCell<VideoRegisters>>,
 }
 
-impl VideoDevice {
+impl VideoULARegistersDevice {
     pub fn new(video_registers: Rc<RefCell<VideoRegisters>>) -> Self {
-        VideoDevice { video_registers }
+        VideoULARegistersDevice { video_registers }
     }
 }
 
-impl IODevice for VideoDevice {
+impl IODevice for VideoULARegistersDevice {
     fn read(&mut self, _address: Word, _cycles: u64) -> u8 {
         0xfe
     }
