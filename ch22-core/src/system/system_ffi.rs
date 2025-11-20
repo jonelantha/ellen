@@ -41,9 +41,14 @@ impl SystemFfi {
         self.core.video_field.clear();
     }
 
-    pub fn snapshot_scanline(&mut self, line_index: usize, crtc_address: u16, character_line: u8) {
+    pub fn snapshot_scanline(
+        &mut self,
+        line_index: usize,
+        crtc_memory_address: u16,
+        crtc_raster_address: u8,
+    ) {
         self.core
-            .snapshot_scanline(line_index, crtc_address, character_line);
+            .snapshot_scanline(line_index, crtc_memory_address, crtc_raster_address);
     }
 
     pub fn load_rom(&mut self, bank: usize, data: &[u8]) {

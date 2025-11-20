@@ -25,8 +25,8 @@ impl Field {
     pub fn snapshot_scanline<'a, F>(
         &mut self,
         line_index: usize,
-        crtc_address: u16,
-        character_line: u8,
+        crtc_memory_address: u16,
+        crtc_raster_address: u8,
         ic32_latch: u8,
         video_registers: &VideoRegisters,
         get_buffer: F,
@@ -35,9 +35,10 @@ impl Field {
     {
         let crtc_length = video_registers.crtc_registers[1];
 
-        let video_range_type = VideoMemoryAccess::get_crtc_range_type(crtc_address, crtc_length);
+        let video_range_type =
+            VideoMemoryAccess::get_crtc_range_type(crtc_memory_address, crtc_length);
 
-        let ula_is_teletext = video_registers.is_teletext();
+        let ula_is_teletext = video_registers.ula_is_teletext();
 
         let is_line_valid = match (video_range_type, ula_is_teletext) {
             (CRTCRangeType::Teletext, true) => true,
@@ -46,15 +47,18 @@ impl Field {
         };
 
         if is_line_valid {
-            let (first_ram_range, second_ram_range) =
-                VideoMemoryAccess::translate_crtc_range(crtc_address, crtc_length, ic32_latch);
+            let (first_ram_range, second_ram_range) = VideoMemoryAccess::translate_crtc_range(
+                crtc_memory_address,
+                crtc_length,
+                ic32_latch,
+            );
 
             let first_ram_slice = get_buffer(first_ram_range);
             let second_ram_slice = second_ram_range.map(get_buffer);
 
             self.lines[line_index].set_data(
-                crtc_address,
-                character_line,
+                crtc_memory_address,
+                crtc_raster_address,
                 video_registers,
                 first_ram_slice,
                 second_ram_slice,
@@ -71,10 +75,8 @@ const MAX_CHAR_DATA: usize = MAX_CHARS * MAX_BYTES_PER_CHAR;
 struct FieldLine {
     has_data: bool,
     char_data: [u8; MAX_CHAR_DATA],
-    crtc_address: u16,
-    character_line: u8,
-    ula_control: u8,
-    ula_palette: u64,
+    crtc_memory_address: u16,
+    crtc_raster_address: u8,
     crtc_r0_horizontal_total: u8,
     crtc_r1_horizontal_displayed: u8,
     crtc_r2_horizontal_sync_pos: u8,
@@ -84,6 +86,8 @@ struct FieldLine {
     crtc_r11_cursor_end: u8,
     crtc_r14_cursor_pos_high: u8,
     crtc_r15_cursor_pos_low: u8,
+    ula_control: u8,
+    ula_palette: u64,
 }
 
 impl Default for FieldLine {
@@ -91,10 +95,8 @@ impl Default for FieldLine {
         FieldLine {
             has_data: false,
             char_data: [0; MAX_CHAR_DATA],
-            crtc_address: 0,
-            character_line: 0,
-            ula_control: 0,
-            ula_palette: 0,
+            crtc_memory_address: 0,
+            crtc_raster_address: 0,
             crtc_r0_horizontal_total: 0,
             crtc_r1_horizontal_displayed: 0,
             crtc_r2_horizontal_sync_pos: 0,
@@ -104,6 +106,8 @@ impl Default for FieldLine {
             crtc_r11_cursor_end: 0,
             crtc_r14_cursor_pos_high: 0,
             crtc_r15_cursor_pos_low: 0,
+            ula_control: 0,
+            ula_palette: 0,
         }
     }
 }
@@ -111,15 +115,15 @@ impl Default for FieldLine {
 impl FieldLine {
     fn set_data(
         &mut self,
-        crtc_address: u16,
-        character_line: u8,
+        crtc_memory_address: u16,
+        crtc_raster_address: u8,
         video_registers: &VideoRegisters,
         first_slice: &[u8],
         second_slice: Option<&[u8]>,
     ) {
         self.has_data = true;
-        self.crtc_address = crtc_address;
-        self.character_line = character_line;
+        self.crtc_memory_address = crtc_memory_address;
+        self.crtc_raster_address = crtc_raster_address;
 
         self.ula_control = video_registers.ula_control;
         self.ula_palette = video_registers.ula_palette;

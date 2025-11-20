@@ -77,11 +77,16 @@ impl Core {
         }
     }
 
-    pub fn snapshot_scanline(&mut self, line_index: usize, crtc_address: u16, character_line: u8) {
+    pub fn snapshot_scanline(
+        &mut self,
+        line_index: usize,
+        crtc_memory_address: u16,
+        crtc_raster_address: u8,
+    ) {
         self.video_field.snapshot_scanline(
             line_index,
-            crtc_address,
-            character_line,
+            crtc_memory_address,
+            crtc_raster_address,
             self.ic32_latch.get(),
             &self.video_registers.borrow(),
             |range| self.ram.slice(range),

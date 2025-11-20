@@ -35,7 +35,7 @@ impl VideoRegisters {
         self.ula_palette |= ((value & 0x0f) as u64) << shift;
     }
 
-    pub fn is_teletext(&self) -> bool {
+    pub fn ula_is_teletext(&self) -> bool {
         (self.ula_control & 0x02) != 0
     }
 }
