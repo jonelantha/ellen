@@ -22,6 +22,9 @@ Targeting web assembly in the browser
 - Device support:
   - IO devices with addresses which map to the IO space
   - Timer devices which require a callback after a certain number of cycles
+- Video:
+  - ULA, CRTC and 'IC32' register addressing
+  - Video memory and state snapshotting
 
 ## ✔️ Requirements
 
@@ -133,20 +136,26 @@ const cycleCount = ch22System.run(targetCycles);
 const ula_control = ch22System.get_ula_control();
 ```
 
+```js
+/**
+ * get crtc register
+ */
+const crtc_register = ch22System.get_crtc_registers(register_index);
+```
+
 ### Snapshotting Video memory into a buffer
 
 ```js
 /**
  * get buffer of snapshotted scanline data
- * each line is 829 bytes:
+ * each line is 822 bytes:
  * - 1 byte     - 0 => empty line, 1 => line has data
  * - 800 bytes  - snapshot of up to 800 bytes of video memory for the scanline
- * - 2 bytes    - crtcAddress of snapshot
- * - 1 byte     - line index relative to current character row
+ * - 2 bytes    - crtcMemoryAddress of snapshot
+ * - 1 bytes    - crtcRasterAddress of snapshot
+ * - 9 bytes    - crtc registers: R0, R1, R2, R3, R8, R10, R11, R14, R15
  * - 1 byte     - ula control register
  * - 8 bytes    - ula palette (16 nibbles)
- * - 8 bytes    - d0 64bit additional data passed from snapshot call
- * - 8 bytes    - d1 64bit additional data passed from snapshot call
  */
 const memory = new Uint8Array(
   wasmMemory.buffer,
@@ -160,22 +169,12 @@ const memory = new Uint8Array(
 ch22System.video_field_clear();
 
 /**
- * add a snapshot of the current video memory
- * for a given CRTC address and CRTC length
- * - bufferLine: destination line in buffer for snapshot
- * - crtcAddress: crtc address for snapshot
- * - crtcLength: length of crtc region for snapshot
- * - characterLine: line index relative to current character row
- * - d0, d1: 2x 64bit data to be stored with the snapshot
+ * add a snapshot of the current video memory and registers
+ * - lineIndex: line in buffer for snapshot
+ * - crtcMemoryAddress: crtc address for snapshot
+ * - crtcRasterAddress: line index relative to current character row
  */
-ch22System.snapshot_scanline(
-  bufferLine,
-  crtcAddress,
-  crtcLength,
-  characterLine,
-  d0,
-  d1,
-);
+ch22System.snapshot_scanline(lineIndex, crtcMemoryAddress, crtcRasterAddress);
 ```
 
 ## 🧪 Running tests
