@@ -26,15 +26,15 @@ impl Field {
         &mut self,
         line_index: usize,
         crtc_address: u16,
-        crtc_length: u8,
         character_line: u8,
         ic32_latch: u8,
         video_registers: &VideoRegisters,
-        additional_data: FieldLineAdditionalData,
         get_buffer: F,
     ) where
         F: Fn(std::ops::Range<u16>) -> &'a [u8],
     {
+        let crtc_length = video_registers.crtc_registers[1];
+
         let video_range_type = VideoMemoryAccess::get_crtc_range_type(crtc_address, crtc_length);
 
         let ula_is_teletext = video_registers.is_teletext();
@@ -56,7 +56,6 @@ impl Field {
                 crtc_address,
                 character_line,
                 video_registers,
-                additional_data,
                 first_ram_slice,
                 second_ram_slice,
             );
@@ -74,8 +73,17 @@ struct FieldLine {
     char_data: [u8; MAX_CHAR_DATA],
     crtc_address: u16,
     character_line: u8,
-    video_registers: VideoRegisters,
-    additional_data: FieldLineAdditionalData,
+    ula_control: u8,
+    ula_palette: u64,
+    crtc_r0_horizontal_total: u8,
+    crtc_r1_horizontal_displayed: u8,
+    crtc_r2_horizontal_sync_pos: u8,
+    crtc_r3_sync_width: u8,
+    crtc_r8_interlace_and_delay: u8,
+    crtc_r10_cursor_start: u8,
+    crtc_r11_cursor_end: u8,
+    crtc_r14_cursor_pos_high: u8,
+    crtc_r15_cursor_pos_low: u8,
 }
 
 impl Default for FieldLine {
@@ -85,8 +93,17 @@ impl Default for FieldLine {
             char_data: [0; MAX_CHAR_DATA],
             crtc_address: 0,
             character_line: 0,
-            video_registers: VideoRegisters::default(),
-            additional_data: FieldLineAdditionalData::default(),
+            ula_control: 0,
+            ula_palette: 0,
+            crtc_r0_horizontal_total: 0,
+            crtc_r1_horizontal_displayed: 0,
+            crtc_r2_horizontal_sync_pos: 0,
+            crtc_r3_sync_width: 0,
+            crtc_r8_interlace_and_delay: 0,
+            crtc_r10_cursor_start: 0,
+            crtc_r11_cursor_end: 0,
+            crtc_r14_cursor_pos_high: 0,
+            crtc_r15_cursor_pos_low: 0,
         }
     }
 }
@@ -97,15 +114,25 @@ impl FieldLine {
         crtc_address: u16,
         character_line: u8,
         video_registers: &VideoRegisters,
-        additional_data: FieldLineAdditionalData,
         first_slice: &[u8],
         second_slice: Option<&[u8]>,
     ) {
         self.has_data = true;
         self.crtc_address = crtc_address;
         self.character_line = character_line;
-        self.video_registers = *video_registers;
-        self.additional_data = additional_data;
+
+        self.ula_control = video_registers.ula_control;
+        self.ula_palette = video_registers.ula_palette;
+
+        self.crtc_r0_horizontal_total = video_registers.crtc_registers[0];
+        self.crtc_r1_horizontal_displayed = video_registers.crtc_registers[1];
+        self.crtc_r2_horizontal_sync_pos = video_registers.crtc_registers[2];
+        self.crtc_r3_sync_width = video_registers.crtc_registers[3];
+        self.crtc_r8_interlace_and_delay = video_registers.crtc_registers[8];
+        self.crtc_r10_cursor_start = video_registers.crtc_registers[10];
+        self.crtc_r11_cursor_end = video_registers.crtc_registers[11];
+        self.crtc_r14_cursor_pos_high = video_registers.crtc_registers[14];
+        self.crtc_r15_cursor_pos_low = video_registers.crtc_registers[15];
 
         let first_length = self.set_char_data_chunk(0, first_slice);
 
@@ -125,11 +152,4 @@ impl FieldLine {
 
         new_length
     }
-}
-
-#[repr(C, packed)]
-#[derive(Default)]
-pub struct FieldLineAdditionalData {
-    pub d0: u64,
-    pub d1: u64,
 }

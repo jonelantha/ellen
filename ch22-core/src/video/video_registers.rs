@@ -3,6 +3,7 @@
 pub struct VideoRegisters {
     pub ula_control: u8,
     pub ula_palette: u64,
+    pub crtc_registers: [u8; 18],
 }
 
 impl VideoRegisters {

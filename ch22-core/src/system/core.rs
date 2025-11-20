@@ -9,7 +9,7 @@ use super::{
 };
 use crate::address_spaces::{IOSpace, Ram, Rom};
 use crate::devices::{RomSelect, TimerDeviceList};
-use crate::video::{Field, FieldLineAdditionalData, VideoRegisters, VideoULARegistersDevice};
+use crate::video::{Field, VideoCRTCRegistersDevice, VideoRegisters, VideoULARegistersDevice};
 use crate::{cpu::Cpu, devices::DeviceSpeed};
 
 #[derive(Default)]
@@ -28,7 +28,33 @@ pub struct Core {
 
 impl Core {
     pub fn setup(&mut self) {
-        self.video_registers.borrow_mut().ula_control = 0x9c;
+        let registers = &mut self.video_registers.borrow_mut();
+        registers.ula_control = 0x9c;
+        registers.crtc_registers[0] = 127;
+        registers.crtc_registers[1] = 80;
+        registers.crtc_registers[2] = 98;
+        registers.crtc_registers[3] = 0x28;
+        registers.crtc_registers[4] = 38;
+        registers.crtc_registers[5] = 0;
+        registers.crtc_registers[6] = 32;
+        registers.crtc_registers[7] = 34;
+        registers.crtc_registers[8] = 0;
+        registers.crtc_registers[9] = 7;
+        registers.crtc_registers[10] = 0;
+        registers.crtc_registers[11] = 0;
+        registers.crtc_registers[12] = 6;
+        registers.crtc_registers[13] = 0;
+        registers.crtc_registers[14] = 0;
+        registers.crtc_registers[15] = 0;
+
+        self.io_space.add_device(
+            &[
+                0xfe00, 0xfe01, 0xfe02, 0xfe03, 0xfe04, 0xfe05, 0xfe06, 0xfe07,
+            ],
+            Box::new(VideoCRTCRegistersDevice::new(self.video_registers.clone())),
+            None,
+            DeviceSpeed::OneMhz,
+        );
 
         self.io_space.add_device(
             &[0xfe20, 0xfe21, 0xfe22, 0xfe23],
@@ -68,22 +94,13 @@ impl Core {
         }
     }
 
-    pub fn snapshot_scanline(
-        &mut self,
-        line_index: usize,
-        crtc_address: u16,
-        crtc_length: u8,
-        character_line: u8,
-        field_line_additional_data: FieldLineAdditionalData,
-    ) {
+    pub fn snapshot_scanline(&mut self, line_index: usize, crtc_address: u16, character_line: u8) {
         self.video_field.snapshot_scanline(
             line_index,
             crtc_address,
-            crtc_length,
             character_line,
             self.ic32_latch.get(),
             &self.video_registers.borrow(),
-            field_line_additional_data,
             |range| self.ram.slice(range),
         );
     }

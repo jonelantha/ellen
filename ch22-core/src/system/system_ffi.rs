@@ -9,7 +9,7 @@ use crate::devices::{
     DeviceSpeed, IODeviceID, JsIODevice, JsTimerDevice, StaticDevice, TimerDeviceID,
 };
 use crate::utils;
-use crate::video::{Field, FieldLineAdditionalData};
+use crate::video::Field;
 
 #[wasm_bindgen(js_name = System)]
 #[derive(Default)]
@@ -41,22 +41,9 @@ impl SystemFfi {
         self.core.video_field.clear();
     }
 
-    pub fn snapshot_scanline(
-        &mut self,
-        line_index: usize,
-        crtc_address: u16,
-        crtc_length: u8,
-        character_line: u8,
-        d0: u64,
-        d1: u64,
-    ) {
-        self.core.snapshot_scanline(
-            line_index,
-            crtc_address,
-            crtc_length,
-            character_line,
-            FieldLineAdditionalData { d0, d1 },
-        );
+    pub fn snapshot_scanline(&mut self, line_index: usize, crtc_address: u16, character_line: u8) {
+        self.core
+            .snapshot_scanline(line_index, crtc_address, character_line);
     }
 
     pub fn load_rom(&mut self, bank: usize, data: &[u8]) {
@@ -150,6 +137,10 @@ impl SystemFfi {
 
     pub fn get_ula_control(&self) -> u8 {
         self.core.video_registers.borrow().ula_control
+    }
+
+    pub fn get_crtc_registers(&self, register_index: usize) -> u8 {
+        self.core.video_registers.borrow().crtc_registers[register_index]
     }
 }
 
