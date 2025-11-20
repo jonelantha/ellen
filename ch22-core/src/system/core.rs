@@ -28,24 +28,7 @@ pub struct Core {
 
 impl Core {
     pub fn setup(&mut self) {
-        let registers = &mut self.video_registers.borrow_mut();
-        registers.ula_control = 0x9c;
-        registers.crtc_registers[0] = 127;
-        registers.crtc_registers[1] = 80;
-        registers.crtc_registers[2] = 98;
-        registers.crtc_registers[3] = 0x28;
-        registers.crtc_registers[4] = 38;
-        registers.crtc_registers[5] = 0;
-        registers.crtc_registers[6] = 32;
-        registers.crtc_registers[7] = 34;
-        registers.crtc_registers[8] = 0;
-        registers.crtc_registers[9] = 7;
-        registers.crtc_registers[10] = 0;
-        registers.crtc_registers[11] = 0;
-        registers.crtc_registers[12] = 6;
-        registers.crtc_registers[13] = 0;
-        registers.crtc_registers[14] = 0;
-        registers.crtc_registers[15] = 0;
+        self.video_registers.borrow_mut().reset();
 
         self.io_space.add_device(
             &[
