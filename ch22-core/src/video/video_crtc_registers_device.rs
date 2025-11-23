@@ -23,12 +23,14 @@ impl VideoCRTCRegistersDevice {
 impl IODevice for VideoCRTCRegistersDevice {
     fn read(&mut self, address: Word, _cycles: u64) -> u8 {
         if address.0 & 0x07 == 0x01 {
+            let registers = self.video_crtc_registers.borrow_mut();
+
             match self.control_reg {
                 12 | 13 => panic!("not impl"),
 
-                14 => self.video_crtc_registers.borrow().crtc_r14_cursor_pos_high,
+                14 => registers.crtc_r14_cursor_high,
 
-                15 => self.video_crtc_registers.borrow().crtc_r15_cursor_pos_low,
+                15 => registers.crtc_r15_cursor_low,
 
                 16 | 17 => panic!("not impl"),
                 _ => 0,
@@ -59,21 +61,21 @@ impl IODevice for VideoCRTCRegistersDevice {
 
                 7 => registers.crtc_r7_vertical_sync_pos = value & 0x7f,
 
-                8 => registers.crtc_r8_interlace_and_delay = value,
+                8 => registers.crtc_r8_interlace_and_skew = value,
 
-                9 => registers.crtc_r9_scanlines_per_char = value,
+                9 => registers.crtc_r9_maximum_raster_address = value,
 
-                10 => registers.crtc_r10_cursor_start = value,
+                10 => registers.crtc_r10_cursor_start_raster = value,
 
-                11 => registers.crtc_r11_cursor_end = value,
+                11 => registers.crtc_r11_cursor_end_raster = value,
 
-                12 => registers.crtc_r12_screen_start_high = value,
+                12 => registers.crtc_r12_start_address_high = value,
 
-                13 => registers.crtc_r13_screen_start_low = value,
+                13 => registers.crtc_r13_start_address_low = value,
 
-                14 => registers.crtc_r14_cursor_pos_high = value & 0x3f,
+                14 => registers.crtc_r14_cursor_high = value & 0x3f,
 
-                15 => registers.crtc_r15_cursor_pos_low = value,
+                15 => registers.crtc_r15_cursor_low = value,
 
                 _ => {}
             }

@@ -12,11 +12,11 @@ pub struct FieldLine {
     crtc_r1_horizontal_displayed: u8,
     crtc_r2_horizontal_sync_pos: u8,
     crtc_r3_sync_width: u8,
-    crtc_r8_interlace_and_delay: u8,
-    crtc_r10_cursor_start: u8,
-    crtc_r11_cursor_end: u8,
-    crtc_r14_cursor_pos_high: u8,
-    crtc_r15_cursor_pos_low: u8,
+    crtc_r8_interlace_and_skew: u8,
+    crtc_r10_cursor_start_raster: u8,
+    crtc_r11_cursor_end_raster: u8,
+    crtc_r14_cursor_high: u8,
+    crtc_r15_cursor_low: u8,
     ula_control: u8,
     ula_palette: u64,
 }
@@ -32,11 +32,11 @@ impl Default for FieldLine {
             crtc_r1_horizontal_displayed: 0,
             crtc_r2_horizontal_sync_pos: 0,
             crtc_r3_sync_width: 0,
-            crtc_r8_interlace_and_delay: 0,
-            crtc_r10_cursor_start: 0,
-            crtc_r11_cursor_end: 0,
-            crtc_r14_cursor_pos_high: 0,
-            crtc_r15_cursor_pos_low: 0,
+            crtc_r8_interlace_and_skew: 0,
+            crtc_r10_cursor_start_raster: 0,
+            crtc_r11_cursor_end_raster: 0,
+            crtc_r14_cursor_high: 0,
+            crtc_r15_cursor_low: 0,
             ula_control: 0,
             ula_palette: 0,
         }
@@ -60,11 +60,11 @@ impl FieldLine {
         self.crtc_r1_horizontal_displayed = video_registers.crtc_r1_horizontal_displayed;
         self.crtc_r2_horizontal_sync_pos = video_registers.crtc_r2_horizontal_sync_pos;
         self.crtc_r3_sync_width = video_registers.crtc_r3_sync_width;
-        self.crtc_r8_interlace_and_delay = video_registers.crtc_r8_interlace_and_delay;
-        self.crtc_r10_cursor_start = video_registers.crtc_r10_cursor_start;
-        self.crtc_r11_cursor_end = video_registers.crtc_r11_cursor_end;
-        self.crtc_r14_cursor_pos_high = video_registers.crtc_r14_cursor_pos_high;
-        self.crtc_r15_cursor_pos_low = video_registers.crtc_r15_cursor_pos_low;
+        self.crtc_r8_interlace_and_skew = video_registers.crtc_r8_interlace_and_skew;
+        self.crtc_r10_cursor_start_raster = video_registers.crtc_r10_cursor_start_raster;
+        self.crtc_r11_cursor_end_raster = video_registers.crtc_r11_cursor_end_raster;
+        self.crtc_r14_cursor_high = video_registers.crtc_r14_cursor_high;
+        self.crtc_r15_cursor_low = video_registers.crtc_r15_cursor_low;
     }
 
     pub fn set_out_of_scan(&mut self) {
