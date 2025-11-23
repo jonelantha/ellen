@@ -141,32 +141,21 @@ impl SystemFfi {
             .set_device_trigger(device_id, trigger);
     }
 
-    pub fn get_ula_control(&self) -> u8 {
-        self.core.video_registers.borrow().ula_control
-    }
-
-    pub fn get_crtc_registers(&self, register_index: u8) -> u8 {
+    pub fn get_partial_video_registers(&self) -> u128 {
         let registers = self.core.video_registers.borrow();
 
-        match register_index {
-            0 => registers.crtc_r0_horizontal_total,
-            1 => registers.crtc_r1_horizontal_displayed,
-            2 => registers.crtc_r2_horizontal_sync_pos,
-            3 => registers.crtc_r3_sync_width,
-            4 => registers.crtc_r4_vertical_total,
-            5 => registers.crtc_r5_vertical_total_adjust,
-            6 => registers.crtc_r6_vertical_displayed,
-            7 => registers.crtc_r7_vertical_sync_pos,
-            8 => registers.crtc_r8_interlace_and_skew,
-            9 => registers.crtc_r9_maximum_raster_address,
-            10 => registers.crtc_r10_cursor_start_raster,
-            11 => registers.crtc_r11_cursor_end_raster,
-            12 => registers.crtc_r12_start_address_high,
-            13 => registers.crtc_r13_start_address_low,
-            14 => registers.crtc_r14_cursor_high,
-            15 => registers.crtc_r15_cursor_low,
-            _ => panic!("Invalid CRTC register index: {}", register_index),
-        }
+        (registers.crtc_r0_horizontal_total as u128)
+            | (registers.crtc_r1_horizontal_displayed as u128) << 8
+            | (registers.crtc_r3_sync_width as u128) << 16
+            | (registers.crtc_r4_vertical_total as u128) << 24
+            | (registers.crtc_r5_vertical_total_adjust as u128) << 32
+            | (registers.crtc_r6_vertical_displayed as u128) << 40
+            | (registers.crtc_r7_vertical_sync_pos as u128) << 48
+            | (registers.crtc_r8_interlace_and_skew as u128) << 56
+            | (registers.crtc_r9_maximum_raster_address as u128) << 64
+            | (registers.crtc_r12_start_address_high as u128) << 72
+            | (registers.crtc_r13_start_address_low as u128) << 80
+            | (registers.ula_control as u128) << 88
     }
 }
 
