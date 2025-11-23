@@ -33,6 +33,7 @@ impl IODevice for VideoCRTCRegistersDevice {
                 15 => registers.crtc_r15_cursor_low,
 
                 16 | 17 => panic!("not impl"),
+
                 _ => 0,
             }
         } else {
@@ -47,29 +48,29 @@ impl IODevice for VideoCRTCRegistersDevice {
             match self.control_reg {
                 0 => registers.crtc_r0_horizontal_total = value,
 
-                1 => registers.crtc_r1_horizontal_displayed = if value > 127 { 127 } else { value },
+                1 => registers.crtc_r1_horizontal_displayed = value,
 
                 2 => registers.crtc_r2_horizontal_sync_pos = value,
 
                 3 => registers.crtc_r3_sync_width = value,
 
-                4 => registers.crtc_r4_vertical_total = value,
+                4 => registers.crtc_r4_vertical_total = value & 0x7f,
 
                 5 => registers.crtc_r5_vertical_total_adjust = value & 0x1f,
 
-                6 => registers.crtc_r6_vertical_displayed = value,
+                6 => registers.crtc_r6_vertical_displayed = value & 0x7f,
 
                 7 => registers.crtc_r7_vertical_sync_pos = value & 0x7f,
 
                 8 => registers.crtc_r8_interlace_and_skew = value,
 
-                9 => registers.crtc_r9_maximum_raster_address = value,
+                9 => registers.crtc_r9_maximum_raster_address = value & 0x1f,
 
-                10 => registers.crtc_r10_cursor_start_raster = value,
+                10 => registers.crtc_r10_cursor_start_raster = value & 0x7f,
 
-                11 => registers.crtc_r11_cursor_end_raster = value,
+                11 => registers.crtc_r11_cursor_end_raster = value & 0x1f,
 
-                12 => registers.crtc_r12_start_address_high = value,
+                12 => registers.crtc_r12_start_address_high = value & 0x3f,
 
                 13 => registers.crtc_r13_start_address_low = value,
 
