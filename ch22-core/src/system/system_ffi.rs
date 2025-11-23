@@ -1,3 +1,4 @@
+use core::panic;
 use std::mem::size_of;
 
 use js_sys::Function;
@@ -144,8 +145,28 @@ impl SystemFfi {
         self.core.video_registers.borrow().ula_control
     }
 
-    pub fn get_crtc_registers(&self, register_index: usize) -> u8 {
-        self.core.video_registers.borrow().crtc_registers[register_index]
+    pub fn get_crtc_registers(&self, register_index: u8) -> u8 {
+        let registers = self.core.video_registers.borrow();
+
+        match register_index {
+            0 => registers.crtc_r0_horizontal_total,
+            1 => registers.crtc_r1_horizontal_displayed,
+            2 => registers.crtc_r2_horizontal_sync_pos,
+            3 => registers.crtc_r3_sync_width,
+            4 => registers.crtc_r4_vertical_total,
+            5 => registers.crtc_r5_vertical_total_adjust,
+            6 => registers.crtc_r6_vertical_displayed,
+            7 => registers.crtc_r7_vertical_sync_pos,
+            8 => registers.crtc_r8_interlace_and_delay,
+            9 => registers.crtc_r9_scanlines_per_char,
+            10 => registers.crtc_r10_cursor_start,
+            11 => registers.crtc_r11_cursor_end,
+            12 => registers.crtc_r12_screen_start_high,
+            13 => registers.crtc_r13_screen_start_low,
+            14 => registers.crtc_r14_cursor_pos_high,
+            15 => registers.crtc_r15_cursor_pos_low,
+            _ => panic!("Invalid CRTC register index: {}", register_index),
+        }
     }
 }
 

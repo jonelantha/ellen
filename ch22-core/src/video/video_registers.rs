@@ -3,29 +3,45 @@
 pub struct VideoRegisters {
     pub ula_control: u8,
     pub ula_palette: u64,
-    pub crtc_registers: [u8; 18],
+
+    pub crtc_r0_horizontal_total: u8,
+    pub crtc_r1_horizontal_displayed: u8,
+    pub crtc_r2_horizontal_sync_pos: u8,
+    pub crtc_r3_sync_width: u8,
+    pub crtc_r4_vertical_total: u8,
+    pub crtc_r5_vertical_total_adjust: u8,
+    pub crtc_r6_vertical_displayed: u8,
+    pub crtc_r7_vertical_sync_pos: u8,
+    pub crtc_r8_interlace_and_delay: u8,
+    pub crtc_r9_scanlines_per_char: u8,
+    pub crtc_r10_cursor_start: u8,
+    pub crtc_r11_cursor_end: u8,
+    pub crtc_r12_screen_start_high: u8,
+    pub crtc_r13_screen_start_low: u8,
+    pub crtc_r14_cursor_pos_high: u8,
+    pub crtc_r15_cursor_pos_low: u8,
 }
 
 impl VideoRegisters {
     pub fn reset(&mut self) {
         self.ula_control = 0x9c;
 
-        self.crtc_registers[0] = 0x7f;
-        self.crtc_registers[1] = 0x50;
-        self.crtc_registers[2] = 0x62;
-        self.crtc_registers[3] = 0x28;
-        self.crtc_registers[4] = 0x26;
-        self.crtc_registers[5] = 0x00;
-        self.crtc_registers[6] = 0x20;
-        self.crtc_registers[7] = 0x22;
-        self.crtc_registers[8] = 0x00;
-        self.crtc_registers[9] = 0x07;
-        self.crtc_registers[10] = 0x00;
-        self.crtc_registers[11] = 0x00;
-        self.crtc_registers[12] = 0x06;
-        self.crtc_registers[13] = 0x00;
-        self.crtc_registers[14] = 0x00;
-        self.crtc_registers[15] = 0x00;
+        self.crtc_r0_horizontal_total = 0x7f;
+        self.crtc_r1_horizontal_displayed = 0x50;
+        self.crtc_r2_horizontal_sync_pos = 0x62;
+        self.crtc_r3_sync_width = 0x28;
+        self.crtc_r4_vertical_total = 0x26;
+        self.crtc_r5_vertical_total_adjust = 0x00;
+        self.crtc_r6_vertical_displayed = 0x20;
+        self.crtc_r7_vertical_sync_pos = 0x22;
+        self.crtc_r8_interlace_and_delay = 0x00;
+        self.crtc_r9_scanlines_per_char = 0x07;
+        self.crtc_r10_cursor_start = 0x00;
+        self.crtc_r11_cursor_end = 0x00;
+        self.crtc_r12_screen_start_high = 0x06;
+        self.crtc_r13_screen_start_low = 0x00;
+        self.crtc_r14_cursor_pos_high = 0x00;
+        self.crtc_r15_cursor_pos_low = 0x00;
     }
 
     pub fn set_ula_palette(&mut self, entry: u8, value: u8) {
@@ -40,6 +56,6 @@ impl VideoRegisters {
     }
 
     pub fn crtc_screen_delay_is_no_output(&self) -> bool {
-        self.crtc_registers[8] & 0x30 == 0x30
+        self.crtc_r8_interlace_and_delay & 0x30 == 0x30
     }
 }
