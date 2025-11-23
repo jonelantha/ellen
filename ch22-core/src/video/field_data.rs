@@ -18,7 +18,7 @@ impl Default for Field {
 impl Field {
     pub fn clear(&mut self) {
         for line in &mut self.lines {
-            line.line_type = FieldLineType::OutOfScan;
+            line.set_out_of_scan();
         }
     }
 
@@ -35,20 +35,26 @@ impl Field {
     {
         let crtc_length = video_registers.crtc_registers[1];
 
+        self.lines[line_index].set_registers(
+            crtc_memory_address,
+            crtc_raster_address_even,
+            video_registers,
+        );
+
         let ula_is_teletext = video_registers.ula_is_teletext();
 
         if !ula_is_teletext && crtc_raster_address_even as usize >= 8 {
-            self.lines[line_index].line_type = FieldLineType::Blank;
+            self.lines[line_index].set_blank();
             return;
         }
 
         if !ula_is_teletext && video_registers.crtc_screen_delay_is_no_output() {
-            self.lines[line_index].line_type = FieldLineType::Blank;
+            self.lines[line_index].set_blank();
             return;
         }
 
         if !is_range_compatible(crtc_memory_address, crtc_length, ula_is_teletext) {
-            self.lines[line_index].line_type = FieldLineType::Invalid;
+            self.lines[line_index].set_invalid();
             return;
         }
 
@@ -58,13 +64,15 @@ impl Field {
         let first_ram_slice = get_buffer(first_ram_range);
         let second_ram_slice = second_ram_range.map(get_buffer);
 
-        self.lines[line_index].set_data(
-            crtc_memory_address,
-            crtc_raster_address_even,
-            video_registers,
-            first_ram_slice,
-            second_ram_slice,
-        );
+        if ula_is_teletext {
+            self.lines[line_index].set_char_data(first_ram_slice, second_ram_slice);
+        } else {
+            self.lines[line_index].set_char_data_for_raster(
+                first_ram_slice,
+                second_ram_slice,
+                crtc_raster_address_even,
+            );
+        }
     }
 }
 
@@ -119,15 +127,12 @@ impl Default for FieldLine {
 }
 
 impl FieldLine {
-    fn set_data(
+    fn set_registers(
         &mut self,
         crtc_memory_address: u16,
         crtc_raster_address_even: u8,
         video_registers: &VideoRegisters,
-        first_slice: &[u8],
-        second_slice: Option<&[u8]>,
     ) {
-        self.line_type = FieldLineType::Visible;
         self.crtc_memory_address = crtc_memory_address;
         self.crtc_raster_address_even = crtc_raster_address_even;
 
@@ -143,58 +148,71 @@ impl FieldLine {
         self.crtc_r11_cursor_end = video_registers.crtc_registers[11];
         self.crtc_r14_cursor_pos_high = video_registers.crtc_registers[14];
         self.crtc_r15_cursor_pos_low = video_registers.crtc_registers[15];
+    }
 
-        let ula_is_teletext = video_registers.ula_is_teletext();
+    fn set_out_of_scan(&mut self) {
+        self.line_type = FieldLineType::OutOfScan;
+    }
 
-        let first_end = if ula_is_teletext {
-            self.set_char_data(0, first_slice)
-        } else {
-            self.set_char_data_stride_8(0, first_slice, crtc_raster_address_even)
-        };
+    fn set_invalid(&mut self) {
+        self.line_type = FieldLineType::Invalid;
+    }
+
+    fn set_blank(&mut self) {
+        self.line_type = FieldLineType::Blank;
+    }
+
+    fn set_char_data(&mut self, first_slice: &[u8], second_slice: Option<&[u8]>) {
+        self.line_type = FieldLineType::Visible;
+
+        let first_end = first_slice.len();
+
+        debug_assert!(first_end <= MAX_CHARS);
+
+        self.char_data[..first_end].copy_from_slice(first_slice);
 
         if let Some(second_slice) = second_slice {
-            if ula_is_teletext {
-                self.set_char_data(first_end, second_slice);
-            } else {
-                self.set_char_data_stride_8(first_end, second_slice, crtc_raster_address_even);
-            }
+            let second_end = first_end + second_slice.len();
+
+            debug_assert!(second_end <= MAX_CHARS);
+
+            self.char_data[first_end..second_end].copy_from_slice(second_slice);
         }
     }
 
-    fn set_char_data(&mut self, dest_start: usize, slice: &[u8]) -> usize {
-        let new_length = dest_start + slice.len();
-
-        if new_length > MAX_CHARS {
-            panic!("{} > {}", new_length, MAX_CHARS);
-        }
-
-        self.char_data[dest_start..new_length].copy_from_slice(slice);
-
-        new_length
-    }
-
-    fn set_char_data_stride_8(
+    fn set_char_data_for_raster(
         &mut self,
-        dest_start: usize,
-        slice: &[u8],
-        slice_offset: u8,
-    ) -> usize {
-        if slice.len() % 8 != 0 {
-            panic!("{} % 8 != 0", slice.len());
+        first_slice: &[u8],
+        second_slice: Option<&[u8]>,
+        raster_line: u8,
+    ) {
+        self.line_type = FieldLineType::Visible;
+
+        let first_end = copy_into_stride_8(&mut self.char_data, 0, first_slice, raster_line);
+
+        if let Some(second_slice) = second_slice {
+            copy_into_stride_8(&mut self.char_data, first_end, second_slice, raster_line);
         }
-
-        let new_length = dest_start + slice.len() / 8;
-
-        if new_length > MAX_CHARS {
-            panic!("{} > {}", new_length, MAX_CHARS);
-        }
-
-        for (i, chunk) in slice.chunks_exact(8).enumerate() {
-            self.char_data[dest_start + i] = chunk[slice_offset as usize];
-        }
-
-        new_length
     }
+}
+
+fn copy_into_stride_8(
+    dest: &mut [u8],
+    dest_start: usize,
+    source: &[u8],
+    source_offset: u8,
+) -> usize {
+    debug_assert!(source.len() % 8 == 0);
+
+    let new_length = dest_start + (source.len() >> 3);
+
+    debug_assert!(new_length <= MAX_CHARS);
+
+    for (i, chunk) in source.chunks_exact(8).enumerate() {
+        dest[dest_start + i] = chunk[source_offset as usize];
+    }
+
+    new_length
 }
 
 #[derive(Clone, Copy)]
