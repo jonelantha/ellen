@@ -81,12 +81,12 @@ impl Core {
         &mut self,
         line_index: usize,
         crtc_memory_address: u16,
-        crtc_raster_address: u8,
+        crtc_raster_address_even: u8,
     ) {
         self.video_field.snapshot_scanline(
             line_index,
             crtc_memory_address,
-            crtc_raster_address,
+            crtc_raster_address_even,
             self.ic32_latch.get(),
             &self.video_registers.borrow(),
             |range| self.ram.slice(range),

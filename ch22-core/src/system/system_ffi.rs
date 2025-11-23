@@ -45,10 +45,10 @@ impl SystemFfi {
         &mut self,
         line_index: usize,
         crtc_memory_address: u16,
-        crtc_raster_address: u8,
+        crtc_raster_address_even: u8,
     ) {
         self.core
-            .snapshot_scanline(line_index, crtc_memory_address, crtc_raster_address);
+            .snapshot_scanline(line_index, crtc_memory_address, crtc_raster_address_even);
     }
 
     pub fn load_rom(&mut self, bank: usize, data: &[u8]) {

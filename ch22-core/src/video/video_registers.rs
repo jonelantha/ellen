@@ -38,4 +38,8 @@ impl VideoRegisters {
     pub fn ula_is_teletext(&self) -> bool {
         (self.ula_control & 0x02) != 0
     }
+
+    pub fn crtc_screen_delay_is_no_output(&self) -> bool {
+        self.crtc_registers[8] & 0x30 == 0x30
+    }
 }
