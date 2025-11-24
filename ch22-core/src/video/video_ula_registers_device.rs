@@ -5,6 +5,9 @@ use crate::devices::IODevice;
 use crate::video::VideoRegisters;
 use crate::word::Word;
 
+#[cfg(test)]
+mod tests;
+
 pub struct VideoULARegistersDevice {
     video_registers: Rc<RefCell<VideoRegisters>>,
 }
