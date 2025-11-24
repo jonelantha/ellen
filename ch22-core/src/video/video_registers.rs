@@ -51,11 +51,11 @@ impl VideoRegisters {
         self.ula_palette |= ((value & 0x0f) as u64) << shift;
     }
 
-    pub fn ula_is_teletext(&self) -> bool {
+    pub fn is_ula_teletext(&self) -> bool {
         (self.ula_control & 0x02) != 0
     }
 
-    pub fn crtc_screen_delay_is_no_output(&self) -> bool {
+    pub fn is_crtc_screen_delay_no_output(&self) -> bool {
         self.crtc_r8_interlace_and_skew & 0x30 == 0x30
     }
 }

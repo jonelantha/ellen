@@ -41,19 +41,19 @@ impl Field {
             video_registers,
         );
 
-        let ula_is_teletext = video_registers.ula_is_teletext();
+        let ula_teletext = video_registers.is_ula_teletext();
 
-        if !ula_is_teletext && crtc_raster_address_even as usize >= 8 {
+        if !ula_teletext && crtc_raster_address_even as usize >= 8 {
             self.lines[line_index].set_blank();
             return;
         }
 
-        if !ula_is_teletext && video_registers.crtc_screen_delay_is_no_output() {
+        if !ula_teletext && video_registers.is_crtc_screen_delay_no_output() {
             self.lines[line_index].set_blank();
             return;
         }
 
-        if !is_range_compatible(crtc_memory_address, crtc_length, ula_is_teletext) {
+        if !is_range_compatible(crtc_memory_address, crtc_length, ula_teletext) {
             self.lines[line_index].set_invalid();
             return;
         }
@@ -64,7 +64,7 @@ impl Field {
         let first_ram_slice = get_buffer(first_ram_range);
         let second_ram_slice = second_ram_range.map(get_buffer);
 
-        if ula_is_teletext {
+        if ula_teletext {
             self.lines[line_index].set_char_data(first_ram_slice, second_ram_slice);
         } else {
             self.lines[line_index].set_char_data_for_raster(
@@ -76,9 +76,9 @@ impl Field {
     }
 }
 
-fn is_range_compatible(crtc_memory_address: u16, crtc_length: u8, ula_is_teletext: bool) -> bool {
+fn is_range_compatible(crtc_memory_address: u16, crtc_length: u8, ula_teletext: bool) -> bool {
     let video_range_type = VideoMemoryAccess::get_crtc_range_type(crtc_memory_address, crtc_length);
 
-    video_range_type == CRTCRangeType::Teletext && ula_is_teletext
-        || video_range_type == CRTCRangeType::HiRes && !ula_is_teletext
+    video_range_type == CRTCRangeType::Teletext && ula_teletext
+        || video_range_type == CRTCRangeType::HiRes && !ula_teletext
 }
