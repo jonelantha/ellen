@@ -150,11 +150,11 @@ impl SystemFfi {
             | (registers.crtc_r4_vertical_total as u128) << 24
             | (registers.crtc_r5_vertical_total_adjust as u128) << 32
             | (registers.crtc_r6_vertical_displayed as u128) << 40
-            | (registers.crtc_r7_vertical_sync_pos as u128) << 48
+            | (registers.crtc_r7_vertical_sync_position as u128) << 48
             | (registers.crtc_r8_interlace_and_skew as u128) << 56
             | (registers.crtc_r9_maximum_raster_address as u128) << 64
-            | (registers.crtc_r12_start_address_high as u128) << 72
-            | (registers.crtc_r13_start_address_low as u128) << 80
+            | (registers.crtc_r12_start_address_h as u128) << 72
+            | (registers.crtc_r13_start_address_l as u128) << 80
             | (registers.ula_control as u128) << 88
     }
 }

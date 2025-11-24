@@ -28,9 +28,9 @@ impl IODevice for VideoCRTCRegistersDevice {
             match self.control_reg {
                 12 | 13 => panic!("not impl"),
 
-                14 => registers.crtc_r14_cursor_high,
+                14 => registers.crtc_r14_cursor_h,
 
-                15 => registers.crtc_r15_cursor_low,
+                15 => registers.crtc_r15_cursor_l,
 
                 16 | 17 => panic!("not impl"),
 
@@ -50,7 +50,7 @@ impl IODevice for VideoCRTCRegistersDevice {
 
                 1 => registers.crtc_r1_horizontal_displayed = value,
 
-                2 => registers.crtc_r2_horizontal_sync_pos = value,
+                2 => registers.crtc_r2_horizontal_sync_position = value,
 
                 3 => registers.crtc_r3_sync_width = value,
 
@@ -60,7 +60,7 @@ impl IODevice for VideoCRTCRegistersDevice {
 
                 6 => registers.crtc_r6_vertical_displayed = value & 0x7f,
 
-                7 => registers.crtc_r7_vertical_sync_pos = value & 0x7f,
+                7 => registers.crtc_r7_vertical_sync_position = value & 0x7f,
 
                 8 => registers.crtc_r8_interlace_and_skew = value,
 
@@ -70,13 +70,13 @@ impl IODevice for VideoCRTCRegistersDevice {
 
                 11 => registers.crtc_r11_cursor_end_raster = value & 0x1f,
 
-                12 => registers.crtc_r12_start_address_high = value & 0x3f,
+                12 => registers.crtc_r12_start_address_h = value & 0x3f,
 
-                13 => registers.crtc_r13_start_address_low = value,
+                13 => registers.crtc_r13_start_address_l = value,
 
-                14 => registers.crtc_r14_cursor_high = value & 0x3f,
+                14 => registers.crtc_r14_cursor_h = value & 0x3f,
 
-                15 => registers.crtc_r15_cursor_low = value,
+                15 => registers.crtc_r15_cursor_l = value,
 
                 _ => {}
             }
