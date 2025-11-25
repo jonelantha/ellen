@@ -33,22 +33,19 @@ impl Field {
     ) where
         F: Fn(std::ops::Range<u16>) -> &'a [u8],
     {
-        let crtc_length = video_registers.crtc_r1_horizontal_displayed;
-
         self.lines[line_index].set_registers(
             crtc_memory_address,
             crtc_raster_address_even,
             video_registers,
         );
 
+        let crtc_length = video_registers.crtc_r1_horizontal_displayed;
         let ula_teletext = video_registers.is_ula_teletext();
 
-        if !ula_teletext && crtc_raster_address_even as usize >= 8 {
-            self.lines[line_index].set_blank();
-            return;
-        }
-
-        if !ula_teletext && video_registers.is_crtc_screen_delay_no_output() {
+        if crtc_length == 0
+            || (!ula_teletext && crtc_raster_address_even >= 8)
+            || (!ula_teletext && video_registers.is_crtc_screen_delay_no_output())
+        {
             self.lines[line_index].set_blank();
             return;
         }
