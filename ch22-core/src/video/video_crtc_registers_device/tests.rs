@@ -52,9 +52,11 @@ mod test_video_crtc_registers_device {
 
     #[test]
     fn test_reads_cursor_registers_and_defaults() {
-        let mut video_registers = VideoRegisters::default();
-        video_registers.crtc_r14_cursor_h = 0x3f;
-        video_registers.crtc_r15_cursor_l = 0x5a;
+        let video_registers = VideoRegisters {
+            crtc_r14_cursor_h: 0x3f,
+            crtc_r15_cursor_l: 0x5a,
+            ..VideoRegisters::default()
+        };
 
         let mut device = VideoCRTCRegistersDevice::new(Rc::new(RefCell::new(video_registers)));
 
