@@ -6,6 +6,9 @@ use crate::devices::IODevice;
 use crate::video::VideoRegisters;
 use crate::word::Word;
 
+#[cfg(test)]
+mod tests;
+
 pub struct VideoCRTCRegistersDevice {
     video_crtc_registers: Rc<RefCell<VideoRegisters>>,
     control_reg: u8,

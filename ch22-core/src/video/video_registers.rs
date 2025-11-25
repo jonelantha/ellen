@@ -59,4 +59,27 @@ impl VideoRegisters {
     pub fn is_crtc_screen_delay_no_output(&self) -> bool {
         self.crtc_r8_interlace_and_skew & 0x30 == 0x30
     }
+
+    #[cfg(test)]
+    pub fn get_crtc_register(&self, control_reg: u8) -> u8 {
+        match control_reg {
+            0 => self.crtc_r0_horizontal_total,
+            1 => self.crtc_r1_horizontal_displayed,
+            2 => self.crtc_r2_horizontal_sync_position,
+            3 => self.crtc_r3_sync_width,
+            4 => self.crtc_r4_vertical_total,
+            5 => self.crtc_r5_vertical_total_adjust,
+            6 => self.crtc_r6_vertical_displayed,
+            7 => self.crtc_r7_vertical_sync_position,
+            8 => self.crtc_r8_interlace_and_skew,
+            9 => self.crtc_r9_maximum_raster_address,
+            10 => self.crtc_r10_cursor_start_raster,
+            11 => self.crtc_r11_cursor_end_raster,
+            12 => self.crtc_r12_start_address_h,
+            13 => self.crtc_r13_start_address_l,
+            14 => self.crtc_r14_cursor_h,
+            15 => self.crtc_r15_cursor_l,
+            _ => panic!("Invalid control_reg {}", control_reg),
+        }
+    }
 }
