@@ -1,4 +1,4 @@
-use crate::video::{CRTCRangeType, FieldLine, VideoMemoryAccess, VideoRegisters};
+use crate::video::{FieldLine, VideoMemoryAccess, VideoRegisters};
 
 const MAX_LINES: usize = 320;
 
@@ -50,7 +50,11 @@ impl Field {
             return;
         }
 
-        if !is_range_compatible(crtc_memory_address, crtc_length, ula_teletext) {
+        if (ula_teletext
+            && !VideoMemoryAccess::is_crtc_range_telextext(crtc_memory_address, crtc_length))
+            || (!ula_teletext
+                && !VideoMemoryAccess::is_crtc_range_hires(crtc_memory_address, crtc_length))
+        {
             self.lines[line_index].set_invalid();
             return;
         }
@@ -71,11 +75,4 @@ impl Field {
             );
         }
     }
-}
-
-fn is_range_compatible(crtc_memory_address: u16, crtc_length: u8, ula_teletext: bool) -> bool {
-    let video_range_type = VideoMemoryAccess::get_crtc_range_type(crtc_memory_address, crtc_length);
-
-    video_range_type == CRTCRangeType::Teletext && ula_teletext
-        || video_range_type == CRTCRangeType::HiRes && !ula_teletext
 }

@@ -5,17 +5,12 @@ mod tests;
 pub struct VideoMemoryAccess {}
 
 impl VideoMemoryAccess {
-    pub fn get_crtc_range_type(crtc_start: u16, crtc_length: u8) -> CRTCRangeType {
-        let crtc_start = crtc_start & 0x3fff;
+    pub fn is_crtc_range_hires(crtc_start: u16, crtc_length: u8) -> bool {
+        check_crtc_range(crtc_start, crtc_length, |address| address < 0x2000)
+    }
 
-        // end is inclusive as exclusive may be in the next range
-        let crtc_end = (crtc_start + crtc_length as u16 - 1) & 0x3fff;
-
-        match (crtc_start, crtc_end) {
-            (..0x2000, ..0x2000) => CRTCRangeType::HiRes,
-            (0x2000.., 0x2000..) => CRTCRangeType::Teletext,
-            _ => CRTCRangeType::Mixed,
-        }
+    pub fn is_crtc_range_telextext(crtc_start: u16, crtc_length: u8) -> bool {
+        check_crtc_range(crtc_start, crtc_length, |address| address >= 0x2000)
     }
 
     pub fn translate_crtc_range(
@@ -50,6 +45,15 @@ impl VideoMemoryAccess {
     }
 }
 
+fn check_crtc_range(crtc_start: u16, crtc_length: u8, check_fn: impl Fn(u16) -> bool) -> bool {
+    let crtc_start = crtc_start & 0x3fff;
+
+    // end is inclusive as exclusive may be in the next range
+    let crtc_end_inclusive = (crtc_start + crtc_length as u16 - 1) & 0x3fff;
+
+    check_fn(crtc_start) && check_fn(crtc_end_inclusive)
+}
+
 fn translate_crtc_address(crtc_address: u16, ic32_latch_value: u8) -> TranslatedAddress {
     // https://beebwiki.mdfs.net/Address_translation
 
@@ -81,12 +85,5 @@ fn translate_crtc_address(crtc_address: u16, ic32_latch_value: u8) -> Translated
 }
 
 pub type VideoMemoryRanges = (Range<u16>, Option<Range<u16>>);
-
-#[derive(PartialEq, Eq, Debug)]
-pub enum CRTCRangeType {
-    HiRes,
-    Teletext,
-    Mixed,
-}
 
 type TranslatedAddress = (u16, Range<u16>);

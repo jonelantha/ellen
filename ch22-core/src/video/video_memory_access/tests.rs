@@ -1,28 +1,60 @@
-use crate::video::{CRTCRangeType, video_memory_access::VideoMemoryAccess};
+use crate::video::video_memory_access::VideoMemoryAccess;
 
 #[cfg(test)]
-mod test_get_crtc_range_type {
+mod is_crtc_range_hires {
 
     use super::*;
 
     #[test]
     fn test_ranges() {
         let test_cases = [
-            (0x0000, 1, CRTCRangeType::HiRes),
-            (0x0500, 5, CRTCRangeType::HiRes),
-            (0x1000, 8, CRTCRangeType::HiRes),
-            (0x1fff, 1, CRTCRangeType::HiRes),
-            (0x2000, 1, CRTCRangeType::Teletext),
-            (0x2500, 5, CRTCRangeType::Teletext),
-            (0x3000, 8, CRTCRangeType::Teletext),
-            (0x3fff, 1, CRTCRangeType::Teletext),
-            (0x1ff8, 16, CRTCRangeType::Mixed),
-            (0x1ffc, 8, CRTCRangeType::Mixed),
-            (0x1ffe, 4, CRTCRangeType::Mixed),
+            (0x0000, 1, true),
+            (0x0500, 5, true),
+            (0x1000, 8, true),
+            (0x1fff, 1, true),
+            (0x2000, 1, false),  // Teletext
+            (0x2500, 5, false),  // Teletext
+            (0x3000, 8, false),  // Teletext
+            (0x3fff, 1, false),  // Teletext
+            (0x1ff8, 16, false), // Mixed
+            (0x1ffc, 8, false),  // Mixed
+            (0x1ffe, 4, false),  // Mixed
         ];
 
         for (crtc_start, length, expected) in test_cases {
-            let result = VideoMemoryAccess::get_crtc_range_type(crtc_start, length);
+            let result = VideoMemoryAccess::is_crtc_range_hires(crtc_start, length);
+            assert_eq!(
+                result, expected,
+                "Failed for crtc_start=0x{:04x}, length={}",
+                crtc_start, length
+            );
+        }
+    }
+}
+
+#[cfg(test)]
+mod is_crtc_range_telextext {
+
+    use super::*;
+
+    #[test]
+    fn test_ranges() {
+        let test_cases = [
+            (0x0000, 1, false),  // HiRes
+            (0x0500, 5, false),  // HiRes
+            (0x1000, 8, false),  // HiRes
+            (0x1fff, 1, false),  // HiRes
+            (0x2000, 1, true),   // Teletext
+            (0x2500, 5, true),   // Teletext
+            (0x3000, 8, true),   // Teletext
+            (0x3fff, 1, true),   // Teletext
+            (0x1ff8, 16, false), // Mixed
+            (0x1ffc, 8, false),  // Mixed
+            (0x1ffe, 4, false),  // Mixed
+        ];
+
+        for (crtc_start, length, expected) in test_cases {
+            let result = VideoMemoryAccess::is_crtc_range_telextext(crtc_start, length);
             assert_eq!(
                 result, expected,
                 "Failed for crtc_start=0x{:04x}, length={}",
