@@ -105,10 +105,7 @@ impl Core {
         })
     }
 
-    fn with_runner<F>(&mut self, f: F) -> u64
-    where
-        F: FnOnce(&mut dyn RunnerTrait),
-    {
+    fn with_runner(&mut self, run_fn: impl FnOnce(&mut dyn RunnerTrait)) -> u64 {
         let clock = Clock::new(&mut self.cycles, &mut self.timer_devices);
 
         let cpu_bus = CpuBus::new(
@@ -125,7 +122,7 @@ impl Core {
             cpu: &mut self.cpu,
         };
 
-        f(&mut runner);
+        run_fn(&mut runner);
 
         self.cycles
     }
