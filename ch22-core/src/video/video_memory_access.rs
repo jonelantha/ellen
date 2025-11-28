@@ -13,35 +13,51 @@ impl VideoMemoryAccess {
         check_crtc_range(crtc_start, crtc_length, |address| address >= 0x2000)
     }
 
-    pub fn translate_crtc_range(
+    pub fn translate_crtc_hires_range(
         crtc_start: u16,
         crtc_length: u8,
         ic32_latch_value: u8,
     ) -> VideoMemoryRanges {
-        let crtc_start = crtc_start & 0x3fff;
+        translate_crtc_range(crtc_start, crtc_length, |crtc_address| {
+            translate_crtc_hires_address(crtc_address, ic32_latch_value)
+        })
+    }
 
-        // end is exclusive but need to use this to ensure all the
-        // scanline bytes for the final address are included
-        let crtc_end = (crtc_start + crtc_length as u16) & 0x3fff;
+    pub fn translate_crtc_teletext_range(crtc_start: u16, crtc_length: u8) -> VideoMemoryRanges {
+        translate_crtc_range(crtc_start, crtc_length, |crtc_address| {
+            translate_crtc_teletext_address(crtc_address)
+        })
+    }
+}
 
-        let (start, start_region) = translate_crtc_address(crtc_start, ic32_latch_value);
-        let (end, end_region) = translate_crtc_address(crtc_end, ic32_latch_value);
+pub fn translate_crtc_range(
+    crtc_start: u16,
+    crtc_length: u8,
+    translate_crtc_address: impl Fn(u16) -> TranslatedAddress,
+) -> VideoMemoryRanges {
+    let crtc_start = crtc_start & 0x3fff;
 
-        // a length of <= 0x10 (u8) means crtc ranges will never span more than 2 regions
-        // for hires: neighbouring regions always have different region ranges
-        // for teletext: neighbouring regions can have the same region
-        // but in case of wrap, end will be less than start
-        // (because length (u8) <= 0x10 <= 0x400 = teletext region size)
-        // so this first case will be false for all wrap cases
-        if start < end && start_region == end_region {
-            (start..end, None)
-        } else if end == end_region.start {
-            // due to how end is exclusive, second region may be empty
-            (start..start_region.end, None)
-        } else {
-            // wrap case
-            (start..start_region.end, Some(end_region.start..end))
-        }
+    // end is exclusive but need to use this to ensure all the
+    // scanline bytes for the final address are included
+    let crtc_end = (crtc_start + crtc_length as u16) & 0x3fff;
+
+    let (start, start_region) = translate_crtc_address(crtc_start);
+    let (end, end_region) = translate_crtc_address(crtc_end);
+
+    // a length of <= 0x10 (u8) means crtc ranges will never span more than 2 regions
+    // for hires: neighbouring regions always have different region ranges
+    // for teletext: neighbouring regions can have the same region
+    // but in case of wrap, end will be less than start
+    // (because length (u8) <= 0x10 <= 0x400 = teletext region size)
+    // so this first case will be false for all wrap cases
+    if start < end && start_region == end_region {
+        (start..end, None)
+    } else if end == end_region.start {
+        // due to how end is exclusive, second region may be empty
+        (start..start_region.end, None)
+    } else {
+        // wrap case
+        (start..start_region.end, Some(end_region.start..end))
     }
 }
 
@@ -54,7 +70,7 @@ fn check_crtc_range(crtc_start: u16, crtc_length: u8, check_fn: impl Fn(u16) -> 
     check_fn(crtc_start) && check_fn(crtc_end_inclusive)
 }
 
-fn translate_crtc_address(crtc_address: u16, ic32_latch_value: u8) -> TranslatedAddress {
+fn translate_crtc_hires_address(crtc_address: u16, ic32_latch_value: u8) -> TranslatedAddress {
     // https://beebwiki.mdfs.net/Address_translation
 
     // for hires wrap cases:
@@ -62,9 +78,6 @@ fn translate_crtc_address(crtc_address: u16, ic32_latch_value: u8) -> Translated
     // screen size is 0x5000 = 0x8000 - 0x3000
     // when address gets to wrap point (0x1000), subtract off adjustment 0x0a00 = 0x5000 / 8
     // at second wrap point 0x1a00 = adjustment + 0x1000 to wrap from 0x8000 to 0
-
-    // for teletext wrap cases:
-    // each case represents two crtc regions 0x2000-0x2800 => 0x2000-0x2400, 0x2400-0x2800
 
     match (crtc_address, ic32_latch_value >> 4 & 0x03) {
         (0x0000..0x1000, _) => (crtc_address << 3, 0x0000..0x8000),
@@ -76,11 +89,22 @@ fn translate_crtc_address(crtc_address: u16, ic32_latch_value: u8) -> Translated
         (0x1500..0x2000, 0b11) => ((crtc_address - 0x1500) << 3, 0x0000..0x8000),
         (0x1000..0x1400, 0b01) => ((crtc_address - 0x0400) << 3, 0x6000..0x8000),
         (0x1400..0x2000, 0b01) => ((crtc_address - 0x1400) << 3, 0x0000..0x8000),
-        (0x2000..0x2800, _) => (0x3c00 + (crtc_address & 0x3ff), 0x3c00..0x4000),
-        (0x2800..0x3000, _) => (0x7c00 + (crtc_address & 0x3ff), 0x7c00..0x8000),
-        (0x3000..0x3800, _) => (0x3c00 + (crtc_address & 0x3ff), 0x3c00..0x4000),
-        (0x3800..0x4000, _) => (0x7c00 + (crtc_address & 0x3ff), 0x7c00..0x8000),
-        _ => panic!("invalid CRTC address"),
+        _ => panic!("invalid hires CRTC address {:04x}", crtc_address),
+    }
+}
+
+fn translate_crtc_teletext_address(crtc_address: u16) -> TranslatedAddress {
+    // https://beebwiki.mdfs.net/Address_translation
+
+    // for teletext wrap cases:
+    // each case represents two crtc regions 0x2000-0x2800 => 0x2000-0x2400, 0x2400-0x2800
+
+    match crtc_address {
+        (0x2000..0x2800) => (0x3c00 + (crtc_address & 0x3ff), 0x3c00..0x4000),
+        (0x2800..0x3000) => (0x7c00 + (crtc_address & 0x3ff), 0x7c00..0x8000),
+        (0x3000..0x3800) => (0x3c00 + (crtc_address & 0x3ff), 0x3c00..0x4000),
+        (0x3800..0x4000) => (0x7c00 + (crtc_address & 0x3ff), 0x7c00..0x8000),
+        _ => panic!("invalid teletext CRTC address {:04x}", crtc_address),
     }
 }
 

@@ -44,7 +44,6 @@ impl Field {
             snapshot_teletext_scanline_data(
                 &mut self.lines[line_index],
                 crtc_memory_address,
-                ic32_latch,
                 video_registers,
                 get_buffer,
             );
@@ -64,7 +63,6 @@ impl Field {
 fn snapshot_teletext_scanline_data<'a>(
     field_line: &mut FieldLine,
     crtc_memory_address: u16,
-    ic32_latch: u8,
     video_registers: &VideoRegisters,
     get_buffer: impl Fn(std::ops::Range<u16>) -> &'a [u8],
 ) {
@@ -80,7 +78,7 @@ fn snapshot_teletext_scanline_data<'a>(
     }
 
     let (first_ram_range, second_ram_range) =
-        VideoMemoryAccess::translate_crtc_range(crtc_memory_address, crtc_length, ic32_latch);
+        VideoMemoryAccess::translate_crtc_teletext_range(crtc_memory_address, crtc_length);
 
     field_line.set_char_data(
         get_buffer(first_ram_range),
@@ -112,7 +110,7 @@ fn snapshot_hires_scanline_raster_data<'a>(
     }
 
     let (first_ram_range, second_ram_range) =
-        VideoMemoryAccess::translate_crtc_range(crtc_memory_address, crtc_length, ic32_latch);
+        VideoMemoryAccess::translate_crtc_hires_range(crtc_memory_address, crtc_length, ic32_latch);
 
     field_line.set_char_data_for_raster(
         get_buffer(first_ram_range),
