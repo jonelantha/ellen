@@ -111,6 +111,17 @@ impl FieldLine {
             copy_into_stride_8(&mut self.char_data, first_end, second_slice, raster_line);
         }
     }
+
+    // test only public method to get raw data of line in memory for tests
+    #[cfg(test)]
+    pub fn get_raw_data(&self) -> &[u8] {
+        unsafe {
+            std::slice::from_raw_parts(
+                (self as *const FieldLine) as *const u8,
+                std::mem::size_of::<FieldLine>(),
+            )
+        }
+    }
 }
 
 fn copy_into_stride_8(
@@ -133,7 +144,7 @@ fn copy_into_stride_8(
 }
 
 #[derive(Clone, Copy)]
-enum FieldLineType {
+pub enum FieldLineType {
     OutOfScan = 0,
     Visible = 1,
     Blank = 2,

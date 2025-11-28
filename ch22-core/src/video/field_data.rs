@@ -1,5 +1,8 @@
 use crate::video::{FieldLine, VideoMemoryAccess, VideoRegisters};
 
+#[cfg(test)]
+mod tests;
+
 const MAX_LINES: usize = 320;
 
 #[repr(C, packed)]
