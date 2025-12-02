@@ -28,13 +28,13 @@ impl IODevice for VideoCRTCRegistersDevice {
             let registers = self.video_crtc_registers.borrow_mut();
 
             match self.control_reg {
-                12 | 13 => panic!("not impl"),
+                12 | 13 => unimplemented!(),
 
                 14 => registers.crtc_r14_cursor_h,
 
                 15 => registers.crtc_r15_cursor_l,
 
-                16 | 17 => panic!("not impl"),
+                16 | 17 => unimplemented!(),
 
                 _ => 0,
             }

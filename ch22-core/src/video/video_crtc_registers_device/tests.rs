@@ -77,7 +77,7 @@ mod test_video_crtc_registers_device {
     }
 
     #[test]
-    #[should_panic(expected = "not impl")]
+    #[should_panic(expected = "not implemented")]
     fn test_read_unimplemented_r12_should_panic() {
         let video_registers = VideoRegisters::default();
         let mut device = VideoCRTCRegistersDevice::new(Rc::new(RefCell::new(video_registers)));
@@ -87,7 +87,7 @@ mod test_video_crtc_registers_device {
     }
 
     #[test]
-    #[should_panic(expected = "not impl")]
+    #[should_panic(expected = "not implemented")]
     fn test_read_unimplemented_r13_should_panic() {
         let video_registers = VideoRegisters::default();
         let mut device = VideoCRTCRegistersDevice::new(Rc::new(RefCell::new(video_registers)));
@@ -97,7 +97,7 @@ mod test_video_crtc_registers_device {
     }
 
     #[test]
-    #[should_panic(expected = "not impl")]
+    #[should_panic(expected = "not implemented")]
     fn test_read_unimplemented_r16_should_panic() {
         let video_registers = VideoRegisters::default();
         let mut device = VideoCRTCRegistersDevice::new(Rc::new(RefCell::new(video_registers)));
@@ -107,7 +107,7 @@ mod test_video_crtc_registers_device {
     }
 
     #[test]
-    #[should_panic(expected = "not impl")]
+    #[should_panic(expected = "not implemented")]
     fn test_read_unimplemented_r17_should_panic() {
         let video_registers = VideoRegisters::default();
         let mut device = VideoCRTCRegistersDevice::new(Rc::new(RefCell::new(video_registers)));
