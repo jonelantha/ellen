@@ -32,6 +32,8 @@ impl VideoMemoryAccess {
         crtc_length: u8,
         ic32_latch_value: u8,
     ) -> Option<TranslatedAddressAndRegion> {
+        debug_assert!(crtc_length > 0);
+
         Some(
             Self::translate_crtc_hires_address(
                 crtc_address + crtc_length as u16 - 1,
@@ -95,6 +97,8 @@ impl VideoMemoryAccess {
         crtc_address: u16,
         crtc_length: u8,
     ) -> Option<TranslatedAddressAndRegion> {
+        debug_assert!(crtc_length > 0);
+
         Some(
             Self::translate_crtc_teletext_address(crtc_address + crtc_length as u16 - 1)?
                 .offsetted(1),
