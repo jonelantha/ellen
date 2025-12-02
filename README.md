@@ -146,7 +146,7 @@ const videoRegisters = ch22System.get_partial_video_registers();
  * - 1 byte     - 0 => out of scan, 1 => line visible, 2 => blank, 3 => invalid crtc range
  * - 100 bytes  - snapshot of up to 100 bytes of video memory for the scanline
  * - 2 bytes    - crtcMemoryAddress of snapshot
- * - 1 bytes    - crtcRasterAddress of snapshot (even field)
+ * - 1 byte    - crtcRasterAddress of snapshot (even field)
  * - 9 bytes    - crtc registers: R0, R1, R2, R3, R8, R10, R11, R14, R15
  * - 1 byte     - ula control register
  * - 8 bytes    - ula palette (16 nibbles)
