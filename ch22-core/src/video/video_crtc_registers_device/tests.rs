@@ -78,15 +78,41 @@ mod test_video_crtc_registers_device {
 
     #[test]
     #[should_panic(expected = "not impl")]
-    fn test_read_unimplemented_registers_panic() {
-        let unimplemented_regs = [12, 13, 16, 17];
+    fn test_read_unimplemented_r12_should_panic() {
+        let video_registers = VideoRegisters::default();
+        let mut device = VideoCRTCRegistersDevice::new(Rc::new(RefCell::new(video_registers)));
 
-        for control_reg in unimplemented_regs {
-            let video_registers = VideoRegisters::default();
-            let mut device = VideoCRTCRegistersDevice::new(Rc::new(RefCell::new(video_registers)));
+        device.write(Word::from(0xfe20), 12, 0); // select register
+        device.read(Word::from(0xfe21), 0); // should panic
+    }
 
-            device.write(Word::from(0xfe20), control_reg, 0); // select register
-            device.read(Word::from(0xfe21), 0); // should panic
-        }
+    #[test]
+    #[should_panic(expected = "not impl")]
+    fn test_read_unimplemented_r13_should_panic() {
+        let video_registers = VideoRegisters::default();
+        let mut device = VideoCRTCRegistersDevice::new(Rc::new(RefCell::new(video_registers)));
+
+        device.write(Word::from(0xfe20), 13, 0); // select register
+        device.read(Word::from(0xfe21), 0); // should panic
+    }
+
+    #[test]
+    #[should_panic(expected = "not impl")]
+    fn test_read_unimplemented_r16_should_panic() {
+        let video_registers = VideoRegisters::default();
+        let mut device = VideoCRTCRegistersDevice::new(Rc::new(RefCell::new(video_registers)));
+
+        device.write(Word::from(0xfe20), 16, 0); // select register
+        device.read(Word::from(0xfe21), 0); // should panic
+    }
+
+    #[test]
+    #[should_panic(expected = "not impl")]
+    fn test_read_unimplemented_r17_should_panic() {
+        let video_registers = VideoRegisters::default();
+        let mut device = VideoCRTCRegistersDevice::new(Rc::new(RefCell::new(video_registers)));
+
+        device.write(Word::from(0xfe20), 17, 0); // select register
+        device.read(Word::from(0xfe21), 0); // should panic
     }
 }
