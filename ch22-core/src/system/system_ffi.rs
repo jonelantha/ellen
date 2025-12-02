@@ -9,7 +9,7 @@ use crate::devices::{
     DeviceSpeed, IODeviceID, JsIODevice, JsTimerDevice, StaticDevice, TimerDeviceID,
 };
 use crate::utils;
-use crate::video::{CRTCRangeType, Field, FieldLineAdditionalData};
+use crate::video::Field;
 
 #[wasm_bindgen(js_name = System)]
 #[derive(Default)]
@@ -41,26 +41,14 @@ impl SystemFfi {
         self.core.video_field.clear();
     }
 
-    pub fn snapshot_char_data(
+    pub fn snapshot_scanline(
         &mut self,
-        row_index: usize,
-        crtc_address: u16,
-        crtc_length: u8,
-        d0: u64,
-        d1: u64,
-        d2: u64,
-        is_teletext: bool,
+        line_index: usize,
+        crtc_memory_address: u16,
+        crtc_raster_address_even: u8,
     ) {
-        self.core.snapshot_char_data(
-            row_index,
-            crtc_address,
-            crtc_length,
-            FieldLineAdditionalData { d0, d1, d2 },
-            match is_teletext {
-                true => CRTCRangeType::Teletext,
-                false => CRTCRangeType::HiRes,
-            },
-        );
+        self.core
+            .snapshot_scanline(line_index, crtc_memory_address, crtc_raster_address_even);
     }
 
     pub fn load_rom(&mut self, bank: usize, data: &[u8]) {
@@ -150,6 +138,23 @@ impl SystemFfi {
         self.core
             .timer_devices
             .set_device_trigger(device_id, trigger);
+    }
+
+    pub fn get_partial_video_registers(&self) -> u128 {
+        let registers = self.core.video_registers.borrow();
+
+        (registers.crtc_r0_horizontal_total as u128)
+            | (registers.crtc_r1_horizontal_displayed as u128) << 8
+            | (registers.crtc_r3_sync_width as u128) << 16
+            | (registers.crtc_r4_vertical_total as u128) << 24
+            | (registers.crtc_r5_vertical_total_adjust as u128) << 32
+            | (registers.crtc_r6_vertical_displayed as u128) << 40
+            | (registers.crtc_r7_vertical_sync_position as u128) << 48
+            | (registers.crtc_r8_interlace_and_skew as u128) << 56
+            | (registers.crtc_r9_maximum_raster_address as u128) << 64
+            | (registers.crtc_r12_start_address_h as u128) << 72
+            | (registers.crtc_r13_start_address_l as u128) << 80
+            | (registers.ula_control as u128) << 88
     }
 }
 

@@ -22,6 +22,9 @@ Targeting web assembly in the browser
 - Device support:
   - IO devices with addresses which map to the IO space
   - Timer devices which require a callback after a certain number of cycles
+- Video:
+  - ULA, CRTC and 'IC32' register addressing
+  - Video memory and state snapshotting
 
 ## ✔️ Requirements
 
@@ -124,18 +127,29 @@ ch22System.reset();
 const cycleCount = ch22System.run(targetCycles);
 ```
 
+### Getting current state
+
+```js
+/**
+ * get video registers
+ * [r0,r1,r3,r4,r5,r6,r7,r8,r9,r12,r13,ula control] packed into u128
+ */
+const videoRegisters = ch22System.get_partial_video_registers();
+```
+
 ### Snapshotting Video memory into a buffer
 
 ```js
 /**
  * get buffer of snapshotted scanline data
- * each row is 827 bytes:
- * - 1 byte     - 0 => empty line, 1 => line has data
- * - 800 bytes  - snapshot of up to 800 bytes of video memory for the scanline
- * - 2 bytes    - crtcAddress of snapshot
- * - 8 bytes    - d0 64bit additional data passed from snapshot
- * - 8 bytes    - d1 64bit additional data passed from snapshot
- * - 8 bytes    - d2 64bit additional data passed from snapshot
+ * each line is 122 bytes:
+ * - 1 byte     - 0 => out of scan, 1 => line visible, 2 => blank, 3 => invalid crtc range
+ * - 100 bytes  - snapshot of up to 100 bytes of video memory for the scanline
+ * - 2 bytes    - crtcMemoryAddress of snapshot
+ * - 1 byte    - crtcRasterAddress of snapshot (even field)
+ * - 9 bytes    - crtc registers: R0, R1, R2, R3, R8, R10, R11, R14, R15
+ * - 1 byte     - ula control register
+ * - 8 bytes    - ula palette (16 nibbles)
  */
 const memory = new Uint8Array(
   wasmMemory.buffer,
@@ -149,22 +163,15 @@ const memory = new Uint8Array(
 ch22System.video_field_clear();
 
 /**
- * add a snapshot of the current video memory
- * for a given CRTC address and CRTC length
- * - bufferLine: destination line in buffer for snapshot
- * - crtcAddress: crtc address for snapshot
- * - crtcLength: length of crtc region for snapshot
- * - d0, d1, d2: 3x 64bit data to be stored with the snapshot
- * - isTeletext: crtc region should match this, if not snapshot a blank link
+ * add a snapshot of the current video memory and registers
+ * - lineIndex: line in buffer for snapshot
+ * - crtcMemoryAddress: crtc address for snapshot
+ * - crtcRasterAddress: line index relative to current character row for the even field
  */
-ch22System.snapshot_char_data(
-  bufferLine,
-  crtcAddress,
-  crtcLength,
-  d0,
-  d1,
-  d2,
-  isTeletext,
+ch22System.snapshot_scanline(
+  lineIndex,
+  crtcMemoryAddress,
+  crtcRasterAddressEvenField,
 );
 ```
 

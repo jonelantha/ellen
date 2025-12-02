@@ -1,4 +1,4 @@
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 use super::{
@@ -9,7 +9,7 @@ use super::{
 };
 use crate::address_spaces::{IOSpace, Ram, Rom};
 use crate::devices::{RomSelect, TimerDeviceList};
-use crate::video::{CRTCRangeType, Field, FieldLineAdditionalData};
+use crate::video::{Field, VideoCRTCRegistersDevice, VideoRegisters, VideoULARegistersDevice};
 use crate::{cpu::Cpu, devices::DeviceSpeed};
 
 #[derive(Default)]
@@ -22,11 +22,30 @@ pub struct Core {
     pub video_field: Field,
     pub ic32_latch: Rc<Cell<u8>>,
     pub rom_select_latch: Rc<Cell<usize>>,
+    pub video_registers: Rc<RefCell<VideoRegisters>>,
     pub timer_devices: TimerDeviceList,
 }
 
 impl Core {
     pub fn setup(&mut self) {
+        self.video_registers.borrow_mut().reset();
+
+        self.io_space.add_device(
+            &[
+                0xfe00, 0xfe01, 0xfe02, 0xfe03, 0xfe04, 0xfe05, 0xfe06, 0xfe07,
+            ],
+            Box::new(VideoCRTCRegistersDevice::new(self.video_registers.clone())),
+            None,
+            DeviceSpeed::OneMhz,
+        );
+
+        self.io_space.add_device(
+            &[0xfe20, 0xfe21, 0xfe22, 0xfe23],
+            Box::new(VideoULARegistersDevice::new(self.video_registers.clone())),
+            None,
+            DeviceSpeed::OneMhz,
+        );
+
         self.rom_select_latch.set(15);
 
         self.io_space.add_device(
@@ -58,21 +77,18 @@ impl Core {
         }
     }
 
-    pub fn snapshot_char_data(
+    pub fn snapshot_scanline(
         &mut self,
-        row_index: usize,
-        crtc_address: u16,
-        crtc_length: u8,
-        field_line_additional_data: FieldLineAdditionalData,
-        required_type: CRTCRangeType,
+        line_index: usize,
+        crtc_memory_address: u16,
+        crtc_raster_address_even: u8,
     ) {
-        self.video_field.snapshot_char_data(
-            row_index,
-            crtc_address,
-            crtc_length,
+        self.video_field.snapshot_scanline(
+            line_index,
+            crtc_memory_address,
+            crtc_raster_address_even,
             self.ic32_latch.get(),
-            field_line_additional_data,
-            required_type,
+            &self.video_registers.borrow(),
             |range| self.ram.slice(range),
         );
     }
@@ -89,10 +105,7 @@ impl Core {
         })
     }
 
-    fn with_runner<F>(&mut self, f: F) -> u64
-    where
-        F: FnOnce(&mut dyn RunnerTrait),
-    {
+    fn with_runner(&mut self, run_fn: impl FnOnce(&mut dyn RunnerTrait)) -> u64 {
         let clock = Clock::new(&mut self.cycles, &mut self.timer_devices);
 
         let cpu_bus = CpuBus::new(
@@ -109,7 +122,7 @@ impl Core {
             cpu: &mut self.cpu,
         };
 
-        f(&mut runner);
+        run_fn(&mut runner);
 
         self.cycles
     }
