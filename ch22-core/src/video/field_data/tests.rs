@@ -3,8 +3,6 @@ use crate::video::{FieldLine, VideoRegisters};
 
 #[cfg(test)]
 mod field_data_tests {
-    use core::panic;
-
     use crate::video::FieldLineType;
 
     use super::*;

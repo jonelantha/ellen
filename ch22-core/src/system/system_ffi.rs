@@ -1,4 +1,3 @@
-use core::panic;
 use std::mem::size_of;
 
 use js_sys::Function;
