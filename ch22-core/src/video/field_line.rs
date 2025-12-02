@@ -112,7 +112,7 @@ impl FieldLine {
         }
     }
 
-    // test only public method to get raw data of line in memory for tests
+    // Test-only method to get raw data of line in memory (available only in for tests)
     #[cfg(test)]
     pub fn get_raw_data(&self) -> &[u8] {
         unsafe {
