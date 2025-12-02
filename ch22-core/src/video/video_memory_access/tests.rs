@@ -1,75 +1,35 @@
 use crate::video::video_memory_access::VideoMemoryAccess;
 
 #[cfg(test)]
-mod is_crtc_range_hires {
-
-    use super::*;
-
-    #[test]
-    fn test_ranges() {
-        let test_cases = [
-            (0x0000, 1, true),
-            (0x0500, 5, true),
-            (0x1000, 8, true),
-            (0x1fff, 1, true),
-            (0x2000, 1, false),  // Teletext
-            (0x2500, 5, false),  // Teletext
-            (0x3000, 8, false),  // Teletext
-            (0x3fff, 1, false),  // Teletext
-            (0x1ff8, 16, false), // Mixed
-            (0x1ffc, 8, false),  // Mixed
-            (0x1ffe, 4, false),  // Mixed
-        ];
-
-        for (crtc_start, length, expected) in test_cases {
-            let result = VideoMemoryAccess::is_crtc_range_hires(crtc_start, length);
-            assert_eq!(
-                result, expected,
-                "Failed for crtc_start=0x{:04x}, length={}",
-                crtc_start, length
-            );
-        }
-    }
-}
-
-#[cfg(test)]
-mod is_crtc_range_telextext {
-
-    use super::*;
-
-    #[test]
-    fn test_ranges() {
-        let test_cases = [
-            (0x0000, 1, false),  // HiRes
-            (0x0500, 5, false),  // HiRes
-            (0x1000, 8, false),  // HiRes
-            (0x1fff, 1, false),  // HiRes
-            (0x2000, 1, true),   // Teletext
-            (0x2500, 5, true),   // Teletext
-            (0x3000, 8, true),   // Teletext
-            (0x3fff, 1, true),   // Teletext
-            (0x1ff8, 16, false), // Mixed
-            (0x1ffc, 8, false),  // Mixed
-            (0x1ffe, 4, false),  // Mixed
-        ];
-
-        for (crtc_start, length, expected) in test_cases {
-            let result = VideoMemoryAccess::is_crtc_range_telextext(crtc_start, length);
-            assert_eq!(
-                result, expected,
-                "Failed for crtc_start=0x{:04x}, length={}",
-                crtc_start, length
-            );
-        }
-    }
-}
-
-#[cfg(test)]
 mod test_translate_crtc_range {
     use super::*;
 
     #[test]
-    fn translate_crtc_hires_range() {
+    fn translate_crtc_hires_range_invalid_cases() {
+        let test_cases = [
+            (0x2000, 1, 0),  // Teletext
+            (0x2500, 5, 0),  // Teletext
+            (0x3000, 8, 0),  // Teletext
+            (0x3fff, 1, 0),  // Teletext
+            (0x1ff8, 16, 0), // Mixed
+            (0x1ffc, 8, 0),  // Mixed
+            (0x1ffe, 4, 0),  // Mixed
+        ];
+
+        for (crtc_start, length, ic32) in test_cases {
+            let result = VideoMemoryAccess::translate_crtc_hires_range(crtc_start, length, ic32);
+            assert!(
+                result.is_none(),
+                "Failed for crtc_start=0x{:04x}, length={}, ic32={:?}",
+                crtc_start,
+                length,
+                ic32
+            );
+        }
+    }
+
+    #[test]
+    fn translate_crtc_hires_range_valid_cases() {
         let test_cases = [
             (0x0000, 1, 0x00, ((0x0000..0x0008), None)),
             // offset
@@ -109,20 +69,50 @@ mod test_translate_crtc_range {
             (0x1200, 1, 0x20, ((0x4000..0x4008), None)),
             // Mode 0x30
             (0x1200, 1, 0x30, ((0x6800..0x6808), None)),
+            // ends on wrap boundary
+            (0x17F8, 8, 0x00, ((0x7fC0..0x8000), None)),
+            // ends on hires boundary
+            (0x1FF8, 8, 0x00, ((0x3FC0..0x4000), None)),
         ];
 
         for (crtc_start, length, ic32, expected) in test_cases {
             let result = VideoMemoryAccess::translate_crtc_hires_range(crtc_start, length, ic32);
             assert_eq!(
-                result, expected,
-                "addr=0x{:04x}, len={}, mode={:?}",
-                crtc_start, length, ic32
+                result,
+                Some(expected),
+                "addr=0x{:04x}, len={}, ic32={:?}",
+                crtc_start,
+                length,
+                ic32
             );
         }
     }
 
     #[test]
-    fn test_translate_teletext_range() {
+    fn test_translate_teletext_range_invalid_cases() {
+        let test_cases = [
+            (0x0000, 1),  // HiRes
+            (0x0500, 5),  // HiRes
+            (0x1000, 8),  // HiRes
+            (0x1fff, 1),  // HiRes
+            (0x1ff8, 16), // Mixed
+            (0x1ffc, 8),  // Mixed
+            (0x1ffe, 4),  // Mixed
+        ];
+
+        for (crtc_start, length) in test_cases {
+            let result = VideoMemoryAccess::translate_crtc_teletext_range(crtc_start, length);
+            assert!(
+                result.is_none(),
+                "Failed for crtc_start=0x{:04x}, length={}",
+                crtc_start,
+                length,
+            );
+        }
+    }
+
+    #[test]
+    fn test_translate_teletext_range_valid_cases() {
         let test_cases = [
             // start
             (0x2000, 1, ((0x3c00..0x3c01), None)),
@@ -138,14 +128,22 @@ mod test_translate_crtc_range {
             (0x27fe, 4, ((0x3ffe..0x4000), Some(0x7c00..0x7c02))),
             // Mask 0x6000->0x2000
             (0x6000, 1, ((0x3c00..0x3c01), None)),
+            // ends on wrap boundary
+            (0x27F8, 8, ((0x3ff8..0x4000), None)),
+            // ends on teletext/hires boundary
+            (0x3FF8, 8, ((0x7ff8..0x8000), None)),
+            // crossing wrap boundary into same space
+            (0x2be8, 40, ((0x7fe8..0x8000), Some(0x7c00..0x7c10))),
         ];
 
         for (crtc_start, length, expected) in test_cases {
             let result = VideoMemoryAccess::translate_crtc_teletext_range(crtc_start, length);
             assert_eq!(
-                result, expected,
+                result,
+                Some(expected),
                 "addr=0x{:04x}, len={}",
-                crtc_start, length
+                crtc_start,
+                length
             );
         }
     }

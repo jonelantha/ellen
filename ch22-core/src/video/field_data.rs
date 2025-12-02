@@ -67,23 +67,16 @@ fn snapshot_teletext_scanline_data<'a>(
     get_buffer: impl Fn(std::ops::Range<u16>) -> &'a [u8],
 ) {
     let crtc_length = video_registers.crtc_r1_horizontal_displayed;
+
     if crtc_length == 0 {
         field_line.set_blank();
         return;
     }
 
-    if !VideoMemoryAccess::is_crtc_range_telextext(crtc_memory_address, crtc_length) {
-        field_line.set_invalid();
-        return;
+    match VideoMemoryAccess::translate_crtc_teletext_range(crtc_memory_address, crtc_length) {
+        None => field_line.set_invalid(),
+        Some(ranges) => field_line.set_char_data(get_buffer(ranges.0), ranges.1.map(get_buffer)),
     }
-
-    let (first_ram_range, second_ram_range) =
-        VideoMemoryAccess::translate_crtc_teletext_range(crtc_memory_address, crtc_length);
-
-    field_line.set_char_data(
-        get_buffer(first_ram_range),
-        second_ram_range.map(get_buffer),
-    );
 }
 
 fn snapshot_hires_scanline_raster_data<'a>(
@@ -104,17 +97,16 @@ fn snapshot_hires_scanline_raster_data<'a>(
         return;
     }
 
-    if !VideoMemoryAccess::is_crtc_range_hires(crtc_memory_address, crtc_length) {
-        field_line.set_invalid();
-        return;
+    match VideoMemoryAccess::translate_crtc_hires_range(
+        crtc_memory_address,
+        crtc_length,
+        ic32_latch,
+    ) {
+        None => field_line.set_invalid(),
+        Some(ranges) => field_line.set_char_data_for_raster(
+            get_buffer(ranges.0),
+            ranges.1.map(get_buffer),
+            crtc_raster_address_even,
+        ),
     }
-
-    let (first_ram_range, second_ram_range) =
-        VideoMemoryAccess::translate_crtc_hires_range(crtc_memory_address, crtc_length, ic32_latch);
-
-    field_line.set_char_data_for_raster(
-        get_buffer(first_ram_range),
-        second_ram_range.map(get_buffer),
-        crtc_raster_address_even,
-    );
 }
