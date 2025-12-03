@@ -26,20 +26,19 @@ impl VideoRegisters {
     pub fn reset(&mut self) {
         self.ula_control = 0x9c;
 
-        // [Hitachi HD6845 Datasheet](https://www.cpcwiki.eu/imgs/c/c0/Hd6845.hitachi.pdf) page 117
-        self.crtc_r0_horizontal_total = 0x3f;
-        self.crtc_r1_horizontal_displayed = 0x28;
-        self.crtc_r2_horizontal_sync_position = 0x34;
-        self.crtc_r3_sync_width = 0x34;
-        self.crtc_r4_vertical_total = 0x14;
-        self.crtc_r5_vertical_total_adjust = 0x08;
-        self.crtc_r6_vertical_displayed = 0x10;
-        self.crtc_r7_vertical_sync_position = 0x13;
+        self.crtc_r0_horizontal_total = 0x7f;
+        self.crtc_r1_horizontal_displayed = 0x50;
+        self.crtc_r2_horizontal_sync_position = 0x62;
+        self.crtc_r3_sync_width = 0x28;
+        self.crtc_r4_vertical_total = 0x26;
+        self.crtc_r5_vertical_total_adjust = 0x00;
+        self.crtc_r6_vertical_displayed = 0x20;
+        self.crtc_r7_vertical_sync_position = 0x22;
         self.crtc_r8_interlace_and_skew = 0x00;
-        self.crtc_r9_maximum_raster_address = 0x0B;
-        self.crtc_r10_cursor_start_raster = 0x49;
-        self.crtc_r11_cursor_end_raster = 0x0A;
-        self.crtc_r12_start_address_h = 0x00;
+        self.crtc_r9_maximum_raster_address = 0x07;
+        self.crtc_r10_cursor_start_raster = 0x00;
+        self.crtc_r11_cursor_end_raster = 0x00;
+        self.crtc_r12_start_address_h = 0x06;
         self.crtc_r13_start_address_l = 0x00;
         self.crtc_r14_cursor_h = 0x00;
         self.crtc_r15_cursor_l = 0x00;
