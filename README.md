@@ -43,7 +43,7 @@ npm run build-release
 ### Setting up
 
 ```js
-import initCh22, { System } from "./ch22-core/pkg";
+import initCh22, { System } from './ch22-core/pkg';
 
 const { memory: wasmMemory } = await initCh22();
 
