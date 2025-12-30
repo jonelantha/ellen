@@ -1,13 +1,7 @@
 {
-  "compilerOptions": {
-    "target": "ES2024",
-    "module": "ESNext",
-    "lib": ["ES2024", "DOM"],
-
-    "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true
-  },
-  "include": ["src"]
+  "files": [],
+  "references": [
+    { "path": "./tsconfig.config-files.json" },
+    { "path": "./tsconfig.src.json" }
+  ]
 }
