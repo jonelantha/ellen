@@ -3,8 +3,18 @@ import shadersWGSL from './shaders.wgsl?raw';
 const CANVAS_WIDTH = 640;
 const CANVAS_HEIGHT = 512;
 
+interface BufferParams {
+  buffer: ArrayBuffer;
+  start: number;
+  length: number;
+}
+
+const FIELD_BUFFER_BIND_GROUP_INDEX = 0;
+const FIELD_BUFFER_BINDING = 0;
+
 export async function initRenderer(
   canvas: HTMLCanvasElement,
+  sourceFieldBuffer: BufferParams,
 ): Promise<() => void> {
   canvas.width = CANVAS_WIDTH;
   canvas.height = CANVAS_HEIGHT;
@@ -15,8 +25,18 @@ export async function initRenderer(
 
   const pipeline = createPipeline(device);
 
+  const gpuFieldBuffer = createGPUBuffer(device, sourceFieldBuffer.length);
+
+  const fieldBufferBindGroup = createFieldBufferBindGroup(
+    device,
+    pipeline,
+    gpuFieldBuffer,
+  );
+
   return function renderFrame() {
-    draw(device, context, pipeline);
+    writeToGPUBuffer(device, gpuFieldBuffer, sourceFieldBuffer);
+
+    draw(device, context, pipeline, fieldBufferBindGroup);
   };
 }
 
@@ -63,10 +83,42 @@ function createPipeline(device: GPUDevice) {
   });
 }
 
+function createGPUBuffer(device: GPUDevice, bufferLength: number) {
+  return device.createBuffer({
+    size: alignTo(bufferLength, 4),
+    usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+  });
+}
+
+function writeToGPUBuffer(
+  device: GPUDevice,
+  dest: GPUBuffer,
+  source: BufferParams,
+) {
+  device.queue.writeBuffer(dest, 0, source.buffer, source.start, source.length);
+}
+
+function createFieldBufferBindGroup(
+  device: GPUDevice,
+  pipeline: GPURenderPipeline,
+  gpuFieldBuffer: GPUBuffer,
+) {
+  return device.createBindGroup({
+    layout: pipeline.getBindGroupLayout(FIELD_BUFFER_BIND_GROUP_INDEX),
+    entries: [
+      {
+        binding: FIELD_BUFFER_BINDING,
+        resource: { buffer: gpuFieldBuffer },
+      },
+    ],
+  });
+}
+
 function draw(
   device: GPUDevice,
   context: GPUCanvasContext,
   pipeline: GPURenderPipeline,
+  fieldBufferBindGroup: GPUBindGroup,
 ) {
   const commandEncoder = device.createCommandEncoder();
 
@@ -81,8 +133,13 @@ function draw(
     ],
   });
   passEncoder.setPipeline(pipeline);
+  passEncoder.setBindGroup(FIELD_BUFFER_BIND_GROUP_INDEX, fieldBufferBindGroup);
   passEncoder.draw(3);
   passEncoder.end();
 
   device.queue.submit([commandEncoder.finish()]);
+}
+
+function alignTo(value: number, alignment: number): number {
+  return Math.ceil(value / alignment) * alignment;
 }

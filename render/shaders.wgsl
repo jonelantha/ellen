@@ -19,14 +19,29 @@ fn vertex_main(@builtin(vertex_index) VertexIndex : u32) -> VertexOutput {
     return output;
 }
 
+struct FieldBuf {
+    bytes: array<u32>,
+};
+
+fn load_field_byte(idx: u32) -> u32 {
+    let word = field.bytes[idx >> 2u];
+    return (word >> ((idx & 3u) * 8u)) & 0xffu;
+}
+
+@group(0) @binding(0) var<storage, read> field : FieldBuf;
+
 @fragment
 fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
     let uv_int = vec2u(u32(input.uv.x * 640.0), u32(input.uv.y * 512.0));
-    if (uv_int.x == 0u || uv_int.y == 0u) {
+
+    if (uv_int.y < 320u) {
+        let byte = load_field_byte(uv_int.y * 122u + 1u + u32(f32(uv_int.x) / 640.0 * 100.0));
+        if (byte > 0) {
+            return vec4f(0.0, 1.0, 0.0, 1.0);
+        } else {
+            return vec4f(1.0, 0.0, 0.0, 1.0);
+        }
+    } else {
         return vec4f(0.0, 0.0, 1.0, 1.0);
     }
-    if (uv_int.x == 639u || uv_int.y == 511u) {
-        return vec4f(0.0, 1.0, 0.0, 1.0);
-    }
-    return vec4f(1.0, 0.0, 0.0, 1.0);
 }
