@@ -12,6 +12,10 @@ interface BufferParams {
 const FIELD_BUFFER_BIND_GROUP_INDEX = 0;
 const FIELD_BUFFER_BINDING = 0;
 
+const BYTES_PER_ROW = 122;
+const MAX_ROWS = 320;
+const BUFFER_SIZE = MAX_ROWS * BYTES_PER_ROW;
+
 export async function initRenderer(
   canvas: HTMLCanvasElement,
   sourceFieldBuffer: BufferParams,
@@ -24,6 +28,10 @@ export async function initRenderer(
   const context = getGPUContext(canvas, device);
 
   const pipeline = createPipeline(device);
+
+  if (sourceFieldBuffer.length !== BUFFER_SIZE) {
+    throw new Error(`Unexpected field buffer size ${sourceFieldBuffer.length}`);
+  }
 
   const gpuFieldBuffer = createGPUBuffer(device, sourceFieldBuffer.length);
 
