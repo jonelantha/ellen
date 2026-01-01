@@ -11,6 +11,7 @@ interface BufferParams {
 
 const FIELD_BUFFER_BIND_GROUP_INDEX = 0;
 const FIELD_BUFFER_BINDING = 0;
+const METRICS_BUFFER_BINDING = 1;
 
 const BYTES_PER_ROW = 122;
 const MAX_ROWS = 320;
@@ -27,24 +28,46 @@ export async function initRenderer(
 
   const context = getGPUContext(canvas, device);
 
-  const pipeline = createPipeline(device);
+  const shaderModule = device.createShaderModule({ code: shadersWGSL });
 
   if (sourceFieldBuffer.length !== BUFFER_SIZE) {
     throw new Error(`Unexpected field buffer size ${sourceFieldBuffer.length}`);
   }
 
-  const gpuFieldBuffer = createGPUBuffer(device, sourceFieldBuffer.length);
-
-  const fieldBufferBindGroup = createFieldBufferBindGroup(
+  const gpuFieldBuffer = createGPUBuffer(
     device,
-    pipeline,
+    sourceFieldBuffer.length,
+    true,
+  );
+  const gpuMetricsBuffer = createGPUBuffer(device, 4, false);
+
+  const computePipeline = createComputePipeline(device, shaderModule);
+  const computeBindGroup = createBindGroup(
+    device,
+    computePipeline,
     gpuFieldBuffer,
+    gpuMetricsBuffer,
+  );
+
+  const renderPipeline = createRenderPipeline(device, shaderModule);
+  const renderBindGroup = createBindGroup(
+    device,
+    renderPipeline,
+    gpuFieldBuffer,
+    gpuMetricsBuffer,
   );
 
   return function renderFrame() {
     writeToGPUBuffer(device, gpuFieldBuffer, sourceFieldBuffer);
 
-    draw(device, context, pipeline, fieldBufferBindGroup);
+    draw(
+      device,
+      context,
+      computePipeline,
+      computeBindGroup,
+      renderPipeline,
+      renderBindGroup,
+    );
   };
 }
 
@@ -71,9 +94,10 @@ function getGPUContext(canvas: HTMLCanvasElement, device: GPUDevice) {
   return context;
 }
 
-function createPipeline(device: GPUDevice) {
-  const shaderModule = device.createShaderModule({ code: shadersWGSL });
-
+function createRenderPipeline(
+  device: GPUDevice,
+  shaderModule: GPUShaderModule,
+) {
   return device.createRenderPipeline({
     layout: 'auto',
     vertex: {
@@ -91,10 +115,27 @@ function createPipeline(device: GPUDevice) {
   });
 }
 
-function createGPUBuffer(device: GPUDevice, bufferLength: number) {
+function createComputePipeline(
+  device: GPUDevice,
+  shaderModule: GPUShaderModule,
+) {
+  return device.createComputePipeline({
+    layout: 'auto',
+    compute: {
+      module: shaderModule,
+      entryPoint: 'metrics_main',
+    },
+  });
+}
+
+function createGPUBuffer(
+  device: GPUDevice,
+  bufferLength: number,
+  copyDst: boolean,
+) {
   return device.createBuffer({
     size: alignTo(bufferLength, 4),
-    usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+    usage: GPUBufferUsage.STORAGE | (copyDst ? GPUBufferUsage.COPY_DST : 0),
   });
 }
 
@@ -106,10 +147,11 @@ function writeToGPUBuffer(
   device.queue.writeBuffer(dest, 0, source.buffer, source.start, source.length);
 }
 
-function createFieldBufferBindGroup(
+function createBindGroup(
   device: GPUDevice,
-  pipeline: GPURenderPipeline,
+  pipeline: GPURenderPipeline | GPUComputePipeline,
   gpuFieldBuffer: GPUBuffer,
+  gpuMetricsBuffer: GPUBuffer,
 ) {
   return device.createBindGroup({
     layout: pipeline.getBindGroupLayout(FIELD_BUFFER_BIND_GROUP_INDEX),
@@ -118,6 +160,10 @@ function createFieldBufferBindGroup(
         binding: FIELD_BUFFER_BINDING,
         resource: { buffer: gpuFieldBuffer },
       },
+      {
+        binding: METRICS_BUFFER_BINDING,
+        resource: { buffer: gpuMetricsBuffer },
+      },
     ],
   });
 }
@@ -125,11 +171,24 @@ function createFieldBufferBindGroup(
 function draw(
   device: GPUDevice,
   context: GPUCanvasContext,
-  pipeline: GPURenderPipeline,
-  fieldBufferBindGroup: GPUBindGroup,
+  computePipeline: GPUComputePipeline,
+  computeBindGroup: GPUBindGroup,
+  renderPipeline: GPURenderPipeline,
+  renderBindGroup: GPUBindGroup,
 ) {
   const commandEncoder = device.createCommandEncoder();
 
+  // Compute pass to calculate metrics
+  const computePassEncoder = commandEncoder.beginComputePass();
+  computePassEncoder.setPipeline(computePipeline);
+  computePassEncoder.setBindGroup(
+    FIELD_BUFFER_BIND_GROUP_INDEX,
+    computeBindGroup,
+  );
+  computePassEncoder.dispatchWorkgroups(1);
+  computePassEncoder.end();
+
+  // Render pass
   const passEncoder = commandEncoder.beginRenderPass({
     colorAttachments: [
       {
@@ -140,8 +199,8 @@ function draw(
       },
     ],
   });
-  passEncoder.setPipeline(pipeline);
-  passEncoder.setBindGroup(FIELD_BUFFER_BIND_GROUP_INDEX, fieldBufferBindGroup);
+  passEncoder.setPipeline(renderPipeline);
+  passEncoder.setBindGroup(FIELD_BUFFER_BIND_GROUP_INDEX, renderBindGroup);
   passEncoder.draw(3);
   passEncoder.end();
 
