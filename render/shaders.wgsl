@@ -33,10 +33,11 @@ struct MetricsBuf {
     bottom: u32,
 };
 
-const METRIC_FLAG_VISIBLE = 0x01;
+const METRIC_FLAG_HAS_TELETEXT      = 0x01;
+const METRIC_FLAG_HAS_HIRES  = 0x02;
 
 /**
- * metrics calculation - compute shader
+ * metrics compute
  */
 
 @compute @workgroup_size(1)
@@ -46,10 +47,15 @@ fn metrics_main() {
 
     for (var line = 0u; line < metrics.num_lines; line++) {
         let visible = get_field_line_byte(line, 0u);
+        let ulaControlRegister = get_field_line_byte(line, 113u);
         if visible != 0u {
-            if (metrics.flags & METRIC_FLAG_VISIBLE) == 0u { // metrics not set yet
-                metrics.flags = metrics.flags | METRIC_FLAG_VISIBLE;
+            if metrics.flags == 0u { // metrics not set yet
                 metrics.top = line;
+            }
+            if (ulaControlRegister & 0x02u) != 0u {
+                metrics.flags |= METRIC_FLAG_HAS_TELETEXT;
+            } else {
+                metrics.flags |= METRIC_FLAG_HAS_HIRES;
             }
 
             metrics.bottom = line + 1;
@@ -94,8 +100,8 @@ fn vertex_main(@builtin(vertex_index) VertexIndex : u32) -> VertexOutput {
 fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
     let y = u32(input.crt.y) + metrics.top;
 
-    if (metrics.flags & METRIC_FLAG_VISIBLE) == 0u {
-        return vec4f(0.5, 0.5, 0.5, 1.0);
+    if metrics.flags != METRIC_FLAG_HAS_HIRES {
+        return vec4f(0.5, 0.0, 0.0, 1.0);
     } else if y < metrics.num_lines {
         let byte = get_field_line_byte(y, 1u + u32(input.crt.x / 640.0 * 100.0));
         if byte > 0 {
