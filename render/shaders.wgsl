@@ -10,10 +10,9 @@
  */
 
 const BYTES_PER_ROW = 122u;
-const MAX_ROWS = 320u;
 
 struct FieldBuf {
-    bytes: array<u32>, // BYTES_PER_ROW * MAX_ROWS / 4u
+    bytes: array<u32>,
 };
 
 fn load_field_byte(idx: u32) -> u32 {
@@ -26,6 +25,7 @@ fn load_field_byte(idx: u32) -> u32 {
  */
 
 struct MetricsBuf {
+    num_rows: u32,
     first_visible_line: u32,
 };
 
@@ -35,9 +35,11 @@ struct MetricsBuf {
 
 @compute @workgroup_size(1)
 fn metrics_main() {
-    var first_visible = MAX_ROWS;
+    metrics.num_rows = arrayLength(&field.bytes) * 4u / BYTES_PER_ROW;
+
+    var first_visible = metrics.num_rows;
     
-    for (var row = 0u; row < MAX_ROWS; row++) {
+    for (var row = 0u; row < metrics.num_rows; row++) {
         let first_byte = load_field_byte(row * BYTES_PER_ROW);
         if (first_byte != 0u) {
             first_visible = row;
@@ -85,7 +87,7 @@ fn vertex_main(@builtin(vertex_index) VertexIndex : u32) -> VertexOutput {
 fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
     let y = u32(input.crt.y) + metrics.first_visible_line;
 
-    if (y < MAX_ROWS) {
+    if (y < metrics.num_rows) {
         let byte = load_field_byte(y * BYTES_PER_ROW + 1u + u32(input.crt.x / 640.0 * 100.0));
         if (byte > 0) {
             return vec4f(0.0, 1.0, 0.0, 1.0);

@@ -9,13 +9,12 @@ interface BufferParams {
   length: number;
 }
 
-const FIELD_BUFFER_BIND_GROUP_INDEX = 0;
+const BIND_GROUP_INDEX = 0;
 const FIELD_BUFFER_BINDING = 0;
 const METRICS_BUFFER_BINDING = 1;
 
-const BYTES_PER_ROW = 122;
-const MAX_ROWS = 320;
-const BUFFER_SIZE = MAX_ROWS * BYTES_PER_ROW;
+const FIELD_BUFFER_BYTES_PER_ROW = 122;
+const METRICS_BUFFER_SIZE = 2 * 4; // two u32 values
 
 export async function initRenderer(
   canvas: HTMLCanvasElement,
@@ -30,8 +29,8 @@ export async function initRenderer(
 
   const shaderModule = device.createShaderModule({ code: shadersWGSL });
 
-  if (sourceFieldBuffer.length !== BUFFER_SIZE) {
-    throw new Error(`Unexpected field buffer size ${sourceFieldBuffer.length}`);
+  if (sourceFieldBuffer.length % FIELD_BUFFER_BYTES_PER_ROW !== 0) {
+    throw new Error(`Not multiple of row size: ${sourceFieldBuffer.length}`);
   }
 
   const gpuFieldBuffer = createGPUBuffer(
@@ -39,7 +38,7 @@ export async function initRenderer(
     sourceFieldBuffer.length,
     true,
   );
-  const gpuMetricsBuffer = createGPUBuffer(device, 4, false);
+  const gpuMetricsBuffer = createGPUBuffer(device, METRICS_BUFFER_SIZE, false);
 
   const computePipeline = createComputePipeline(device, shaderModule);
   const computeBindGroup = createBindGroup(
@@ -133,8 +132,12 @@ function createGPUBuffer(
   bufferLength: number,
   copyDst: boolean,
 ) {
+  if (bufferLength % 4 !== 0) {
+    throw new Error(`Not multiple of 4: ${bufferLength}`);
+  }
+
   return device.createBuffer({
-    size: alignTo(bufferLength, 4),
+    size: bufferLength,
     usage: GPUBufferUsage.STORAGE | (copyDst ? GPUBufferUsage.COPY_DST : 0),
   });
 }
@@ -154,7 +157,7 @@ function createBindGroup(
   gpuMetricsBuffer: GPUBuffer,
 ) {
   return device.createBindGroup({
-    layout: pipeline.getBindGroupLayout(FIELD_BUFFER_BIND_GROUP_INDEX),
+    layout: pipeline.getBindGroupLayout(BIND_GROUP_INDEX),
     entries: [
       {
         binding: FIELD_BUFFER_BINDING,
@@ -181,10 +184,7 @@ function draw(
   // Compute pass to calculate metrics
   const computePassEncoder = commandEncoder.beginComputePass();
   computePassEncoder.setPipeline(computePipeline);
-  computePassEncoder.setBindGroup(
-    FIELD_BUFFER_BIND_GROUP_INDEX,
-    computeBindGroup,
-  );
+  computePassEncoder.setBindGroup(BIND_GROUP_INDEX, computeBindGroup);
   computePassEncoder.dispatchWorkgroups(1);
   computePassEncoder.end();
 
@@ -200,13 +200,9 @@ function draw(
     ],
   });
   passEncoder.setPipeline(renderPipeline);
-  passEncoder.setBindGroup(FIELD_BUFFER_BIND_GROUP_INDEX, renderBindGroup);
+  passEncoder.setBindGroup(BIND_GROUP_INDEX, renderBindGroup);
   passEncoder.draw(3);
   passEncoder.end();
 
   device.queue.submit([commandEncoder.finish()]);
-}
-
-function alignTo(value: number, alignment: number): number {
-  return Math.ceil(value / alignment) * alignment;
 }
