@@ -1,3 +1,14 @@
+/**
+ * bindings
+ */
+
+@group(0) @binding(0) var<storage, read> field : FieldBuf;
+@group(0) @binding(1) var<storage, read_write> metrics : MetricsBuf;
+
+/**
+ * field buffer
+ */
+
 const BYTES_PER_ROW = 122u;
 const MAX_ROWS = 320u;
 
@@ -5,17 +16,22 @@ struct FieldBuf {
     bytes: array<u32>, // BYTES_PER_ROW * MAX_ROWS / 4u
 };
 
-struct MetricsBuf {
-    first_visible_line: u32,
-};
-
-@group(0) @binding(0) var<storage, read> field : FieldBuf;
-@group(0) @binding(1) var<storage, read_write> metrics : MetricsBuf;
-
 fn load_field_byte(idx: u32) -> u32 {
     let word = field.bytes[idx >> 2u];
     return (word >> ((idx & 3u) * 8u)) & 0xffu;
 }
+
+/**
+ * metrics buffer
+ */
+
+struct MetricsBuf {
+    first_visible_line: u32,
+};
+
+/**
+ * metrics calculation - compute shader
+ */
 
 @compute @workgroup_size(1)
 fn metrics_main() {
@@ -32,10 +48,18 @@ fn metrics_main() {
     metrics.first_visible_line = first_visible;
 }
 
+/**
+ * vertex / fragment shared
+ */
+
 struct VertexOutput {
     @builtin(position) position: vec4<f32>,
     @location(0) crt: vec2<f32>,
 }
+
+/**
+ * vertex
+ */
 
 @vertex
 fn vertex_main(@builtin(vertex_index) VertexIndex : u32) -> VertexOutput {
@@ -52,6 +76,10 @@ fn vertex_main(@builtin(vertex_index) VertexIndex : u32) -> VertexOutput {
 
     return output;
 }
+
+/**
+ * fragment - render
+ */
 
 @fragment
 fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
