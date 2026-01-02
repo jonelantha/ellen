@@ -15,9 +15,11 @@ struct FieldBuf {
     bytes: array<u32>,
 };
 
-fn load_field_byte(idx: u32) -> u32 {
+fn get_field_row_byte(row: u32, offset: u32) -> u32 {
+    let idx = row * BYTES_PER_ROW + offset;
+
     let word = field.bytes[idx >> 2u];
-    return (word >> ((idx & 3u) * 8u)) & 0xffu;
+    return (word >> ((idx & 0x3u) * 8u)) & 0xffu;
 }
 
 /**
@@ -40,7 +42,7 @@ fn metrics_main() {
     var first_visible = metrics.num_rows;
     
     for (var row = 0u; row < metrics.num_rows; row++) {
-        let first_byte = load_field_byte(row * BYTES_PER_ROW);
+        let first_byte = get_field_row_byte(row, 0u);
         if (first_byte != 0u) {
             first_visible = row;
             break;
@@ -88,7 +90,7 @@ fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
     let y = u32(input.crt.y) + metrics.first_visible_line;
 
     if (y < metrics.num_rows) {
-        let byte = load_field_byte(y * BYTES_PER_ROW + 1u + u32(input.crt.x / 640.0 * 100.0));
+        let byte = get_field_row_byte(y, 1u + u32(input.crt.x / 640.0 * 100.0));
         if (byte > 0) {
             return vec4f(0.0, 1.0, 0.0, 1.0);
         } else {
