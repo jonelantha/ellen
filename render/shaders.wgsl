@@ -9,14 +9,14 @@
  * field buffer
  */
 
-const BYTES_PER_ROW = 122u;
+const BYTES_PER_LINE = 122u;
 
 struct FieldBuf {
     bytes: array<u32>,
 };
 
-fn get_field_row_byte(row: u32, offset: u32) -> u32 {
-    let idx = row * BYTES_PER_ROW + offset;
+fn get_field_line_byte(line: u32, offset: u32) -> u32 {
+    let idx = line * BYTES_PER_LINE + offset;
 
     let word = field.bytes[idx >> 2u];
     return (word >> ((idx & 0x3u) * 8u)) & 0xffu;
@@ -27,9 +27,13 @@ fn get_field_row_byte(row: u32, offset: u32) -> u32 {
  */
 
 struct MetricsBuf {
-    num_rows: u32,
-    first_visible_line: u32,
+    num_lines: u32,
+    flags: u32,
+    top: u32,
+    bottom: u32,
 };
+
+const METRIC_FLAG_VISIBLE = 0x01;
 
 /**
  * metrics calculation - compute shader
@@ -37,19 +41,20 @@ struct MetricsBuf {
 
 @compute @workgroup_size(1)
 fn metrics_main() {
-    metrics.num_rows = arrayLength(&field.bytes) * 4u / BYTES_PER_ROW;
+    metrics.num_lines = arrayLength(&field.bytes) * 4u / BYTES_PER_LINE;
+    metrics.flags = 0u;
 
-    var first_visible = metrics.num_rows;
-    
-    for (var row = 0u; row < metrics.num_rows; row++) {
-        let first_byte = get_field_row_byte(row, 0u);
-        if (first_byte != 0u) {
-            first_visible = row;
-            break;
+    for (var line = 0u; line < metrics.num_lines; line++) {
+        let visible = get_field_line_byte(line, 0u);
+        if visible != 0u {
+            if (metrics.flags & METRIC_FLAG_VISIBLE) == 0u { // metrics not set yet
+                metrics.flags = metrics.flags | METRIC_FLAG_VISIBLE;
+                metrics.top = line;
+            }
+
+            metrics.bottom = line + 1;
         }
     }
-    
-    metrics.first_visible_line = first_visible;
 }
 
 /**
@@ -87,11 +92,13 @@ fn vertex_main(@builtin(vertex_index) VertexIndex : u32) -> VertexOutput {
 
 @fragment
 fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
-    let y = u32(input.crt.y) + metrics.first_visible_line;
+    let y = u32(input.crt.y) + metrics.top;
 
-    if (y < metrics.num_rows) {
-        let byte = get_field_row_byte(y, 1u + u32(input.crt.x / 640.0 * 100.0));
-        if (byte > 0) {
+    if (metrics.flags & METRIC_FLAG_VISIBLE) == 0u {
+        return vec4f(0.5, 0.5, 0.5, 1.0);
+    } else if y < metrics.num_lines {
+        let byte = get_field_line_byte(y, 1u + u32(input.crt.x / 640.0 * 100.0));
+        if byte > 0 {
             return vec4f(0.0, 1.0, 0.0, 1.0);
         } else {
             return vec4f(1.0, 0.0, 0.0, 1.0);

@@ -13,8 +13,8 @@ const BIND_GROUP_INDEX = 0;
 const FIELD_BUFFER_BINDING = 0;
 const METRICS_BUFFER_BINDING = 1;
 
-const FIELD_BUFFER_BYTES_PER_ROW = 122;
-const METRICS_BUFFER_SIZE = 2 * 4; // two u32 values
+const FIELD_BUFFER_BYTES_PER_LINE = 122;
+const METRICS_BUFFER_SIZE = 4 * 4; // four u32 values
 
 export async function initRenderer(
   canvas: HTMLCanvasElement,
@@ -29,8 +29,8 @@ export async function initRenderer(
 
   const shaderModule = device.createShaderModule({ code: shadersWGSL });
 
-  if (sourceFieldBuffer.length % FIELD_BUFFER_BYTES_PER_ROW !== 0) {
-    throw new Error(`Not multiple of row size: ${sourceFieldBuffer.length}`);
+  if (sourceFieldBuffer.length % FIELD_BUFFER_BYTES_PER_LINE !== 0) {
+    throw new Error(`Not multiple of line size: ${sourceFieldBuffer.length}`);
   }
 
   const gpuFieldBuffer = createGPUBuffer(
