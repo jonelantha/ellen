@@ -10,16 +10,78 @@
  */
 
 const BYTES_PER_LINE = 122u;
+const TELETEXT_DELAY_OFFSET = 36u;
 
 struct FieldBuf {
     bytes: array<u32>,
 };
+
+/**
+ * field buffer helpers
+ */
 
 fn get_field_line_byte(line: u32, offset: u32) -> u32 {
     let idx = line * BYTES_PER_LINE + offset;
 
     let word = field.bytes[idx >> 2u];
     return (word >> ((idx & 0x3u) * 8u)) & 0xffu;
+}
+
+fn calcTeletextEnabled(videoULAControlReg: u32) -> bool {
+    return (videoULAControlReg & 0x02u) != 0u;
+}
+
+fn calcIsHighFreq(videoULAControlReg: u32) -> bool {
+    return (videoULAControlReg & 0x10u) != 0u;
+}
+
+fn calcHPixelsPerChar(videoULAControlReg: u32) -> u32 {
+    if calcTeletextEnabled(videoULAControlReg) {
+        return 12u;
+    } else if calcIsHighFreq(videoULAControlReg) {
+        return 8u;
+    } else {
+        return 16u;
+    }
+}
+
+fn calcDisplayXOffset(isTeletext: bool) -> u32 {
+    if isTeletext {
+        return TELETEXT_DELAY_OFFSET;
+    } else {
+        return 0u;
+    }
+}
+
+fn calcBackPorch(
+    r0_horizontalTotal: u32,
+    r2_horizontalSyncPos: u32,
+    r3_syncWidth: u32,
+) -> u32 {
+    let hSyncWidth = r3_syncWidth & 0x0fu;
+    return r0_horizontalTotal + 1u - (r2_horizontalSyncPos + hSyncWidth);
+}
+
+fn calcBaseLineOffset(
+    r0_horizontalTotal: u32,
+    r2_horizontalSyncPos: u32,
+    r3_syncWidth: u32,
+    videoULAControlReg: u32,
+) -> u32 {
+    let backPorch = calcBackPorch(
+        r0_horizontalTotal,
+        r2_horizontalSyncPos,
+        r3_syncWidth,
+    );
+    let charWidth = calcHPixelsPerChar(videoULAControlReg);
+    return backPorch * charWidth;
+}
+
+fn calcDisplayWidth(
+    r1_horizontalDisplayed: u32,
+    videoULAControlReg: u32,
+) -> u32 {
+    return r1_horizontalDisplayed * calcHPixelsPerChar(videoULAControlReg);
 }
 
 /**
@@ -31,6 +93,8 @@ struct MetricsBuf {
     flags: u32,
     top: u32,
     bottom: u32,
+    min_left: u32,
+    max_right: u32,
 };
 
 const METRIC_FLAG_HAS_TELETEXT      = 0x01;
@@ -44,21 +108,46 @@ const METRIC_FLAG_HAS_HIRES  = 0x02;
 fn metrics_main() {
     metrics.num_lines = arrayLength(&field.bytes) * 4u / BYTES_PER_LINE;
     metrics.flags = 0u;
+    metrics.min_left = 0xFFFFFFFFu;
+    metrics.max_right = 0u;
 
     for (var line = 0u; line < metrics.num_lines; line++) {
         let visible = get_field_line_byte(line, 0u);
-        let ulaControlRegister = get_field_line_byte(line, 113u);
+        let videoULAControlReg = get_field_line_byte(line, 113u);
         if visible != 0u {
             if metrics.flags == 0u { // metrics not set yet
                 metrics.top = line;
             }
-            if (ulaControlRegister & 0x02u) != 0u {
+            let isTeletext = calcTeletextEnabled(videoULAControlReg);
+            
+            if isTeletext {
                 metrics.flags |= METRIC_FLAG_HAS_TELETEXT;
             } else {
                 metrics.flags |= METRIC_FLAG_HAS_HIRES;
             }
 
             metrics.bottom = line + 1;
+
+            let r0_horizontalTotal = get_field_line_byte(line, 104u);
+            let r1_horizontalDisplayed = get_field_line_byte(line, 105u);
+            let r2_horizontalSyncPos = get_field_line_byte(line, 106u);
+            let r3_syncWidth = get_field_line_byte(line, 107u);
+
+            let left = calcBaseLineOffset(
+                r0_horizontalTotal,
+                r2_horizontalSyncPos,
+                r3_syncWidth,
+                videoULAControlReg,
+            );
+            let displayedLeft = left + calcDisplayXOffset(isTeletext);
+            let displayedWidth = calcDisplayWidth(
+                r1_horizontalDisplayed,
+                videoULAControlReg,
+            );
+            let displayedRight = displayedLeft + displayedWidth;
+
+            metrics.min_left = min(metrics.min_left, displayedLeft);
+            metrics.max_right = max(metrics.max_right, displayedRight);
         }
     }
 }
