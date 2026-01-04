@@ -12,13 +12,13 @@
 const BYTES_PER_LINE = 122u;
 const TELETEXT_DELAY_OFFSET = 36u;
 
-const CANVAS_WIDTH: i32 = 640;
-const CANVAS_HEIGHT: i32 = 512;
+const CANVAS_WIDTH = 640u;
+const CANVAS_HEIGHT = 512u;
 
-const TELETEXT_FRAME_WIDTH: i32 = 480;
-const TELETEXT_FRAME_HEIGHT: i32 = 500;
-const NON_TELETEXT_FRAME_WIDTH: i32 = 640;
-const NON_TELETEXT_FRAME_HEIGHT: i32 = 512;
+const TELETEXT_FRAME_WIDTH = 480u;
+const TELETEXT_FRAME_HEIGHT = 500u;
+const NON_TELETEXT_FRAME_WIDTH = 640u;
+const NON_TELETEXT_FRAME_HEIGHT = 512u;
 
 struct FieldBuf {
     bytes: array<u32>,
@@ -67,7 +67,12 @@ fn calc_back_porch(
     r3_sync_width: u32,
 ) -> u32 {
     let h_sync_width = r3_sync_width & 0x0fu;
-    return r0_horizontal_total + 1u - (r2_horizontal_sync_pos + h_sync_width);
+    let sync_end = r2_horizontal_sync_pos + h_sync_width;
+    if sync_end >= r0_horizontal_total + 1 {
+        return 0u;
+    } else {
+        return r0_horizontal_total + 1 - sync_end;
+    }
 }
 
 fn calc_base_line_offset(
@@ -92,41 +97,31 @@ fn calc_display_width(
     return r1_horizontal_displayed * calc_h_pixels_per_char(video_ula_control_reg);
 }
 
-fn get_render_start(first: i32, total_displayed: i32, max_displayed: i32) -> i32 {
+fn get_render_start(first: i32, total_displayed: u32, max_displayed: u32) -> i32 {
     if total_displayed <= max_displayed {
         if first < 0 {
             return 0;
-        } else if first + total_displayed > max_displayed {
-            return max_displayed - total_displayed;
+        } else if first + i32(total_displayed) > i32(max_displayed) {
+            return i32(max_displayed) - i32(total_displayed);
         }
     }
 
     return first;
 }
 
-fn centring_offset(canvas_size: i32, frame_size: i32) -> i32 {
-    return (canvas_size - frame_size) / 2;
+fn centring_offset(canvas_size: u32, frame_size: u32) -> i32 {
+    return (i32(canvas_size) - i32(frame_size)) / 2;
 }
 
 fn calc_metric_x_offset() -> i32 {
     let teletext = (metrics.flags & METRIC_FLAG_HAS_TELETEXT) != 0u;
-    var frame_width: i32;
-    if teletext {
-        frame_width = TELETEXT_FRAME_WIDTH;
-    } else {
-        frame_width = NON_TELETEXT_FRAME_WIDTH;
-    }
-
-    var h_sync_char_width: i32;
-    if teletext {
-        h_sync_char_width = 12;
-    } else {
-        h_sync_char_width = 16;
-    }
+    let frame_width = select(NON_TELETEXT_FRAME_WIDTH, TELETEXT_FRAME_WIDTH, teletext);
+    
+    let h_sync_char_width = select(16, 12, teletext);
 
     let h_sync_left_border: i32 = 11 * h_sync_char_width;
     let min_left = i32(metrics.min_left);
-    let displayed_width = i32(metrics.max_right - metrics.min_left);
+    let displayed_width = metrics.max_right - metrics.min_left;
     let render_start = get_render_start(
         min_left - h_sync_left_border,
         displayed_width,
@@ -139,17 +134,13 @@ fn calc_metric_x_offset() -> i32 {
 
 fn calc_metric_y_offset() -> i32 {
     let teletext = (metrics.flags & METRIC_FLAG_HAS_TELETEXT) != 0u;
-    var frame_height: i32;
-    if teletext {
-        frame_height = TELETEXT_FRAME_HEIGHT;
-    } else {
-        frame_height = NON_TELETEXT_FRAME_HEIGHT;
-    }
+    let frame_height = select(NON_TELETEXT_FRAME_HEIGHT, TELETEXT_FRAME_HEIGHT, teletext);
+    
     let v_sync_top_border = 31;
     let top = i32(metrics.top);
     let render_start = get_render_start(
         (top - v_sync_top_border) * 2,
-        i32(metrics.bottom - metrics.top) * 2,
+        (metrics.bottom - metrics.top) * 2,
         frame_height,
     );
     let centre = centring_offset(CANVAS_HEIGHT, frame_height);
@@ -183,30 +174,16 @@ const METRIC_FLAG_HAS_HIRES     = 0x02;
 fn metrics_main() {
     metrics.num_lines = arrayLength(&field.bytes) * 4u / BYTES_PER_LINE;
     metrics.flags = 0u;
-    metrics.min_left = 0xFFFFFFFFu;
-    metrics.max_right = 0u;
-
+    
     for (var line = 0u; line < metrics.num_lines; line++) {
         let visible = get_field_line_byte(line, 0u);
         let video_ula_control_reg = get_field_line_byte(line, 113u);
         if visible != 0u {
-            if metrics.flags == 0u { // metrics not set yet
-                metrics.top = line;
-            }
-            let is_teletext = calc_teletext_enabled(video_ula_control_reg);
-            
-            if is_teletext {
-                metrics.flags |= METRIC_FLAG_HAS_TELETEXT;
-            } else {
-                metrics.flags |= METRIC_FLAG_HAS_HIRES;
-            }
-
-            metrics.bottom = line + 1;
-
             let r0_horizontal_total = get_field_line_byte(line, 104u);
             let r1_horizontal_displayed = get_field_line_byte(line, 105u);
             let r2_horizontal_sync_pos = get_field_line_byte(line, 106u);
             let r3_sync_width = get_field_line_byte(line, 107u);
+            let is_teletext = calc_teletext_enabled(video_ula_control_reg);
 
             let left = calc_base_line_offset(
                 r0_horizontal_total,
@@ -221,8 +198,22 @@ fn metrics_main() {
             );
             let displayed_right = displayed_left + displayed_width;
 
-            metrics.min_left = min(metrics.min_left, displayed_left);
-            metrics.max_right = max(metrics.max_right, displayed_right);
+            if metrics.flags == 0u { // metrics not set yet
+                metrics.top = line;
+
+                metrics.min_left = displayed_left;
+                metrics.max_right = displayed_right;
+            } else {
+                metrics.min_left = min(metrics.min_left, displayed_left);
+                metrics.max_right = max(metrics.max_right, displayed_right);
+            }
+            metrics.bottom = line + 1;
+
+            if is_teletext {
+                metrics.flags |= METRIC_FLAG_HAS_TELETEXT;
+            } else {
+                metrics.flags |= METRIC_FLAG_HAS_HIRES;
+            }
         }
     }
 
@@ -272,7 +263,7 @@ fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
     if metrics.flags != METRIC_FLAG_HAS_HIRES {
         return vec4f(0.5, 0.0, 0.0, 1.0);
     } else if y < metrics.num_lines {
-        let byte = get_field_line_byte(y, 1u + u32(input.crt.x / 640.0 * 100.0));
+        let byte = get_field_line_byte(y, 1u + u32(input.crt.x / f32(CANVAS_WIDTH) * 100.0));
         if byte > 0 {
             return vec4f(0.0, 1.0, 0.0, 1.0);
         } else {
