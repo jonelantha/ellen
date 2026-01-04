@@ -12,6 +12,14 @@
 const BYTES_PER_LINE = 122u;
 const TELETEXT_DELAY_OFFSET = 36u;
 
+const CANVAS_WIDTH: i32 = 640;
+const CANVAS_HEIGHT: i32 = 512;
+
+const TELETEXT_FRAME_WIDTH: i32 = 480;
+const TELETEXT_FRAME_HEIGHT: i32 = 500;
+const NON_TELETEXT_FRAME_WIDTH: i32 = 640;
+const NON_TELETEXT_FRAME_HEIGHT: i32 = 512;
+
 struct FieldBuf {
     bytes: array<u32>,
 };
@@ -84,6 +92,71 @@ fn calc_display_width(
     return r1_horizontal_displayed * calc_h_pixels_per_char(video_ula_control_reg);
 }
 
+fn get_render_start(first: i32, total_displayed: i32, max_displayed: i32) -> i32 {
+    if total_displayed <= max_displayed {
+        if first < 0 {
+            return 0;
+        } else if first + total_displayed > max_displayed {
+            return max_displayed - total_displayed;
+        }
+    }
+
+    return first;
+}
+
+fn centring_offset(canvas_size: i32, frame_size: i32) -> i32 {
+    return (canvas_size - frame_size) / 2;
+}
+
+fn calc_metric_x_offset() -> i32 {
+    let teletext = (metrics.flags & METRIC_FLAG_HAS_TELETEXT) != 0u;
+    var frame_width: i32;
+    if teletext {
+        frame_width = TELETEXT_FRAME_WIDTH;
+    } else {
+        frame_width = NON_TELETEXT_FRAME_WIDTH;
+    }
+
+    var h_sync_char_width: i32;
+    if teletext {
+        h_sync_char_width = 12;
+    } else {
+        h_sync_char_width = 16;
+    }
+
+    let h_sync_left_border: i32 = 11 * h_sync_char_width;
+    let min_left = i32(metrics.min_left);
+    let displayed_width = i32(metrics.max_right - metrics.min_left);
+    let render_start = get_render_start(
+        min_left - h_sync_left_border,
+        displayed_width,
+        frame_width,
+    );
+    let centre = centring_offset(CANVAS_WIDTH, frame_width);
+
+    return -min_left + render_start + centre;
+}
+
+fn calc_metric_y_offset() -> i32 {
+    let teletext = (metrics.flags & METRIC_FLAG_HAS_TELETEXT) != 0u;
+    var frame_height: i32;
+    if teletext {
+        frame_height = TELETEXT_FRAME_HEIGHT;
+    } else {
+        frame_height = NON_TELETEXT_FRAME_HEIGHT;
+    }
+    let v_sync_top_border = 31;
+    let top = i32(metrics.top);
+    let render_start = get_render_start(
+        (top - v_sync_top_border) * 2,
+        i32(metrics.bottom - metrics.top) * 2,
+        frame_height,
+    );
+    let centre = centring_offset(CANVAS_HEIGHT, frame_height);
+
+    return -top * 2 + render_start + centre;
+}
+
 /**
  * metrics buffer
  */
@@ -95,6 +168,8 @@ struct MetricsBuf {
     bottom: u32,
     min_left: u32,
     max_right: u32,
+    x_offset: i32,
+    y_offset: i32,
 };
 
 const METRIC_FLAG_HAS_TELETEXT  = 0x01;
@@ -149,6 +224,11 @@ fn metrics_main() {
             metrics.min_left = min(metrics.min_left, displayed_left);
             metrics.max_right = max(metrics.max_right, displayed_right);
         }
+    }
+
+    if metrics.flags != 0u {
+        metrics.x_offset = calc_metric_x_offset();
+        metrics.y_offset = calc_metric_y_offset();
     }
 }
 

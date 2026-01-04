@@ -14,7 +14,7 @@ const FIELD_BUFFER_BINDING = 0;
 const METRICS_BUFFER_BINDING = 1;
 
 const FIELD_BUFFER_BYTES_PER_LINE = 122;
-const METRICS_BUFFER_SIZE = 6 * 4; // six u32 values
+const METRICS_BUFFER_SIZE = 8 * 4; // eight 32-bit values
 
 export async function initRenderer(
   canvas: HTMLCanvasElement,
