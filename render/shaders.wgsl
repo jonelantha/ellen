@@ -176,13 +176,13 @@ fn metrics_main() {
     metrics.flags = 0u;
     
     for (var line = 0u; line < metrics.num_lines; line++) {
-        let visible = get_field_line_byte(line, 0u);
-        let video_ula_control_reg = get_field_line_byte(line, 113u);
-        if visible != 0u {
+        let line_type = get_field_line_byte(line, 0u);
+        if line_type != 0u {
             let r0_horizontal_total = get_field_line_byte(line, 104u);
             let r1_horizontal_displayed = get_field_line_byte(line, 105u);
             let r2_horizontal_sync_pos = get_field_line_byte(line, 106u);
             let r3_sync_width = get_field_line_byte(line, 107u);
+            let video_ula_control_reg = get_field_line_byte(line, 113u);
             let is_teletext = calc_teletext_enabled(video_ula_control_reg);
 
             let left = calc_base_line_offset(
@@ -258,18 +258,65 @@ fn vertex_main(@builtin(vertex_index) VertexIndex : u32) -> VertexOutput {
 
 @fragment
 fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
-    let y = u32(input.crt.y) + metrics.top;
-
+    
     if metrics.flags != METRIC_FLAG_HAS_HIRES {
         return vec4f(0.5, 0.0, 0.0, 1.0);
-    } else if y < metrics.num_lines {
-        let byte = get_field_line_byte(y, 1u + u32(input.crt.x / f32(CANVAS_WIDTH) * 100.0));
-        if byte > 0 {
-            return vec4f(0.0, 1.0, 0.0, 1.0);
-        } else {
-            return vec4f(1.0, 0.0, 0.0, 1.0);
-        }
-    } else {
-        return vec4f(0.0, 0.0, 1.0, 1.0);
     }
+
+    let y = (i32(input.crt.y) - metrics.y_offset) / 2;
+    if y < 0 || y >= i32(metrics.num_lines) {
+        return vec4f(0.0, 0.0, 0.0, 1.0);
+    }
+
+    let line= u32(y);
+    let line_type = get_field_line_byte(line, 0u);
+    if line_type == 0u {
+        return vec4f(0.0, 0.0, 0.0, 1.0);
+    }
+
+    if line_type != 1u {
+        // cursor could be visible
+        return vec4f(0.0, 1.0, 0.0, 1.0);
+    }
+
+    let offset = get_field_line_offset(line, u32(input.crt.x));
+    if offset < 0 {
+        return vec4f(0.0, 0.0, 0.0, 1.0);
+    }
+
+    let byte = get_field_line_byte(line, u32(offset));
+    if byte > 0 {
+        return vec4f(0.0, 1.0, 0.0, 1.0);
+    } else {
+        return vec4f(1.0, 0.0, 0.0, 1.0);
+    }
+}
+
+fn get_field_line_offset(line: u32, crt_x: u32) -> i32 {
+    let r0_horizontal_total = get_field_line_byte(line, 104u);
+    let r1_horizontalDisplayed = get_field_line_byte(line, 105u);
+    let r2_horizontal_sync_pos = get_field_line_byte(line, 106u);
+    let r3_sync_width = get_field_line_byte(line, 107u);
+    let video_ula_control_reg = get_field_line_byte(line, 113u);
+
+    let left = calc_base_line_offset(
+        r0_horizontal_total,
+        r2_horizontal_sync_pos,
+        r3_sync_width,
+        video_ula_control_reg,
+    );
+
+    let x = i32(crt_x) - metrics.x_offset - i32(left);
+
+    if x < 0 {
+        return -1;
+    }
+    let char_width = select(16u, 8u, calc_is_high_freq(video_ula_control_reg));
+    
+    let offset = 1u + u32(x) / char_width;
+    if offset >= r1_horizontalDisplayed + 1u {
+        return -2;
+    }
+
+    return i32(offset);
 }
