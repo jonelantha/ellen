@@ -35,12 +35,34 @@ fn get_field_line_byte(line: u32, offset: u32) -> u32 {
     return (word >> ((idx & 0x3u) * 8u)) & 0xffu;
 }
 
+fn get_field_line_u32(line: u32, offset: u32) -> u32 {
+    return (get_field_line_byte(line, offset) << 0u) |
+           (get_field_line_byte(line, offset + 1u) << 8u) |
+           (get_field_line_byte(line, offset + 2u) << 16u) |
+           (get_field_line_byte(line, offset + 3u) << 24u);
+}
+
 fn calc_teletext_enabled(video_ula_control_reg: u32) -> bool {
     return (video_ula_control_reg & 0x02u) != 0u;
 }
 
 fn calc_is_high_freq(video_ula_control_reg: u32) -> bool {
     return (video_ula_control_reg & 0x10u) != 0u;
+}
+
+fn calc_num_colours(video_ula_control_reg: u32) -> u32 {
+    let idx = (video_ula_control_reg & 0x1cu) >> 2u;
+    let lookup = array<u32, 8>(
+        16u,
+        4u,
+        2u,
+        0u,
+        0u,
+        16u,
+        4u,
+        2u,
+    );
+    return lookup[idx];
 }
 
 fn calc_h_pixels_per_char(video_ula_control_reg: u32) -> u32 {
@@ -253,6 +275,77 @@ fn vertex_main(@builtin(vertex_index) VertexIndex : u32) -> VertexOutput {
 }
 
 /**
+ * fragment - helpers
+ */
+
+fn extract_palette_index_4col(byte_val: u32, pixel_in_byte: u32) -> u32 {
+    switch pixel_in_byte {
+        case 0u: {
+            // bits 7,5,3,1
+            return ((byte_val & 0x80u) >> 4u) |
+                   ((byte_val & 0x20u) >> 3u) |
+                   ((byte_val & 0x08u) >> 2u) |
+                   ((byte_val & 0x02u) >> 1u);
+        }
+        case 1u: {
+            // bits 6,4,2,0
+            return ((byte_val & 0x40u) >> 3u) |
+                   ((byte_val & 0x10u) >> 2u) |
+                   ((byte_val & 0x04u) >> 1u) |
+                   (byte_val & 0x01u);
+        }
+        case 2u: {
+            // bits 5,3,1,H (H=1)
+            return ((byte_val & 0x20u) >> 2u) |
+                   ((byte_val & 0x08u) >> 1u) |
+                   ((byte_val & 0x02u) >> 0u) |
+                   1u;
+        }
+        default: { // 3u
+            // bits 4,2,0,H (H=1)
+            return ((byte_val & 0x10u) >> 1u) |
+                   ((byte_val & 0x04u) >> 0u) |
+                   ((byte_val & 0x01u) << 1u) |
+                   1u;
+        }
+    }
+}
+
+fn get_color_from_paletteindex(palette_lo: u32, palette_hi: u32, palette_idx: u32, flash: bool) -> vec3f {
+    let palette_val = select(
+        (palette_lo >> (palette_idx * 4u)) & 0x0fu,
+        (palette_hi >> ((palette_idx - 8u) * 4u)) & 0x0fu,
+        palette_idx >= 8u
+    );
+    
+    var color_idx = palette_val;
+    
+    // Handle flashing colors (values >= 8)
+    if color_idx > 7u {
+        color_idx &= 7u;
+        // If flash bit is set (bit 0 of control register), invert
+        if flash {
+            color_idx ^= 7u;
+        }
+    }
+
+    return color_to_rgb(color_idx);
+}
+
+fn color_to_rgb(color_idx: u32) -> vec3f {
+    switch color_idx {
+        case 0u: { return vec3f(0.0, 0.0, 0.0); }      // Black
+        case 1u: { return vec3f(1.0, 0.0, 0.0); }      // Red
+        case 2u: { return vec3f(0.0, 1.0, 0.0); }      // Green
+        case 3u: { return vec3f(1.0, 1.0, 0.0); }      // Yellow
+        case 4u: { return vec3f(0.0, 0.0, 1.0); }      // Blue
+        case 5u: { return vec3f(1.0, 0.0, 1.0); }      // Magenta
+        case 6u: { return vec3f(0.0, 1.0, 1.0); }      // Cyan
+        default: { return vec3f(1.0, 1.0, 1.0); }      // White
+    }
+}
+
+/**
  * fragment - render
  */
 
@@ -265,7 +358,7 @@ fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
 
     let y = (i32(input.crt.y) - metrics.y_offset) / 2;
     if y < 0 || y >= i32(metrics.num_lines) {
-        return vec4f(0.0, 0.0, 0.0, 1.0);
+        return vec4f(0.0, 0.0, 1.0, 1.0);
     }
 
     let line= u32(y);
@@ -279,22 +372,49 @@ fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
         return vec4f(0.0, 1.0, 0.0, 1.0);
     }
 
-    let offset = get_field_line_offset(line, u32(input.crt.x));
-    if offset < 0 {
+    let byte_index_and_pixel = get_byte_index_and_pixel(line, u32(input.crt.x));
+    if byte_index_and_pixel.byte_index < 0 {
         return vec4f(0.0, 0.0, 0.0, 1.0);
     }
 
-    let byte = get_field_line_byte(line, u32(offset));
-    if byte > 0 {
-        return vec4f(0.0, 1.0, 0.0, 1.0);
+    let video_ula_control_reg = get_field_line_byte(line, 113u);
+    let num_cols = calc_num_colours(video_ula_control_reg);
+    let is_high_freq = calc_is_high_freq(video_ula_control_reg);
+        
+    let byte = get_field_line_byte(line, u32(byte_index_and_pixel.byte_index) + 1u);
+    
+    if num_cols == 4u && !is_high_freq {
+        
+        // Extract palette index for this pixel
+        let palette_idx = extract_palette_index_4col(byte, byte_index_and_pixel.pixel / 4u);
+        
+        // Pack into two u32 values for 16 palette entries of 4 bits each
+        let palette_lo = get_field_line_u32(line, 114u);
+        let palette_hi = get_field_line_u32(line, 118u);
+        
+        let flash = (video_ula_control_reg & 1u) != 0u;
+
+        // Get color from palette
+        let rgb = get_color_from_paletteindex(palette_lo, palette_hi, palette_idx, flash);
+        
+        return vec4f(rgb, 1.0);
     } else {
-        return vec4f(1.0, 0.0, 0.0, 1.0);
+        if byte > 0 {
+            return vec4f(0.0, 1.0, 0.0, 1.0);
+        } else {
+            return vec4f(1.0, 0.0, 0.0, 1.0);
+        }
     }
 }
 
-fn get_field_line_offset(line: u32, crt_x: u32) -> i32 {
+struct ByteIndexAndPixel {
+    byte_index: i32,     // negative values indicate failure
+    pixel: u32,
+}
+
+fn get_byte_index_and_pixel(line: u32, crt_x: u32) -> ByteIndexAndPixel {
     let r0_horizontal_total = get_field_line_byte(line, 104u);
-    let r1_horizontalDisplayed = get_field_line_byte(line, 105u);
+    let r1_horizontal_displayed = get_field_line_byte(line, 105u);
     let r2_horizontal_sync_pos = get_field_line_byte(line, 106u);
     let r3_sync_width = get_field_line_byte(line, 107u);
     let video_ula_control_reg = get_field_line_byte(line, 113u);
@@ -309,14 +429,16 @@ fn get_field_line_offset(line: u32, crt_x: u32) -> i32 {
     let x = i32(crt_x) - metrics.x_offset - i32(left);
 
     if x < 0 {
-        return -1;
+        return ByteIndexAndPixel(-1, 0u);
     }
     let char_width = select(16u, 8u, calc_is_high_freq(video_ula_control_reg));
     
-    let offset = 1u + u32(x) / char_width;
-    if offset >= r1_horizontalDisplayed + 1u {
-        return -2;
+    let byte_index = u32(x) / char_width;
+    let pixel = u32(x) % char_width;
+    
+    if byte_index >= r1_horizontal_displayed {
+        return ByteIndexAndPixel(-2, 0u);
     }
 
-    return i32(offset);
+    return ByteIndexAndPixel(i32(byte_index), pixel);
 }
