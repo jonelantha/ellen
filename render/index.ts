@@ -11,10 +11,11 @@ interface BufferParams {
 
 const BIND_GROUP_INDEX = 0;
 const FIELD_BUFFER_BINDING = 0;
-const METRICS_BUFFER_BINDING = 1;
+const LINE_METRICS_BUFFER_BINDING = 1;
+const FRAME_METRICS_BUFFER_BINDING = 2;
 
 const FIELD_BUFFER_BYTES_PER_LINE = 122;
-const METRICS_BUFFER_SIZE = 8 * 4; // eight 32-bit values
+const FRAME_METRICS_BUFFER_SIZE = 8 * 4; // eight 32-bit values
 
 export async function initRenderer(
   canvas: HTMLCanvasElement,
@@ -33,19 +34,31 @@ export async function initRenderer(
     throw new Error(`Not multiple of line size: ${sourceFieldBuffer.length}`);
   }
 
+  const numLines = sourceFieldBuffer.length / FIELD_BUFFER_BYTES_PER_LINE;
+
   const gpuFieldBuffer = createGPUBuffer(
     device,
     sourceFieldBuffer.length,
     true,
   );
-  const gpuMetricsBuffer = createGPUBuffer(device, METRICS_BUFFER_SIZE, false);
+  const gpuLineMetricsBuffer = createGPUBuffer(
+    device,
+    numLines * 8, // 8 bytes per LineMetrics struct
+    false,
+  );
+  const gpuFrameMetricsBuffer = createGPUBuffer(
+    device,
+    FRAME_METRICS_BUFFER_SIZE,
+    false,
+  );
 
   const computePipeline = createComputePipeline(device, shaderModule);
   const computeBindGroup = createBindGroup(
     device,
     computePipeline,
     gpuFieldBuffer,
-    gpuMetricsBuffer,
+    gpuLineMetricsBuffer,
+    gpuFrameMetricsBuffer,
   );
 
   const renderPipeline = createRenderPipeline(device, shaderModule);
@@ -53,7 +66,8 @@ export async function initRenderer(
     device,
     renderPipeline,
     gpuFieldBuffer,
-    gpuMetricsBuffer,
+    gpuLineMetricsBuffer,
+    gpuFrameMetricsBuffer,
   );
 
   return function renderFrame() {
@@ -154,7 +168,8 @@ function createBindGroup(
   device: GPUDevice,
   pipeline: GPURenderPipeline | GPUComputePipeline,
   gpuFieldBuffer: GPUBuffer,
-  gpuMetricsBuffer: GPUBuffer,
+  gpuLineMetricsBuffer: GPUBuffer,
+  gpuFrameMetricsBuffer: GPUBuffer,
 ) {
   return device.createBindGroup({
     layout: pipeline.getBindGroupLayout(BIND_GROUP_INDEX),
@@ -164,8 +179,12 @@ function createBindGroup(
         resource: { buffer: gpuFieldBuffer },
       },
       {
-        binding: METRICS_BUFFER_BINDING,
-        resource: { buffer: gpuMetricsBuffer },
+        binding: LINE_METRICS_BUFFER_BINDING,
+        resource: { buffer: gpuLineMetricsBuffer },
+      },
+      {
+        binding: FRAME_METRICS_BUFFER_BINDING,
+        resource: { buffer: gpuFrameMetricsBuffer },
       },
     ],
   });
