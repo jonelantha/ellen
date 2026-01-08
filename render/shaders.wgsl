@@ -35,13 +35,6 @@ fn get_field_line_byte(line: u32, offset: u32) -> u32 {
     return (word >> ((idx & 0x3u) * 8u)) & 0xffu;
 }
 
-fn get_field_line_u32(line: u32, offset: u32) -> u32 {
-    return (get_field_line_byte(line, offset) << 0u) |
-           (get_field_line_byte(line, offset + 1u) << 8u) |
-           (get_field_line_byte(line, offset + 2u) << 16u) |
-           (get_field_line_byte(line, offset + 3u) << 24u);
-}
-
 fn calc_teletext_enabled(video_ula_control_reg: u32) -> bool {
     return (video_ula_control_reg & 0x02u) != 0u;
 }
@@ -311,29 +304,35 @@ fn extract_palette_index_4col(byte_val: u32, pixel_in_byte: u32) -> u32 {
     }
 }
 
-fn get_color_from_paletteindex(palette_lo: u32, palette_hi: u32, palette_idx: u32, flash: bool) -> vec3f {
-    let palette_val = select(
-        (palette_lo >> (palette_idx * 4u)) & 0x0fu,
-        (palette_hi >> ((palette_idx - 8u) * 4u)) & 0x0fu,
-        palette_idx >= 8u
-    );
+fn get_colour_index_from_palette_index(line: u32, palette_idx: u32, flash: bool) -> u32 {
+    let byte_offset = 114u + (palette_idx >> 1u);
+    let byte_val = get_field_line_byte(line, byte_offset);
     
-    var color_idx = palette_val;
-    
-    // Handle flashing colors (values >= 8)
-    if color_idx > 7u {
-        color_idx &= 7u;
-        // If flash bit is set (bit 0 of control register), invert
-        if flash {
-            color_idx ^= 7u;
-        }
+    var colour_idx: u32;
+    if (palette_idx & 1u) == 0u {
+        colour_idx = byte_val & 0x0fu;
+    } else {
+        colour_idx = (byte_val >> 4u) & 0x0fu;
     }
 
-    return color_to_rgb(color_idx);
+    if colour_idx > 7u {
+        colour_idx &= 7u;
+
+        if flash { colour_idx ^= 7u; }
+    }
+
+    return colour_idx;
 }
 
-fn color_to_rgb(color_idx: u32) -> vec3f {
-    switch color_idx {
+
+fn get_colour_from_palette_index(line: u32, palette_idx: u32, flash: bool) -> vec3f {
+    let colour_idx = get_colour_index_from_palette_index(line, palette_idx, flash);
+
+    return colour_idx_to_rgb(colour_idx);
+}
+
+fn colour_idx_to_rgb(colour_idx: u32) -> vec3f {
+    switch colour_idx {
         case 0u: { return vec3f(0.0, 0.0, 0.0); }      // Black
         case 1u: { return vec3f(1.0, 0.0, 0.0); }      // Red
         case 2u: { return vec3f(0.0, 1.0, 0.0); }      // Green
@@ -388,14 +387,10 @@ fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
         // Extract palette index for this pixel
         let palette_idx = extract_palette_index_4col(byte, byte_index_and_pixel.pixel / 4u);
         
-        // Pack into two u32 values for 16 palette entries of 4 bits each
-        let palette_lo = get_field_line_u32(line, 114u);
-        let palette_hi = get_field_line_u32(line, 118u);
-        
         let flash = (video_ula_control_reg & 1u) != 0u;
 
-        // Get color from palette
-        let rgb = get_color_from_paletteindex(palette_lo, palette_hi, palette_idx, flash);
+        // Get colour from palette
+        let rgb = get_colour_from_palette_index(line, palette_idx, flash);
         
         return vec4f(rgb, 1.0);
     } else {
