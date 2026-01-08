@@ -193,10 +193,9 @@ const METRIC_FLAG_HAS_HIRES     = 0x02;
 
 @compute @workgroup_size(1)
 fn metrics_main() {
-    frame_metrics.num_lines = arrayLength(&field.bytes) * 4u / BYTES_PER_LINE;
-    frame_metrics.flags = 0u;
+    let num_lines = arrayLength(&field.bytes) * 4u / BYTES_PER_LINE;
 
-    for (var line = 0u; line < frame_metrics.num_lines; line++) {
+    for (var line = 0u; line < num_lines; line++) {
         let r0_horizontal_total = get_field_line_byte(line, 104u);
         let r1_horizontal_displayed = get_field_line_byte(line, 105u);
         let r2_horizontal_sync_pos = get_field_line_byte(line, 106u);
@@ -218,12 +217,14 @@ fn metrics_main() {
         line_metrics.lines[line] = LineMetrics(left, width);
     }
     
-    var top: u32 = 0u;
-    var bottom: u32 = 0u;
+    var min_top: u32 = 0u;
+    var max_bottom: u32 = 0u;
     var min_left: u32 = 0u;
     var max_right: u32 = 0u;
+    var has_teletext_row: bool = false;
+    var has_hires_row: bool = false;
     
-    for (var line = 0u; line < frame_metrics.num_lines; line++) {
+    for (var line = 0u; line < num_lines; line++) {
         let line_type = get_field_line_byte(line, 0u);
         if line_type != 0u {
             let video_ula_control_reg = get_field_line_byte(line, 113u);
@@ -234,28 +235,31 @@ fn metrics_main() {
             let width = line_metrics.lines[line].width;
             let displayed_right = displayed_left + width;
 
-            if frame_metrics.flags == 0u { // frame metrics not set yet
-                top = line;
-
+            if !has_teletext_row && !has_hires_row {
+                min_top = line;
                 min_left = displayed_left;
                 max_right = displayed_right;
             } else {
                 min_left = min(min_left, displayed_left);
                 max_right = max(max_right, displayed_right);
             }
-            bottom = line + 1;
+            max_bottom = line + 1;
 
             if is_teletext {
-                frame_metrics.flags |= METRIC_FLAG_HAS_TELETEXT;
+                has_teletext_row = true;
             } else {
-                frame_metrics.flags |= METRIC_FLAG_HAS_HIRES;
+                has_hires_row = true;
             }
         }
     }
 
-    if frame_metrics.flags != 0u {
+    frame_metrics.num_lines = num_lines;
+    frame_metrics.flags = select(0u, METRIC_FLAG_HAS_TELETEXT, has_teletext_row) |
+                          select(0u, METRIC_FLAG_HAS_HIRES, has_hires_row);
+
+    if has_teletext_row || has_hires_row {
         frame_metrics.x_offset = calc_metric_x_offset(min_left, max_right, frame_metrics.flags);
-        frame_metrics.y_offset = calc_metric_y_offset(top, bottom, frame_metrics.flags);
+        frame_metrics.y_offset = calc_metric_y_offset(min_top, max_bottom, frame_metrics.flags);
     }
 }
 
