@@ -129,39 +129,39 @@ fn centring_offset(canvas_size: u32, frame_size: u32) -> i32 {
     return (i32(canvas_size) - i32(frame_size)) / 2;
 }
 
-fn calc_metric_x_offset() -> i32 {
-    let teletext = (frame_metrics.flags & METRIC_FLAG_HAS_TELETEXT) != 0u;
+fn calc_metric_x_offset(min_left: u32, max_right: u32, flags: u32) -> i32 {
+    let teletext = (flags & METRIC_FLAG_HAS_TELETEXT) != 0u;
     let frame_width = select(NON_TELETEXT_FRAME_WIDTH, TELETEXT_FRAME_WIDTH, teletext);
     
     let h_sync_char_width = select(16, 12, teletext);
 
     let h_sync_left_border: i32 = 11 * h_sync_char_width;
-    let min_left = i32(frame_metrics.min_left);
-    let displayed_width = frame_metrics.max_right - frame_metrics.min_left;
+    let min_left_i32 = i32(min_left);
+    let displayed_width = max_right - min_left;
     let render_start = get_render_start(
-        min_left - h_sync_left_border,
+        min_left_i32 - h_sync_left_border,
         displayed_width,
         frame_width,
     );
     let centre = centring_offset(CANVAS_WIDTH, frame_width);
 
-    return -min_left + render_start + centre;
+    return -min_left_i32 + render_start + centre;
 }
 
-fn calc_metric_y_offset() -> i32 {
-    let teletext = (frame_metrics.flags & METRIC_FLAG_HAS_TELETEXT) != 0u;
+fn calc_metric_y_offset(top: u32, bottom: u32, flags: u32) -> i32 {
+    let teletext = (flags & METRIC_FLAG_HAS_TELETEXT) != 0u;
     let frame_height = select(NON_TELETEXT_FRAME_HEIGHT, TELETEXT_FRAME_HEIGHT, teletext);
     
     let v_sync_top_border = 31;
-    let top = i32(frame_metrics.top);
+    let top_i32 = i32(top);
     let render_start = get_render_start(
-        (top - v_sync_top_border) * 2,
-        (frame_metrics.bottom - frame_metrics.top) * 2,
+        (top_i32 - v_sync_top_border) * 2,
+        (bottom - top) * 2,
         frame_height,
     );
     let centre = centring_offset(CANVAS_HEIGHT, frame_height);
 
-    return -top * 2 + render_start + centre;
+    return -top_i32 * 2 + render_start + centre;
 }
 
 /**
@@ -180,10 +180,6 @@ struct LineMetricsBuf {
 struct FrameMetricsBuf {
     num_lines: u32,
     flags: u32,
-    top: u32,
-    bottom: u32,
-    min_left: u32,
-    max_right: u32,
     x_offset: i32,
     y_offset: i32,
 };
@@ -222,6 +218,11 @@ fn metrics_main() {
         line_metrics.lines[line] = LineMetrics(left, width);
     }
     
+    var top: u32 = 0u;
+    var bottom: u32 = 0u;
+    var min_left: u32 = 0u;
+    var max_right: u32 = 0u;
+    
     for (var line = 0u; line < frame_metrics.num_lines; line++) {
         let line_type = get_field_line_byte(line, 0u);
         if line_type != 0u {
@@ -234,15 +235,15 @@ fn metrics_main() {
             let displayed_right = displayed_left + width;
 
             if frame_metrics.flags == 0u { // frame metrics not set yet
-                frame_metrics.top = line;
+                top = line;
 
-                frame_metrics.min_left = displayed_left;
-                frame_metrics.max_right = displayed_right;
+                min_left = displayed_left;
+                max_right = displayed_right;
             } else {
-                frame_metrics.min_left = min(frame_metrics.min_left, displayed_left);
-                frame_metrics.max_right = max(frame_metrics.max_right, displayed_right);
+                min_left = min(min_left, displayed_left);
+                max_right = max(max_right, displayed_right);
             }
-            frame_metrics.bottom = line + 1;
+            bottom = line + 1;
 
             if is_teletext {
                 frame_metrics.flags |= METRIC_FLAG_HAS_TELETEXT;
@@ -253,8 +254,8 @@ fn metrics_main() {
     }
 
     if frame_metrics.flags != 0u {
-        frame_metrics.x_offset = calc_metric_x_offset();
-        frame_metrics.y_offset = calc_metric_y_offset();
+        frame_metrics.x_offset = calc_metric_x_offset(min_left, max_right, frame_metrics.flags);
+        frame_metrics.y_offset = calc_metric_y_offset(top, bottom, frame_metrics.flags);
     }
 }
 
