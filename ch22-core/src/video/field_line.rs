@@ -143,6 +143,7 @@ fn copy_into_stride_8(
     new_length
 }
 
+#[repr(u8)]
 #[derive(Clone, Copy)]
 pub enum FieldLineType {
     OutOfScan = 0,
