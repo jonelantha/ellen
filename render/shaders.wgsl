@@ -182,6 +182,7 @@ fn is_high_freq(video_ula_control_reg: u32) -> bool {
     return (video_ula_control_reg & 0x10u) != 0u;
 }
 
+// Advanced User Guide 204 onwards
 const ULA_CONTROL_NUM_COLOURS: array<u32, 8> = array<u32, 8>(16u, 4u, 2u, 0u, 0u, 16u, 4u, 2u);
 
 fn num_colours(video_ula_control_reg: u32) -> u32 {
