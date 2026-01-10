@@ -182,19 +182,10 @@ fn is_high_freq(video_ula_control_reg: u32) -> bool {
     return (video_ula_control_reg & 0x10u) != 0u;
 }
 
+const ULA_CONTROL_NUM_COLOURS: array<u32, 8> = array<u32, 8>(16u, 4u, 2u, 0u, 0u, 16u, 4u, 2u);
+
 fn num_colours(video_ula_control_reg: u32) -> u32 {
-    let idx = (video_ula_control_reg & 0x1cu) >> 2u;
-    let lookup = array<u32, 8>(
-        16u,
-        4u,
-        2u,
-        0u,
-        0u,
-        16u,
-        4u,
-        2u,
-    );
-    return lookup[idx];
+    return ULA_CONTROL_NUM_COLOURS[(video_ula_control_reg & 0x1cu) >> 2u];
 }
 
 fn h_pixels_per_char(video_ula_control_reg: u32) -> u32 {
