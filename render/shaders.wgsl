@@ -8,6 +8,15 @@
 
 const BYTES_PER_LINE = 122u;
 
+const OFFSET_LINE_TYPE = 0u;
+const OFFSET_DATA = 1u;
+const OFFSET_R0_HORIZONTAL_TOTAL = 104u;
+const OFFSET_R1_HORIZONTAL_DISPLAYED = 105u;
+const OFFSET_R2_HORIZONTAL_SYNC_POS = 106u;
+const OFFSET_R3_SYNC_WIDTH = 107u;
+const OFFSET_VIDEO_ULA_CONTROL_REG = 113u;
+const OFFSET_PALETTE_START = 114u;
+
 struct FieldBuf {
     bytes: array<u32>,
 };
@@ -53,14 +62,14 @@ fn metrics_main() {
     var bm_max_x: u32 = 0u;
 
     for (var line = 0u; line < num_lines; line++) {
-        let line_type = get_field_line_byte(line, 0u);
+        let line_type = get_field_line_byte(line, OFFSET_LINE_TYPE);
         if line_type == 0u { continue; };
 
-        let r0_horizontal_total = get_field_line_byte(line, 104u);
-        let r1_horizontal_displayed = get_field_line_byte(line, 105u);
-        let r2_horizontal_sync_pos = get_field_line_byte(line, 106u);
-        let r3_sync_width = get_field_line_byte(line, 107u);
-        let video_ula_control_reg = get_field_line_byte(line, 113u);
+        let r0_horizontal_total = get_field_line_byte(line, OFFSET_R0_HORIZONTAL_TOTAL);
+        let r1_horizontal_displayed = get_field_line_byte(line, OFFSET_R1_HORIZONTAL_DISPLAYED);
+        let r2_horizontal_sync_pos = get_field_line_byte(line, OFFSET_R2_HORIZONTAL_SYNC_POS);
+        let r3_sync_width = get_field_line_byte(line, OFFSET_R3_SYNC_WIDTH);
+        let video_ula_control_reg = get_field_line_byte(line, OFFSET_VIDEO_ULA_CONTROL_REG);
 
         let bm_left = calc_line_bm_left(
             r0_horizontal_total,
@@ -121,7 +130,7 @@ fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
         return vec4f(0.0, 0.0, 1.0, 1.0);
     }
 
-    let line_type = get_field_line_byte(line, 0u);
+    let line_type = get_field_line_byte(line, OFFSET_LINE_TYPE);
     if line_type == 0u {
         return vec4f(0.0, 0.0, 0.0, 1.0);
     }
@@ -131,13 +140,13 @@ fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
         return vec4f(0.0, 1.0, 0.0, 1.0);
     }
 
-    let video_ula_control_reg = get_field_line_byte(line, 113u);
+    let video_ula_control_reg = get_field_line_byte(line, OFFSET_VIDEO_ULA_CONTROL_REG);
     
     if is_teletext(video_ula_control_reg) {
         return vec4f(0.0, 1.0, 1.0, 1.0);
     }
     
-    let r1_horizontal_displayed = get_field_line_byte(line, 105u);
+    let r1_horizontal_displayed = get_field_line_byte(line, OFFSET_R1_HORIZONTAL_DISPLAYED);
     let is_high_freq = is_high_freq(video_ula_control_reg);
     let bm_line_left = line_metrics.lines[line].bm_left;
     
@@ -148,12 +157,11 @@ fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
         is_high_freq
     );
     
-    if char_index_and_pixel.char_index < 0 {
+    if char_index_and_pixel.out_of_bounds {
         return vec4f(0.0, 0.0, 0.0, 1.0);
     }
 
-    let byte = get_field_line_byte(line, 1u + u32(char_index_and_pixel.char_index));
-
+    let byte = get_field_line_byte(line, OFFSET_DATA + char_index_and_pixel.char_index);
 
     if num_colours(video_ula_control_reg) == 4u && !is_high_freq {
         let palette_idx = extract_palette_index_4col(byte, char_index_and_pixel.pixel / 4u);
@@ -247,7 +255,8 @@ fn calc_display_origin(bm_default_origin: u32, bm_min: u32, bm_max: u32, canvas_
 // char and pixel calcs
 
 struct ByteIndexAndPixel {
-    char_index: i32,     // negative values indicate failure
+    out_of_bounds: bool,
+    char_index: u32,
     pixel: u32,
 }
 
@@ -260,7 +269,7 @@ fn get_char_index_and_pixel(
     let bm_x = frame_metrics.bm_display_origin_x + display_x;
 
     if bm_x < bm_line_left {
-        return ByteIndexAndPixel(-1, 0u);
+        return ByteIndexAndPixel(true, 1, 0);
     }
 
     let data_x = bm_x - bm_line_left;
@@ -271,10 +280,10 @@ fn get_char_index_and_pixel(
     let pixel = data_x % char_width;
     
     if char_index >= r1_horizontal_displayed {
-        return ByteIndexAndPixel(-2, 0u);
+        return ByteIndexAndPixel(true, 2, 0);
     }
 
-    return ByteIndexAndPixel(i32(char_index), pixel);
+    return ByteIndexAndPixel(false, char_index, pixel);
 }
 
 // palette
@@ -313,14 +322,13 @@ fn extract_palette_index_4col(byte_val: u32, pixel_in_byte: u32) -> u32 {
 }
 
 fn get_colour_index_from_palette_index(line: u32, palette_idx: u32, flash: bool) -> u32 {
-    let byte_offset = 114u + (palette_idx >> 1u);
-    let byte_val = get_field_line_byte(line, byte_offset);
+    let palette_byte = get_field_line_byte(line, OFFSET_PALETTE_START + (palette_idx >> 1u));
     
     var colour_idx: u32;
     if (palette_idx & 1u) == 0u {
-        colour_idx = byte_val & 0x0fu;
+        colour_idx = palette_byte & 0x0fu;
     } else {
-        colour_idx = (byte_val >> 4u) & 0x0fu;
+        colour_idx = (palette_byte >> 4u) & 0x0fu;
     }
 
     if colour_idx > 7u {
