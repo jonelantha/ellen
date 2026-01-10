@@ -1,27 +1,16 @@
-/**
- * bindings
- */
+// bindings
 
 @group(0) @binding(0) var<storage, read> field : FieldBuf;
 @group(0) @binding(1) var<storage, read_write> line_metrics : LineMetricsBuf;
 @group(0) @binding(2) var<storage, read_write> frame_metrics : FrameMetricsBuf;
 
-/**
- * field buffer
- */
+// field buffer
 
 const BYTES_PER_LINE = 122u;
-
-const CANVAS_WIDTH = 640u;
-const CANVAS_HEIGHT = 512u;
 
 struct FieldBuf {
     bytes: array<u32>,
 };
-
-/**
- * field buffer helpers
- */
 
 fn get_field_line_byte(line: u32, offset: u32) -> u32 {
     let idx = line * BYTES_PER_LINE + offset;
@@ -30,87 +19,7 @@ fn get_field_line_byte(line: u32, offset: u32) -> u32 {
     return (word >> ((idx & 0x3u) * 8u)) & 0xffu;
 }
 
-fn calc_teletext_enabled(video_ula_control_reg: u32) -> bool {
-    return (video_ula_control_reg & 0x02u) != 0u;
-}
-
-fn calc_is_high_freq(video_ula_control_reg: u32) -> bool {
-    return (video_ula_control_reg & 0x10u) != 0u;
-}
-
-fn calc_num_colours(video_ula_control_reg: u32) -> u32 {
-    let idx = (video_ula_control_reg & 0x1cu) >> 2u;
-    let lookup = array<u32, 8>(
-        16u,
-        4u,
-        2u,
-        0u,
-        0u,
-        16u,
-        4u,
-        2u,
-    );
-    return lookup[idx];
-}
-
-fn calc_h_pixels_per_char(video_ula_control_reg: u32) -> u32 {
-    if calc_is_high_freq(video_ula_control_reg) {
-        return 8u;
-    } else {
-        return 16u;
-    }
-}
-
-fn calc_back_porch(
-    r0_horizontal_total: u32,
-    r2_horizontal_sync_pos: u32,
-    r3_sync_width: u32,
-) -> u32 {
-    let h_sync_width = r3_sync_width & 0x0fu;
-    let sync_end = r2_horizontal_sync_pos + h_sync_width;
-    if sync_end >= r0_horizontal_total + 1 {
-        return 0u;
-    } else {
-        return r0_horizontal_total + 1 - sync_end;
-    }
-}
-
-fn calc_line_bm_left(
-    r0_horizontal_total: u32,
-    r2_horizontal_sync_pos: u32,
-    r3_sync_width: u32,
-    video_ula_control_reg: u32,
-) -> u32 {
-    let back_porch = calc_back_porch(
-        r0_horizontal_total,
-        r2_horizontal_sync_pos,
-        r3_sync_width,
-    );
-    return back_porch * calc_h_pixels_per_char(video_ula_control_reg);
-}
-
-fn calc_line_width(
-    r1_horizontal_displayed: u32,
-    video_ula_control_reg: u32,
-) -> u32 {
-    return r1_horizontal_displayed * calc_h_pixels_per_char(video_ula_control_reg);
-}
-
-fn calc_display_origin(bm_default_origin: u32, bm_min: u32, bm_max: u32, canvas_size: u32) -> u32 {
-    if bm_max - bm_min <= canvas_size {
-        if bm_min < bm_default_origin {
-            return bm_min;
-        } else if bm_max > bm_default_origin + canvas_size {
-            return bm_max - canvas_size;
-        }
-    }
-
-    return bm_default_origin;
-}
-
-/**
- * metrics buffers
- */
+// metrics buffers
 
 struct LineMetrics {
     bm_left: u32,
@@ -127,9 +36,12 @@ struct FrameMetricsBuf {
     bm_display_origin_y: u32,
 };
 
-/**
- * metrics compute
- */
+// constants
+
+const CANVAS_WIDTH = 640u;
+const CANVAS_HEIGHT = 512u;
+
+// shaders
 
 @compute @workgroup_size(1)
 fn metrics_main() {
@@ -177,18 +89,10 @@ fn metrics_main() {
     }
 }
 
-/**
- * vertex / fragment shared
- */
-
 struct VertexOutput {
     @builtin(position) position: vec4<f32>,
     @location(0) crt: vec2<f32>,
 }
-
-/**
- * vertex
- */
 
 @vertex
 fn vertex_main(@builtin(vertex_index) VertexIndex : u32) -> VertexOutput {
@@ -206,9 +110,183 @@ fn vertex_main(@builtin(vertex_index) VertexIndex : u32) -> VertexOutput {
     return output;
 }
 
-/**
- * fragment - helpers
- */
+@fragment
+fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
+    let display_x = u32(input.crt.x);
+    let display_y = u32(input.crt.y);
+
+    let line = (frame_metrics.bm_display_origin_y + display_y) / 2;
+    
+    if line >= frame_metrics.num_lines {
+        return vec4f(0.0, 0.0, 1.0, 1.0);
+    }
+
+    let line_type = get_field_line_byte(line, 0u);
+    if line_type == 0u {
+        return vec4f(0.0, 0.0, 0.0, 1.0);
+    }
+
+    if line_type != 1u {
+        // cursor could be visible
+        return vec4f(0.0, 1.0, 0.0, 1.0);
+    }
+
+    let video_ula_control_reg = get_field_line_byte(line, 113u);
+    
+    if calc_teletext_enabled(video_ula_control_reg) {
+        return vec4f(0.0, 1.0, 1.0, 1.0);
+    }
+    
+    let r1_horizontal_displayed = get_field_line_byte(line, 105u);
+    let is_high_freq = calc_is_high_freq(video_ula_control_reg);
+    let bm_line_left = line_metrics.lines[line].bm_left;
+    
+    let char_index_and_pixel = get_char_index_and_pixel(
+        display_x,
+        r1_horizontal_displayed,
+        bm_line_left,
+        is_high_freq
+    );
+    
+    if char_index_and_pixel.char_index < 0 {
+        return vec4f(0.0, 0.0, 0.0, 1.0);
+    }
+
+    let byte = get_field_line_byte(line, 1u + u32(char_index_and_pixel.char_index));
+
+    let num_cols = calc_num_colours(video_ula_control_reg);
+
+    if num_cols == 4u && !is_high_freq {
+        let palette_idx = extract_palette_index_4col(byte, char_index_and_pixel.pixel / 4u);
+        
+        let flash = (video_ula_control_reg & 1u) != 0u;
+
+        let colour_idx = get_colour_index_from_palette_index(line, palette_idx, flash);
+
+        return colour_idx_to_rgb(colour_idx);
+    } else {
+        if byte > 0 {
+            return vec4f(0.0, 1.0, 0.0, 1.0);
+        } else {
+            return vec4f(1.0, 0.0, 0.0, 1.0);
+        }
+    }
+}
+
+// ula control helpers
+
+fn calc_teletext_enabled(video_ula_control_reg: u32) -> bool {
+    return (video_ula_control_reg & 0x02u) != 0u;
+}
+
+fn calc_is_high_freq(video_ula_control_reg: u32) -> bool {
+    return (video_ula_control_reg & 0x10u) != 0u;
+}
+
+fn calc_num_colours(video_ula_control_reg: u32) -> u32 {
+    let idx = (video_ula_control_reg & 0x1cu) >> 2u;
+    let lookup = array<u32, 8>(
+        16u,
+        4u,
+        2u,
+        0u,
+        0u,
+        16u,
+        4u,
+        2u,
+    );
+    return lookup[idx];
+}
+
+fn calc_h_pixels_per_char(video_ula_control_reg: u32) -> u32 {
+    return select(16u, 8u, calc_is_high_freq(video_ula_control_reg));
+}
+
+// line metric calcs
+
+fn calc_back_porch(
+    r0_horizontal_total: u32,
+    r2_horizontal_sync_pos: u32,
+    r3_sync_width: u32,
+) -> u32 {
+    let h_sync_width = r3_sync_width & 0x0fu;
+    let sync_end = r2_horizontal_sync_pos + h_sync_width;
+    if sync_end >= r0_horizontal_total + 1 {
+        return 0u;
+    } else {
+        return r0_horizontal_total + 1 - sync_end;
+    }
+}
+
+fn calc_line_bm_left(
+    r0_horizontal_total: u32,
+    r2_horizontal_sync_pos: u32,
+    r3_sync_width: u32,
+    video_ula_control_reg: u32,
+) -> u32 {
+    let back_porch = calc_back_porch(
+        r0_horizontal_total,
+        r2_horizontal_sync_pos,
+        r3_sync_width,
+    );
+    return back_porch * calc_h_pixels_per_char(video_ula_control_reg);
+}
+
+fn calc_line_width(
+    r1_horizontal_displayed: u32,
+    video_ula_control_reg: u32,
+) -> u32 {
+    return r1_horizontal_displayed * calc_h_pixels_per_char(video_ula_control_reg);
+}
+
+// screen metric calcs
+
+fn calc_display_origin(bm_default_origin: u32, bm_min: u32, bm_max: u32, canvas_size: u32) -> u32 {
+    if bm_max - bm_min <= canvas_size {
+        if bm_min < bm_default_origin {
+            return bm_min;
+        } else if bm_max > bm_default_origin + canvas_size {
+            return bm_max - canvas_size;
+        }
+    }
+
+    return bm_default_origin;
+}
+
+// char and pixel calcs
+
+struct ByteIndexAndPixel {
+    char_index: i32,     // negative values indicate failure
+    pixel: u32,
+}
+
+fn get_char_index_and_pixel(
+    display_x: u32,
+    r1_horizontal_displayed: u32,
+    bm_line_left: u32,
+    is_high_freq: bool
+) -> ByteIndexAndPixel {
+    let bm_x = frame_metrics.bm_display_origin_x + display_x;
+
+    if bm_x < bm_line_left {
+        return ByteIndexAndPixel(-1, 0u);
+    }
+
+    let data_x = bm_x - bm_line_left;
+
+    let char_width = select(16u, 8u, is_high_freq);
+    
+    let char_index = data_x / char_width;
+    let pixel = data_x % char_width;
+    
+    if char_index >= r1_horizontal_displayed {
+        return ByteIndexAndPixel(-2, 0u);
+    }
+
+    return ByteIndexAndPixel(i32(char_index), pixel);
+}
+
+// palette
 
 fn extract_palette_index_4col(byte_val: u32, pixel_in_byte: u32) -> u32 {
     switch pixel_in_byte {
@@ -274,104 +352,4 @@ fn colour_idx_to_rgb(colour_idx: u32) -> vec4f {
         case 6u: { return vec4f(0.0, 1.0, 1.0, 1.0); }      // Cyan
         default: { return vec4f(1.0, 1.0, 1.0, 1.0); }      // White
     }
-}
-
-/**
- * fragment - render
- */
-
-@fragment
-fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
-
-    let display_x = u32(input.crt.x);
-    let display_y = u32(input.crt.y);
-
-    let line = (frame_metrics.bm_display_origin_y + display_y) / 2;
-    
-    if line >= frame_metrics.num_lines {
-        return vec4f(0.0, 0.0, 1.0, 1.0);
-    }
-
-    let line_type = get_field_line_byte(line, 0u);
-    if line_type == 0u {
-        return vec4f(0.0, 0.0, 0.0, 1.0);
-    }
-
-    if line_type != 1u {
-        // cursor could be visible
-        return vec4f(0.0, 1.0, 0.0, 1.0);
-    }
-
-    let video_ula_control_reg = get_field_line_byte(line, 113u);
-    
-    if calc_teletext_enabled(video_ula_control_reg) {
-        return vec4f(0.0, 1.0, 1.0, 1.0);
-    }
-    
-    let r1_horizontal_displayed = get_field_line_byte(line, 105u);
-    let is_high_freq = calc_is_high_freq(video_ula_control_reg);
-    let bm_line_left = line_metrics.lines[line].bm_left;
-    
-    let char_index_and_pixel = get_char_index_and_pixel(
-        display_x,
-        r1_horizontal_displayed,
-        bm_line_left,
-        is_high_freq
-    );
-    
-    if char_index_and_pixel.char_index < 0 {
-        return vec4f(0.0, 0.0, 0.0, 1.0);
-    }
-
-    let byte = get_field_line_byte(line, 1u + u32(char_index_and_pixel.char_index));
-
-    let num_cols = calc_num_colours(video_ula_control_reg);
-
-    if num_cols == 4u && !is_high_freq {
-        
-        let palette_idx = extract_palette_index_4col(byte, char_index_and_pixel.pixel / 4u);
-        
-        let flash = (video_ula_control_reg & 1u) != 0u;
-
-        let colour_idx = get_colour_index_from_palette_index(line, palette_idx, flash);
-
-        return colour_idx_to_rgb(colour_idx);
-    } else {
-        if byte > 0 {
-            return vec4f(0.0, 1.0, 0.0, 1.0);
-        } else {
-            return vec4f(1.0, 0.0, 0.0, 1.0);
-        }
-    }
-}
-
-struct ByteIndexAndPixel {
-    char_index: i32,     // negative values indicate failure
-    pixel: u32,
-}
-
-fn get_char_index_and_pixel(
-    display_x: u32,
-    r1_horizontal_displayed: u32,
-    bm_line_left: u32,
-    is_high_freq: bool
-) -> ByteIndexAndPixel {
-    let bm_x = frame_metrics.bm_display_origin_x + display_x;
-
-    if bm_x < bm_line_left {
-        return ByteIndexAndPixel(-1, 0u);
-    }
-
-    let data_x = bm_x - bm_line_left;
-
-    let char_width = select(16u, 8u, is_high_freq);
-    
-    let char_index = data_x / char_width;
-    let pixel = data_x % char_width;
-    
-    if char_index >= r1_horizontal_displayed {
-        return ByteIndexAndPixel(-2, 0u);
-    }
-
-    return ByteIndexAndPixel(i32(char_index), pixel);
 }
