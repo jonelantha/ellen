@@ -70,18 +70,16 @@ fn metrics_main() {
         let r2_horizontal_sync_pos = get_field_line_byte(line, OFFSET_R2_HORIZONTAL_SYNC_POS);
         let r3_sync_width = get_field_line_byte(line, OFFSET_R3_SYNC_WIDTH);
         let video_ula_control_reg = get_field_line_byte(line, OFFSET_VIDEO_ULA_CONTROL_REG);
+        let is_high_freq = (video_ula_control_reg & ULA_HIGH_FREQ) != 0u;
 
         let bm_left = calc_line_bm_left(
             r0_horizontal_total,
             r2_horizontal_sync_pos,
             r3_sync_width,
-            video_ula_control_reg,
+            is_high_freq,
         );
 
-        let width = calc_line_width(
-            r1_horizontal_displayed,
-            video_ula_control_reg,
-        );
+        let width = calc_line_width(r1_horizontal_displayed, is_high_freq);
 
         line_metrics.lines[line] = LineMetrics(bm_left, width);
 
@@ -142,12 +140,12 @@ fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
 
     let video_ula_control_reg = get_field_line_byte(line, OFFSET_VIDEO_ULA_CONTROL_REG);
     
-    if is_teletext(video_ula_control_reg) {
+    if (video_ula_control_reg & ULA_TELETEXT) != 0u {
         return vec4f(0.0, 1.0, 1.0, 1.0);
     }
     
     let r1_horizontal_displayed = get_field_line_byte(line, OFFSET_R1_HORIZONTAL_DISPLAYED);
-    let is_high_freq = is_high_freq(video_ula_control_reg);
+    let is_high_freq = (video_ula_control_reg & ULA_HIGH_FREQ) != 0u;
     let bm_line_left = line_metrics.lines[line].bm_left;
     
     let char_index_and_pixel = get_char_index_and_pixel(
@@ -164,9 +162,9 @@ fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
     let byte = get_field_line_byte(line, OFFSET_DATA + char_index_and_pixel.char_index);
 
     if num_colours(video_ula_control_reg) == 4u && !is_high_freq {
-        let palette_idx = extract_palette_index_4col(byte, char_index_and_pixel.pixel / 4u);
+        let palette_idx = extract_palette_index_4col(byte, char_index_and_pixel.pixel >> 2);
         
-        let flash = (video_ula_control_reg & 1u) != 0u;
+        let flash = (video_ula_control_reg & ULA_FLASH) != 0u;
 
         let colour_idx = get_colour_index_from_palette_index(line, palette_idx, flash);
 
@@ -182,23 +180,20 @@ fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
 
 // ula control helpers
 
-fn is_teletext(video_ula_control_reg: u32) -> bool {
-    return (video_ula_control_reg & 0x02u) != 0u;
-}
-
-fn is_high_freq(video_ula_control_reg: u32) -> bool {
-    return (video_ula_control_reg & 0x10u) != 0u;
-}
+const ULA_FLASH = 0x01u;
+const ULA_TELETEXT = 0x02u;
+const ULA_HIGH_FREQ = 0x10u;
+const ULA_NUM_COLOURS_MASK = 0x1cu;
 
 // Advanced User Guide 204 onwards
-const ULA_CONTROL_NUM_COLOURS: array<u32, 8> = array<u32, 8>(16u, 4u, 2u, 0u, 0u, 16u, 4u, 2u);
+const ULA_NUM_COLOURS: array<u32, 8> = array<u32, 8>(16u, 4u, 2u, 0u, 0u, 16u, 4u, 2u);
 
 fn num_colours(video_ula_control_reg: u32) -> u32 {
-    return ULA_CONTROL_NUM_COLOURS[(video_ula_control_reg & 0x1cu) >> 2u];
+    return ULA_NUM_COLOURS[(video_ula_control_reg & ULA_NUM_COLOURS_MASK) >> 2u];
 }
 
-fn h_pixels_per_char(video_ula_control_reg: u32) -> u32 {
-    return select(16u, 8u, is_high_freq(video_ula_control_reg));
+fn h_pixels_per_char(is_high_freq: bool) -> u32 {
+    return select(16u, 8u, is_high_freq);
 }
 
 // line metric calcs
@@ -221,21 +216,21 @@ fn calc_line_bm_left(
     r0_horizontal_total: u32,
     r2_horizontal_sync_pos: u32,
     r3_sync_width: u32,
-    video_ula_control_reg: u32,
+    is_high_freq: bool,
 ) -> u32 {
     let back_porch = calc_back_porch(
         r0_horizontal_total,
         r2_horizontal_sync_pos,
         r3_sync_width,
     );
-    return back_porch * h_pixels_per_char(video_ula_control_reg);
+    return back_porch * h_pixels_per_char(is_high_freq);
 }
 
 fn calc_line_width(
     r1_horizontal_displayed: u32,
-    video_ula_control_reg: u32,
+    is_high_freq: bool,
 ) -> u32 {
-    return r1_horizontal_displayed * h_pixels_per_char(video_ula_control_reg);
+    return r1_horizontal_displayed * h_pixels_per_char(is_high_freq);
 }
 
 // screen metric calcs
@@ -274,11 +269,9 @@ fn get_char_index_and_pixel(
 
     let data_x = bm_x - bm_line_left;
 
-    let char_width = select(16u, 8u, is_high_freq);
-    
-    let char_index = data_x / char_width;
-    let pixel = data_x % char_width;
-    
+    let char_index = data_x >> select(4u, 3u, is_high_freq);
+    let pixel = data_x & select(0x0fu, 0x07u, is_high_freq);
+
     if char_index >= r1_horizontal_displayed {
         return ByteIndexAndPixel(true, 2, 0);
     }
