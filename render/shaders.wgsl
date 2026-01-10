@@ -263,23 +263,16 @@ fn get_colour_index_from_palette_index(line: u32, palette_idx: u32, flash: bool)
     return colour_idx;
 }
 
-
-fn get_colour_from_palette_index(line: u32, palette_idx: u32, flash: bool) -> vec3f {
-    let colour_idx = get_colour_index_from_palette_index(line, palette_idx, flash);
-
-    return colour_idx_to_rgb(colour_idx);
-}
-
-fn colour_idx_to_rgb(colour_idx: u32) -> vec3f {
+fn colour_idx_to_rgb(colour_idx: u32) -> vec4f {
     switch colour_idx {
-        case 0u: { return vec3f(0.0, 0.0, 0.0); }      // Black
-        case 1u: { return vec3f(1.0, 0.0, 0.0); }      // Red
-        case 2u: { return vec3f(0.0, 1.0, 0.0); }      // Green
-        case 3u: { return vec3f(1.0, 1.0, 0.0); }      // Yellow
-        case 4u: { return vec3f(0.0, 0.0, 1.0); }      // Blue
-        case 5u: { return vec3f(1.0, 0.0, 1.0); }      // Magenta
-        case 6u: { return vec3f(0.0, 1.0, 1.0); }      // Cyan
-        default: { return vec3f(1.0, 1.0, 1.0); }      // White
+        case 0u: { return vec4f(0.0, 0.0, 0.0, 1.0); }      // Black
+        case 1u: { return vec4f(1.0, 0.0, 0.0, 1.0); }      // Red
+        case 2u: { return vec4f(0.0, 1.0, 0.0, 1.0); }      // Green
+        case 3u: { return vec4f(1.0, 1.0, 0.0, 1.0); }      // Yellow
+        case 4u: { return vec4f(0.0, 0.0, 1.0, 1.0); }      // Blue
+        case 5u: { return vec4f(1.0, 0.0, 1.0, 1.0); }      // Magenta
+        case 6u: { return vec4f(0.0, 1.0, 1.0, 1.0); }      // Cyan
+        default: { return vec4f(1.0, 1.0, 1.0, 1.0); }      // White
     }
 }
 
@@ -340,9 +333,9 @@ fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
         
         let flash = (video_ula_control_reg & 1u) != 0u;
 
-        let rgb = get_colour_from_palette_index(line, palette_idx, flash);
-        
-        return vec4f(rgb, 1.0);
+        let colour_idx = get_colour_index_from_palette_index(line, palette_idx, flash);
+
+        return colour_idx_to_rgb(colour_idx);
     } else {
         if byte > 0 {
             return vec4f(0.0, 1.0, 0.0, 1.0);
