@@ -133,12 +133,12 @@ fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
 
     let video_ula_control_reg = get_field_line_byte(line, 113u);
     
-    if calc_teletext_enabled(video_ula_control_reg) {
+    if is_teletext(video_ula_control_reg) {
         return vec4f(0.0, 1.0, 1.0, 1.0);
     }
     
     let r1_horizontal_displayed = get_field_line_byte(line, 105u);
-    let is_high_freq = calc_is_high_freq(video_ula_control_reg);
+    let is_high_freq = is_high_freq(video_ula_control_reg);
     let bm_line_left = line_metrics.lines[line].bm_left;
     
     let char_index_and_pixel = get_char_index_and_pixel(
@@ -154,9 +154,8 @@ fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
 
     let byte = get_field_line_byte(line, 1u + u32(char_index_and_pixel.char_index));
 
-    let num_cols = calc_num_colours(video_ula_control_reg);
 
-    if num_cols == 4u && !is_high_freq {
+    if num_colours(video_ula_control_reg) == 4u && !is_high_freq {
         let palette_idx = extract_palette_index_4col(byte, char_index_and_pixel.pixel / 4u);
         
         let flash = (video_ula_control_reg & 1u) != 0u;
@@ -175,15 +174,15 @@ fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
 
 // ula control helpers
 
-fn calc_teletext_enabled(video_ula_control_reg: u32) -> bool {
+fn is_teletext(video_ula_control_reg: u32) -> bool {
     return (video_ula_control_reg & 0x02u) != 0u;
 }
 
-fn calc_is_high_freq(video_ula_control_reg: u32) -> bool {
+fn is_high_freq(video_ula_control_reg: u32) -> bool {
     return (video_ula_control_reg & 0x10u) != 0u;
 }
 
-fn calc_num_colours(video_ula_control_reg: u32) -> u32 {
+fn num_colours(video_ula_control_reg: u32) -> u32 {
     let idx = (video_ula_control_reg & 0x1cu) >> 2u;
     let lookup = array<u32, 8>(
         16u,
@@ -198,8 +197,8 @@ fn calc_num_colours(video_ula_control_reg: u32) -> u32 {
     return lookup[idx];
 }
 
-fn calc_h_pixels_per_char(video_ula_control_reg: u32) -> u32 {
-    return select(16u, 8u, calc_is_high_freq(video_ula_control_reg));
+fn h_pixels_per_char(video_ula_control_reg: u32) -> u32 {
+    return select(16u, 8u, is_high_freq(video_ula_control_reg));
 }
 
 // line metric calcs
@@ -229,14 +228,14 @@ fn calc_line_bm_left(
         r2_horizontal_sync_pos,
         r3_sync_width,
     );
-    return back_porch * calc_h_pixels_per_char(video_ula_control_reg);
+    return back_porch * h_pixels_per_char(video_ula_control_reg);
 }
 
 fn calc_line_width(
     r1_horizontal_displayed: u32,
     video_ula_control_reg: u32,
 ) -> u32 {
-    return r1_horizontal_displayed * calc_h_pixels_per_char(video_ula_control_reg);
+    return r1_horizontal_displayed * h_pixels_per_char(video_ula_control_reg);
 }
 
 // screen metric calcs
