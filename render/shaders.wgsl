@@ -9,8 +9,8 @@
 const BYTES_PER_LINE = 122u;
 
 const FLAG_DISPLAYED = 0x01u;
-const FLAG_HAS_DATA = 0x02u;
-const FLAG_INVALID = 0x04u;
+const FLAG_HAS_BYTES = 0x02u;
+const FLAG_INVALID_RANGE = 0x04u;
 
 const OFFSET_FLAGS = 0u;
 const OFFSET_DATA = 1u;
@@ -137,7 +137,7 @@ fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
         return vec4f(0.0, 0.0, 0.0, 1.0);
     }
 
-    if ((flags & FLAG_HAS_DATA) == 0u) {
+    if ((flags & FLAG_HAS_BYTES) == 0u) {
         // cursor could be visible
         return vec4f(0.0, 1.0, 0.0, 1.0);
     }
