@@ -143,7 +143,7 @@ const videoRegisters = ch22System.get_partial_video_registers();
 /**
  * get buffer of snapshotted scanline data
  * each line is 122 bytes:
- * - 1 byte     - 0 => out of scan, 1 => line visible, 2 => blank, 3 => invalid crtc range
+ * - 1 byte     - flags: 0x01 => line displayed, 0x02 => has bytes, 0x04 => invalid crtc range
  * - 100 bytes  - snapshot of up to 100 bytes of video memory for the scanline
  * - 2 bytes    - crtcMemoryAddress of snapshot
  * - 1 byte    - crtcRasterAddress of snapshot (even field)

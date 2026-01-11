@@ -13,4 +13,4 @@ pub use video_registers::VideoRegisters;
 pub use video_ula_registers_device::VideoULARegistersDevice;
 
 #[cfg(test)]
-pub use field_line::FieldLineType;
+pub use field_line::flags as field_line_flags;

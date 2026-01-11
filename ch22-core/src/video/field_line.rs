@@ -4,7 +4,7 @@ const MAX_CHARS: usize = 100;
 
 #[repr(C, packed)]
 pub struct FieldLine {
-    line_type: FieldLineType,
+    flags: u8,
     char_data: [u8; MAX_CHARS],
     crtc_memory_address: u16,
     crtc_raster_address_even: u8,
@@ -24,7 +24,7 @@ pub struct FieldLine {
 impl Default for FieldLine {
     fn default() -> Self {
         FieldLine {
-            line_type: FieldLineType::OutOfScan,
+            flags: 0,
             char_data: [0; MAX_CHARS],
             crtc_memory_address: 0,
             crtc_raster_address_even: 0,
@@ -44,6 +44,10 @@ impl Default for FieldLine {
 }
 
 impl FieldLine {
+    pub fn clear(&mut self) {
+        self.flags = 0;
+    }
+
     pub fn set_registers(
         &mut self,
         crtc_memory_address: u16,
@@ -67,21 +71,16 @@ impl FieldLine {
         self.crtc_r15_cursor_l = video_registers.crtc_r15_cursor_l;
     }
 
-    pub fn set_out_of_scan(&mut self) {
-        self.line_type = FieldLineType::OutOfScan;
+    pub fn set_displayed(&mut self) {
+        self.flags |= flags::DISPLAYED;
     }
 
-    pub fn set_invalid(&mut self) {
-        self.line_type = FieldLineType::Invalid;
-    }
-
-    pub fn set_blank(&mut self) {
-        self.line_type = FieldLineType::Blank;
+    pub fn set_invalid_range(&mut self) {
+        self.flags |= flags::INVALID_RANGE;
     }
 
     pub fn set_char_data(&mut self, first_slice: &[u8], second_slice: Option<&[u8]>) {
-        self.line_type = FieldLineType::Visible;
-
+        self.flags |= flags::HAS_BYTES;
         let first_end = first_slice.len();
 
         debug_assert!(first_end <= MAX_CHARS);
@@ -103,7 +102,7 @@ impl FieldLine {
         second_slice: Option<&[u8]>,
         raster_line: u8,
     ) {
-        self.line_type = FieldLineType::Visible;
+        self.flags |= flags::HAS_BYTES;
 
         let first_end = copy_into_stride_8(&mut self.char_data, 0, first_slice, raster_line);
 
@@ -143,11 +142,8 @@ fn copy_into_stride_8(
     new_length
 }
 
-#[repr(u8)]
-#[derive(Clone, Copy)]
-pub enum FieldLineType {
-    OutOfScan = 0,
-    Visible = 1,
-    Blank = 2,
-    Invalid = 3,
+pub mod flags {
+    pub const DISPLAYED: u8 = 0b0000_0001;
+    pub const HAS_BYTES: u8 = 0b0000_0010;
+    pub const INVALID_RANGE: u8 = 0b0000_0100;
 }

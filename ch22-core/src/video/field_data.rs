@@ -21,7 +21,7 @@ impl Default for Field {
 impl Field {
     pub fn clear(&mut self) {
         for line in &mut self.lines {
-            line.set_out_of_scan();
+            line.clear();
         }
     }
 
@@ -34,6 +34,8 @@ impl Field {
         video_registers: &VideoRegisters,
         get_buffer: impl Fn(std::ops::Range<u16>) -> &'a [u8],
     ) {
+        self.lines[line_index].set_displayed();
+
         self.lines[line_index].set_registers(
             crtc_memory_address,
             crtc_raster_address_even,
@@ -69,12 +71,11 @@ fn snapshot_teletext_scanline_data<'a>(
     let crtc_length = video_registers.crtc_r1_horizontal_displayed;
 
     if crtc_length == 0 {
-        field_line.set_blank();
         return;
     }
 
     match VideoMemoryAccess::translate_crtc_teletext_range(crtc_memory_address, crtc_length) {
-        None => field_line.set_invalid(),
+        None => field_line.set_invalid_range(),
         Some(ranges) => field_line.set_char_data(get_buffer(ranges.0), ranges.1.map(get_buffer)),
     }
 }
@@ -93,7 +94,6 @@ fn snapshot_hires_scanline_raster_data<'a>(
         || crtc_raster_address_even >= 8
         || video_registers.is_crtc_screen_delay_no_output()
     {
-        field_line.set_blank();
         return;
     }
 
@@ -102,7 +102,7 @@ fn snapshot_hires_scanline_raster_data<'a>(
         crtc_length,
         ic32_latch,
     ) {
-        None => field_line.set_invalid(),
+        None => field_line.set_invalid_range(),
         Some(ranges) => field_line.set_char_data_for_raster(
             get_buffer(ranges.0),
             ranges.1.map(get_buffer),

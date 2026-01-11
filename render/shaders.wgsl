@@ -8,7 +8,11 @@
 
 const BYTES_PER_LINE = 122u;
 
-const OFFSET_LINE_TYPE = 0u;
+const FLAG_DISPLAYED = 0x01u;
+const FLAG_HAS_DATA = 0x02u;
+const FLAG_INVALID = 0x04u;
+
+const OFFSET_FLAGS = 0u;
 const OFFSET_DATA = 1u;
 const OFFSET_R0_HORIZONTAL_TOTAL = 104u;
 const OFFSET_R1_HORIZONTAL_DISPLAYED = 105u;
@@ -62,8 +66,8 @@ fn metrics_main() {
     var bm_max_x: u32 = 0u;
 
     for (var line = 0u; line < num_lines; line++) {
-        let line_type = get_field_line_byte(line, OFFSET_LINE_TYPE);
-        if line_type == 0u { continue; };
+        let flags = get_field_line_byte(line, OFFSET_FLAGS);
+        if (flags & FLAG_DISPLAYED) == 0u { continue; };
 
         let r0_horizontal_total = get_field_line_byte(line, OFFSET_R0_HORIZONTAL_TOTAL);
         let r1_horizontal_displayed = get_field_line_byte(line, OFFSET_R1_HORIZONTAL_DISPLAYED);
@@ -128,12 +132,12 @@ fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
         return vec4f(0.0, 0.0, 1.0, 1.0);
     }
 
-    let line_type = get_field_line_byte(line, OFFSET_LINE_TYPE);
-    if line_type == 0u {
+    let flags = get_field_line_byte(line, OFFSET_FLAGS);
+    if ((flags & FLAG_DISPLAYED) == 0u) {
         return vec4f(0.0, 0.0, 0.0, 1.0);
     }
 
-    if line_type != 1u {
+    if ((flags & FLAG_HAS_DATA) == 0u) {
         // cursor could be visible
         return vec4f(0.0, 1.0, 0.0, 1.0);
     }

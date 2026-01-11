@@ -1,10 +1,8 @@
 use super::Field;
-use crate::video::{FieldLine, VideoRegisters};
+use crate::video::{FieldLine, VideoRegisters, field_line_flags::*};
 
 #[cfg(test)]
 mod field_data_tests {
-    use crate::video::FieldLineType;
-
     use super::*;
 
     #[test]
@@ -44,29 +42,30 @@ mod field_data_tests {
     }
 
     #[test]
-    fn test_line_type_logic() {
-        let mut field = Field::default();
+    fn test_flags_logic() {
         let line_index = 7;
 
         let test_cases = [
-            // start_address, r1, r8, ula_control, raster, expected_type
+            // start_address, r1, r8, ula_control, raster, expected_flags
             // ula hires cases (ula_control: 0x00)
-            (0x1000, 0x00, 0x00, 0x00, 0x00, FieldLineType::Blank), // zero length
-            (0x1000, 0x14, 0x00, 0x00, 0x08, FieldLineType::Blank), // raster > 8
-            (0x1000, 0x14, 0x30, 0x00, 0x00, FieldLineType::Blank), // screen delay no output
-            (0x1000, 0x14, 0x00, 0x00, 0x07, FieldLineType::Visible), // non-zero length & raster in range
-            (0x2000, 0x10, 0x00, 0x00, 0x00, FieldLineType::Invalid), // teletext region
-            (0x1FFF, 0x08, 0x00, 0x00, 0x00, FieldLineType::Invalid), // mixed: hires -> teletext
-            (0x3FFF, 0x04, 0x00, 0x00, 0x00, FieldLineType::Invalid), // mixed: teletext -> hires
+            (0x1000, 0x00, 0x00, 0x00, 0, DISPLAYED), // zero length
+            (0x1000, 0x14, 0x00, 0x00, 8, DISPLAYED), // raster > 8
+            (0x1000, 0x14, 0x30, 0x00, 0, DISPLAYED), // screen delay no output
+            (0x1000, 0x14, 0x00, 0x00, 7, DISPLAYED | HAS_BYTES), // non-zero length & raster in range
+            (0x2000, 0x10, 0x00, 0x00, 0, DISPLAYED | INVALID_RANGE), // teletext region
+            (0x1FFF, 0x08, 0x00, 0x00, 0, DISPLAYED | INVALID_RANGE), // mixed: hires -> teletext
+            (0x3FFF, 0x04, 0x00, 0x00, 0, DISPLAYED | INVALID_RANGE), // mixed: teletext -> hires
             // ula teletext cases (ula_control: 0x02)
-            (0x2000, 0x00, 0x00, 0x02, 0x00, FieldLineType::Blank), // zero length
-            (0x2000, 0x14, 0x00, 0x02, 0x0F, FieldLineType::Visible), // non-zero length & raster > 8
-            (0x1000, 0x10, 0x00, 0x02, 0x00, FieldLineType::Invalid), // hires region
-            (0x3FFF, 0x08, 0x00, 0x02, 0x00, FieldLineType::Invalid), // mixed: teletext -> hires
-            (0x1FFF, 0x04, 0x00, 0x02, 0x00, FieldLineType::Invalid), // mixed: hires -> teletext
+            (0x2000, 0x00, 0x00, 0x02, 0, DISPLAYED), // zero length
+            (0x2000, 0x14, 0x00, 0x02, 15, DISPLAYED | HAS_BYTES), // non-zero length & raster > 8
+            (0x1000, 0x10, 0x00, 0x02, 0, DISPLAYED | INVALID_RANGE), // hires region
+            (0x3FFF, 0x08, 0x00, 0x02, 0, DISPLAYED | INVALID_RANGE), // mixed: teletext -> hires
+            (0x1FFF, 0x04, 0x00, 0x02, 0, DISPLAYED | INVALID_RANGE), // mixed: hires -> teletext
         ];
 
-        for (crtc_start, r1, r8, ula_control, raster, expected_type) in test_cases {
+        for (crtc_start, r1, r8, ula_control, raster, expected_flags) in test_cases {
+            let mut field = Field::default();
+
             let video_registers = VideoRegisters {
                 crtc_r1_horizontal_displayed: r1,
                 crtc_r8_interlace_and_skew: r8,
@@ -79,9 +78,9 @@ mod field_data_tests {
             let data_slices = get_line_data_slices(&field.lines[line_index]);
 
             assert_eq!(
-                data_slices.line_type, expected_type as u8,
-                "Failed for crtc_start=0x{:04x}, length={}",
-                crtc_start, r1
+                data_slices.line_type, expected_flags as u8,
+                "Failed for crtc_start=0x{:04x}, length={}, r8=0x{:02x}, ula_control=0x{:02x}, raster=0x{:02x}",
+                crtc_start, r1, r8, ula_control, raster
             );
         }
     }
