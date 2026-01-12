@@ -59,6 +59,10 @@ impl VideoRegisters {
         self.crtc_r8_interlace_and_skew & 0x30 == 0x30
     }
 
+    pub fn is_interlace_sync_and_video(&self) -> bool {
+        self.crtc_r8_interlace_and_skew & 0x03 == 0x03
+    }
+
     #[cfg(test)]
     pub fn get_crtc_register(&self, control_reg: u8) -> u8 {
         match control_reg {

@@ -25,20 +25,25 @@ impl Field {
         }
     }
 
+    // turn off warning about too many arguments
+    #[allow(clippy::too_many_arguments)]
     pub fn snapshot_scanline<'a>(
         &mut self,
         line_index: usize,
         crtc_memory_address: u16,
         crtc_raster_address_even: u8,
+        crtc_raster_address_odd: u8,
         ic32_latch: u8,
         video_registers: &VideoRegisters,
         get_buffer: impl Fn(std::ops::Range<u16>) -> &'a [u8],
     ) {
         self.lines[line_index].set_displayed();
 
-        self.lines[line_index].set_registers(
-            crtc_memory_address,
+        self.lines[line_index].set_registers(crtc_memory_address, video_registers);
+
+        self.lines[line_index].set_cursor_flags(
             crtc_raster_address_even,
+            crtc_raster_address_odd,
             video_registers,
         );
 

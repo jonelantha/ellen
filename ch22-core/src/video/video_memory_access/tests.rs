@@ -70,9 +70,9 @@ mod test_translate_crtc_range {
             // Mode 0x30
             (0x1200, 1, 0x30, ((0x6800..0x6808), None)),
             // ends on wrap boundary
-            (0x17F8, 8, 0x00, ((0x7fC0..0x8000), None)),
+            (0x17F8, 8, 0x00, ((0x7fc0..0x8000), None)),
             // ends on hires boundary
-            (0x1FF8, 8, 0x00, ((0x3FC0..0x4000), None)),
+            (0x1FF8, 8, 0x00, ((0x3fc0..0x4000), None)),
         ];
 
         for (crtc_start, length, ic32, expected) in test_cases {

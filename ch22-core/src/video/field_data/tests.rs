@@ -1,6 +1,25 @@
 use super::Field;
 use crate::video::{FieldLine, VideoRegisters, field_line_flags::*};
 
+struct LineDataSlices<'a> {
+    flags: u8,
+    char_data: &'a [u8],
+    crtc_counters: &'a [u8],
+    crtc_registers: &'a [u8],
+    crtc_ula_control_and_palette: &'a [u8],
+}
+
+fn get_line_data_slices(line: &FieldLine) -> LineDataSlices<'_> {
+    let raw_data = line.get_raw_data();
+    LineDataSlices {
+        flags: raw_data[0],                             // flags
+        char_data: &raw_data[1..101],                   // char data
+        crtc_counters: &raw_data[101..103],             // crtc counters
+        crtc_registers: &raw_data[103..111],            // crtc registers
+        crtc_ula_control_and_palette: &raw_data[111..], // crtc ula control & palette
+    }
+}
+
 #[cfg(test)]
 mod field_data_tests {
     use super::*;
@@ -18,7 +37,6 @@ mod field_data_tests {
             crtc_r3_sync_width: 0x14,
             crtc_r8_interlace_and_skew: 0x15,
             crtc_r10_cursor_start_raster: 0x16,
-            crtc_r11_cursor_end_raster: 0x17,
             crtc_r14_cursor_h: 0x18,
             crtc_r15_cursor_l: 0x19,
             ula_control: 0x20,
@@ -26,14 +44,22 @@ mod field_data_tests {
             ..VideoRegisters::default()
         };
 
-        field.snapshot_scanline(line_index, crtc_start, raster, 0, &video_registers, |_| &[]);
+        field.snapshot_scanline(
+            line_index,
+            crtc_start,
+            raster,
+            raster,
+            0,
+            &video_registers,
+            |_| &[],
+        );
 
         let data_slices = get_line_data_slices(&field.lines[line_index]);
 
-        assert_eq!(data_slices.crtc_counters, [0x34, 0x12, 0x1A]);
+        assert_eq!(data_slices.crtc_counters, [0x34, 0x12]);
         assert_eq!(
             data_slices.crtc_registers,
-            [0x80, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19]
+            [0x80, 0x12, 0x13, 0x14, 0x15, 0x16, 0x18, 0x19]
         );
         assert_eq!(
             data_slices.crtc_ula_control_and_palette,
@@ -46,24 +72,25 @@ mod field_data_tests {
         let line_index = 7;
 
         let test_cases = [
-            // start_address, r1, r8, ula_control, raster, expected_flags
+            // start_address, r1, r8, ula_control, raster_even, raster_odd, expected_flags
             // ula hires cases (ula_control: 0x00)
-            (0x1000, 0x00, 0x00, 0x00, 0, DISPLAYED), // zero length
-            (0x1000, 0x14, 0x00, 0x00, 8, DISPLAYED), // raster > 8
-            (0x1000, 0x14, 0x30, 0x00, 0, DISPLAYED), // screen delay no output
-            (0x1000, 0x14, 0x00, 0x00, 7, DISPLAYED | HAS_BYTES), // non-zero length & raster in range
-            (0x2000, 0x10, 0x00, 0x00, 0, DISPLAYED | INVALID_RANGE), // teletext region
-            (0x1FFF, 0x08, 0x00, 0x00, 0, DISPLAYED | INVALID_RANGE), // mixed: hires -> teletext
-            (0x3FFF, 0x04, 0x00, 0x00, 0, DISPLAYED | INVALID_RANGE), // mixed: teletext -> hires
+            (0x1000, 0x00, 0x00, 0x00, 1, 1, DISPLAYED), // zero length
+            (0x1000, 0x14, 0x00, 0x00, 8, 8, DISPLAYED), // raster > 8
+            (0x1000, 0x14, 0x30, 0x00, 1, 1, DISPLAYED), // screen delay no output
+            (0x1000, 0x14, 0x00, 0x00, 7, 7, DISPLAYED | HAS_BYTES), // non-zero length & raster in range
+            (0x2000, 0x10, 0x00, 0x00, 1, 1, DISPLAYED | INVALID_RANGE), // teletext region
+            (0x1FFF, 0x08, 0x00, 0x00, 1, 1, DISPLAYED | INVALID_RANGE), // mixed: hires -> teletext
+            (0x3FFF, 0x04, 0x00, 0x00, 1, 1, DISPLAYED | INVALID_RANGE), // mixed: teletext -> hires
             // ula teletext cases (ula_control: 0x02)
-            (0x2000, 0x00, 0x00, 0x02, 0, DISPLAYED), // zero length
-            (0x2000, 0x14, 0x00, 0x02, 15, DISPLAYED | HAS_BYTES), // non-zero length & raster > 8
-            (0x1000, 0x10, 0x00, 0x02, 0, DISPLAYED | INVALID_RANGE), // hires region
-            (0x3FFF, 0x08, 0x00, 0x02, 0, DISPLAYED | INVALID_RANGE), // mixed: teletext -> hires
-            (0x1FFF, 0x04, 0x00, 0x02, 0, DISPLAYED | INVALID_RANGE), // mixed: hires -> teletext
+            (0x2000, 0x00, 0x00, 0x02, 1, 1, DISPLAYED), // zero length
+            (0x2000, 0x14, 0x00, 0x02, 15, 15, DISPLAYED | HAS_BYTES), // non-zero length & raster > 8
+            (0x1000, 0x10, 0x00, 0x02, 1, 1, DISPLAYED | INVALID_RANGE), // hires region
+            (0x3FFF, 0x08, 0x00, 0x02, 1, 1, DISPLAYED | INVALID_RANGE), // mixed: teletext -> hires
+            (0x1FFF, 0x04, 0x00, 0x02, 1, 1, DISPLAYED | INVALID_RANGE), // mixed: hires -> teletext
         ];
 
-        for (crtc_start, r1, r8, ula_control, raster, expected_flags) in test_cases {
+        for (crtc_start, r1, r8, ula_control, raster_even, raster_odd, expected_flags) in test_cases
+        {
             let mut field = Field::default();
 
             let video_registers = VideoRegisters {
@@ -73,14 +100,22 @@ mod field_data_tests {
                 ..VideoRegisters::default()
             };
 
-            field.snapshot_scanline(line_index, crtc_start, raster, 0, &video_registers, |_| &[]);
+            field.snapshot_scanline(
+                line_index,
+                crtc_start,
+                raster_even,
+                raster_odd,
+                0,
+                &video_registers,
+                |_| &[],
+            );
 
             let data_slices = get_line_data_slices(&field.lines[line_index]);
 
             assert_eq!(
-                data_slices.line_type, expected_flags as u8,
-                "Failed for crtc_start=0x{:04x}, length={}, r8=0x{:02x}, ula_control=0x{:02x}, raster=0x{:02x}",
-                crtc_start, r1, r8, ula_control, raster
+                data_slices.flags, expected_flags,
+                "Failed for crtc_start=0x{:04x}, length={}, r8=0x{:02x}, ula_control=0x{:02x}, raster_even=0x{:02x}, raster_odd=0x{:02x}",
+                crtc_start, r1, r8, ula_control, raster_even, raster_odd
             );
         }
     }
@@ -93,7 +128,8 @@ mod field_data_tests {
         field.snapshot_scanline(
             12,     // line index
             0x2000, // crtc start
-            0,      // raster line
+            0,      // raster line even
+            0,      // raster line odd
             0,      // ic32 latch value
             &VideoRegisters {
                 ula_control: 0x02,
@@ -120,7 +156,8 @@ mod field_data_tests {
         field.snapshot_scanline(
             12,     // line index
             0x27F0, // crtc start
-            0,      // raster line
+            0,      // raster line even
+            0,      // raster line odd
             0,      // ic32 latch value
             &VideoRegisters {
                 ula_control: 0x02,
@@ -148,7 +185,8 @@ mod field_data_tests {
         field.snapshot_scanline(
             12,     // line index
             0x1000, // crtc start
-            3,      // raster line
+            3,      // raster line even
+            3,      // raster line odd
             0,      // ic32 latch value
             &VideoRegisters {
                 crtc_r1_horizontal_displayed: 0x10,
@@ -177,7 +215,8 @@ mod field_data_tests {
         field.snapshot_scanline(
             12,     // line index
             0x17F0, // crtc start
-            5,      // raster line
+            5,      // raster odd line
+            5,      // raster even line
             0,      // ic32 latch value
             &VideoRegisters {
                 crtc_r1_horizontal_displayed: 0x20,
@@ -199,24 +238,5 @@ mod field_data_tests {
             ] // first 8 bytes: every 8th byte starting from index 5 from region 1
               // final 4 bytes: every 8th byte starting from index 5 from region 2
         );
-    }
-}
-
-struct LineDataSlices<'a> {
-    line_type: u8,
-    char_data: &'a [u8],
-    crtc_counters: &'a [u8],
-    crtc_registers: &'a [u8],
-    crtc_ula_control_and_palette: &'a [u8],
-}
-
-fn get_line_data_slices(line: &FieldLine) -> LineDataSlices<'_> {
-    let raw_data = line.get_raw_data();
-    LineDataSlices {
-        line_type: raw_data[0],                         // line type
-        char_data: &raw_data[1..101],                   // char data
-        crtc_counters: &raw_data[101..104],             // crtc counters
-        crtc_registers: &raw_data[104..113],            // crtc registers
-        crtc_ula_control_and_palette: &raw_data[113..], // crtc ula control & palette
     }
 }

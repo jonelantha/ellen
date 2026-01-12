@@ -82,11 +82,13 @@ impl Core {
         line_index: usize,
         crtc_memory_address: u16,
         crtc_raster_address_even: u8,
+        crtc_raster_address_odd: u8,
     ) {
         self.video_field.snapshot_scanline(
             line_index,
             crtc_memory_address,
             crtc_raster_address_even,
+            crtc_raster_address_odd,
             self.ic32_latch.get(),
             &self.video_registers.borrow(),
             |range| self.ram.slice(range),

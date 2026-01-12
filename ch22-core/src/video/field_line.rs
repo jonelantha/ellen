@@ -7,14 +7,12 @@ pub struct FieldLine {
     flags: u8,
     char_data: [u8; MAX_CHARS],
     crtc_memory_address: u16,
-    crtc_raster_address_even: u8,
     crtc_r0_horizontal_total: u8,
     crtc_r1_horizontal_displayed: u8,
     crtc_r2_horizontal_sync_position: u8,
     crtc_r3_sync_width: u8,
     crtc_r8_interlace_and_skew: u8,
     crtc_r10_cursor_start_raster: u8,
-    crtc_r11_cursor_end_raster: u8,
     crtc_r14_cursor_h: u8,
     crtc_r15_cursor_l: u8,
     ula_control: u8,
@@ -27,14 +25,12 @@ impl Default for FieldLine {
             flags: 0,
             char_data: [0; MAX_CHARS],
             crtc_memory_address: 0,
-            crtc_raster_address_even: 0,
             crtc_r0_horizontal_total: 0,
             crtc_r1_horizontal_displayed: 0,
             crtc_r2_horizontal_sync_position: 0,
             crtc_r3_sync_width: 0,
             crtc_r8_interlace_and_skew: 0,
             crtc_r10_cursor_start_raster: 0,
-            crtc_r11_cursor_end_raster: 0,
             crtc_r14_cursor_h: 0,
             crtc_r15_cursor_l: 0,
             ula_control: 0,
@@ -48,14 +44,8 @@ impl FieldLine {
         self.flags = 0;
     }
 
-    pub fn set_registers(
-        &mut self,
-        crtc_memory_address: u16,
-        crtc_raster_address_even: u8,
-        video_registers: &VideoRegisters,
-    ) {
+    pub fn set_registers(&mut self, crtc_memory_address: u16, video_registers: &VideoRegisters) {
         self.crtc_memory_address = crtc_memory_address;
-        self.crtc_raster_address_even = crtc_raster_address_even;
 
         self.ula_control = video_registers.ula_control;
         self.ula_palette = video_registers.ula_palette;
@@ -66,9 +56,26 @@ impl FieldLine {
         self.crtc_r3_sync_width = video_registers.crtc_r3_sync_width;
         self.crtc_r8_interlace_and_skew = video_registers.crtc_r8_interlace_and_skew;
         self.crtc_r10_cursor_start_raster = video_registers.crtc_r10_cursor_start_raster;
-        self.crtc_r11_cursor_end_raster = video_registers.crtc_r11_cursor_end_raster;
         self.crtc_r14_cursor_h = video_registers.crtc_r14_cursor_h;
         self.crtc_r15_cursor_l = video_registers.crtc_r15_cursor_l;
+    }
+
+    pub fn set_cursor_flags(
+        &mut self,
+        crtc_raster_address_even: u8,
+        crtc_raster_address_odd: u8,
+        video_registers: &VideoRegisters,
+    ) {
+        let cursor_start = video_registers.crtc_r10_cursor_start_raster & 0x1F;
+        let cursor_end = video_registers.crtc_r11_cursor_end_raster;
+
+        if crtc_raster_address_even >= cursor_start && crtc_raster_address_even <= cursor_end {
+            self.flags |= flags::CURSOR_RASTER_EVEN;
+        }
+
+        if crtc_raster_address_odd >= cursor_start && crtc_raster_address_odd <= cursor_end {
+            self.flags |= flags::CURSOR_RASTER_ODD;
+        }
     }
 
     pub fn set_displayed(&mut self) {
@@ -146,4 +153,6 @@ pub mod flags {
     pub const DISPLAYED: u8 = 0b0000_0001;
     pub const HAS_BYTES: u8 = 0b0000_0010;
     pub const INVALID_RANGE: u8 = 0b0000_0100;
+    pub const CURSOR_RASTER_EVEN: u8 = 0b0001_0000;
+    pub const CURSOR_RASTER_ODD: u8 = 0b0010_0000;
 }
