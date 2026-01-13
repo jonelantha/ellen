@@ -41,6 +41,10 @@ impl SystemFfi {
         self.core.video_field.clear();
     }
 
+    pub fn inc_field_counter(&mut self) {
+        self.core.inc_field_counter();
+    }
+
     pub fn snapshot_scanline(
         &mut self,
         line_index: usize,

@@ -15,8 +15,8 @@ fn get_line_data_slices(line: &FieldLine) -> LineDataSlices<'_> {
         flags: raw_data[0],                             // flags
         char_data: &raw_data[1..101],                   // char data
         crtc_counters: &raw_data[101..103],             // crtc counters
-        crtc_registers: &raw_data[103..111],            // crtc registers
-        crtc_ula_control_and_palette: &raw_data[111..], // crtc ula control & palette
+        crtc_registers: &raw_data[103..110],            // crtc registers
+        crtc_ula_control_and_palette: &raw_data[110..], // crtc ula control & palette
     }
 }
 
@@ -36,7 +36,6 @@ mod field_data_tests {
             crtc_r2_horizontal_sync_position: 0x13,
             crtc_r3_sync_width: 0x14,
             crtc_r8_interlace_and_skew: 0x15,
-            crtc_r10_cursor_start_raster: 0x16,
             crtc_r14_cursor_h: 0x18,
             crtc_r15_cursor_l: 0x19,
             ula_control: 0x20,
@@ -50,6 +49,7 @@ mod field_data_tests {
             raster,
             raster,
             0,
+            0,
             &video_registers,
             |_| &[],
         );
@@ -59,7 +59,7 @@ mod field_data_tests {
         assert_eq!(data_slices.crtc_counters, [0x34, 0x12]);
         assert_eq!(
             data_slices.crtc_registers,
-            [0x80, 0x12, 0x13, 0x14, 0x15, 0x16, 0x18, 0x19]
+            [0x80, 0x12, 0x13, 0x14, 0x15, 0x18, 0x19]
         );
         assert_eq!(
             data_slices.crtc_ula_control_and_palette,
@@ -106,6 +106,7 @@ mod field_data_tests {
                 raster_even,
                 raster_odd,
                 0,
+                0,
                 &video_registers,
                 |_| &[],
             );
@@ -131,6 +132,7 @@ mod field_data_tests {
             0,      // raster line even
             0,      // raster line odd
             0,      // ic32 latch value
+            0,      // field counter
             &VideoRegisters {
                 ula_control: 0x02,
                 crtc_r1_horizontal_displayed: 0x10,
@@ -159,6 +161,7 @@ mod field_data_tests {
             0,      // raster line even
             0,      // raster line odd
             0,      // ic32 latch value
+            0,      // field counter
             &VideoRegisters {
                 ula_control: 0x02,
                 crtc_r1_horizontal_displayed: 0x50,
@@ -188,6 +191,7 @@ mod field_data_tests {
             3,      // raster line even
             3,      // raster line odd
             0,      // ic32 latch value
+            0,      // field counter
             &VideoRegisters {
                 crtc_r1_horizontal_displayed: 0x10,
                 ..VideoRegisters::default()
@@ -218,6 +222,7 @@ mod field_data_tests {
             5,      // raster odd line
             5,      // raster even line
             0,      // ic32 latch value
+            0,      // field counter
             &VideoRegisters {
                 crtc_r1_horizontal_displayed: 0x20,
                 ..VideoRegisters::default()

@@ -21,6 +21,7 @@ pub struct Core {
     pub io_space: IOSpace,
     pub video_field: Field,
     pub ic32_latch: Rc<Cell<u8>>,
+    pub field_counter: u8,
     pub rom_select_latch: Rc<Cell<usize>>,
     pub video_registers: Rc<RefCell<VideoRegisters>>,
     pub timer_devices: TimerDeviceList,
@@ -54,6 +55,8 @@ impl Core {
             None,
             DeviceSpeed::TwoMhz,
         );
+
+        self.field_counter = 0;
     }
 
     fn address_map() -> impl AddressMap {
@@ -77,6 +80,10 @@ impl Core {
         }
     }
 
+    pub fn inc_field_counter(&mut self) {
+        self.field_counter = self.field_counter.wrapping_add(1);
+    }
+
     pub fn snapshot_scanline(
         &mut self,
         line_index: usize,
@@ -90,6 +97,7 @@ impl Core {
             crtc_raster_address_even,
             crtc_raster_address_odd,
             self.ic32_latch.get(),
+            self.field_counter,
             &self.video_registers.borrow(),
             |range| self.ram.slice(range),
         );

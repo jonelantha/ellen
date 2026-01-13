@@ -34,6 +34,7 @@ impl Field {
         crtc_raster_address_even: u8,
         crtc_raster_address_odd: u8,
         ic32_latch: u8,
+        field_counter: u8,
         video_registers: &VideoRegisters,
         get_buffer: impl Fn(std::ops::Range<u16>) -> &'a [u8],
     ) {
@@ -44,6 +45,7 @@ impl Field {
         self.lines[line_index].set_cursor_flags(
             crtc_raster_address_even,
             crtc_raster_address_odd,
+            field_counter,
             video_registers,
         );
 

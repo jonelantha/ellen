@@ -12,7 +12,6 @@ pub struct FieldLine {
     crtc_r2_horizontal_sync_position: u8,
     crtc_r3_sync_width: u8,
     crtc_r8_interlace_and_skew: u8,
-    crtc_r10_cursor_start_raster: u8,
     crtc_r14_cursor_h: u8,
     crtc_r15_cursor_l: u8,
     ula_control: u8,
@@ -30,7 +29,6 @@ impl Default for FieldLine {
             crtc_r2_horizontal_sync_position: 0,
             crtc_r3_sync_width: 0,
             crtc_r8_interlace_and_skew: 0,
-            crtc_r10_cursor_start_raster: 0,
             crtc_r14_cursor_h: 0,
             crtc_r15_cursor_l: 0,
             ula_control: 0,
@@ -55,7 +53,6 @@ impl FieldLine {
         self.crtc_r2_horizontal_sync_position = video_registers.crtc_r2_horizontal_sync_position;
         self.crtc_r3_sync_width = video_registers.crtc_r3_sync_width;
         self.crtc_r8_interlace_and_skew = video_registers.crtc_r8_interlace_and_skew;
-        self.crtc_r10_cursor_start_raster = video_registers.crtc_r10_cursor_start_raster;
         self.crtc_r14_cursor_h = video_registers.crtc_r14_cursor_h;
         self.crtc_r15_cursor_l = video_registers.crtc_r15_cursor_l;
     }
@@ -64,16 +61,26 @@ impl FieldLine {
         &mut self,
         crtc_raster_address_even: u8,
         crtc_raster_address_odd: u8,
+        field_counter: u8,
         video_registers: &VideoRegisters,
     ) {
-        let cursor_start = video_registers.crtc_r10_cursor_start_raster & 0x1F;
-        let cursor_end = video_registers.crtc_r11_cursor_end_raster;
+        if !is_cursor_blink_visible(video_registers.crtc_r10_cursor_start_raster, field_counter) {
+            return;
+        }
 
-        if crtc_raster_address_even >= cursor_start && crtc_raster_address_even <= cursor_end {
+        if is_cursor_raster(
+            video_registers.crtc_r10_cursor_start_raster,
+            video_registers.crtc_r11_cursor_end_raster,
+            crtc_raster_address_even,
+        ) {
             self.flags |= flags::CURSOR_RASTER_EVEN;
         }
 
-        if crtc_raster_address_odd >= cursor_start && crtc_raster_address_odd <= cursor_end {
+        if is_cursor_raster(
+            video_registers.crtc_r10_cursor_start_raster,
+            video_registers.crtc_r11_cursor_end_raster,
+            crtc_raster_address_odd,
+        ) {
             self.flags |= flags::CURSOR_RASTER_ODD;
         }
     }
@@ -155,4 +162,27 @@ pub mod flags {
     pub const INVALID_RANGE: u8 = 0b0000_0100;
     pub const CURSOR_RASTER_EVEN: u8 = 0b0001_0000;
     pub const CURSOR_RASTER_ODD: u8 = 0b0010_0000;
+}
+
+fn is_cursor_blink_visible(crtc_r10_cursor_start_raster: u8, field_counter: u8) -> bool {
+    let blink_mode = crtc_r10_cursor_start_raster & 0b0110_0000;
+
+    match blink_mode {
+        0b0000_0000 => true,                      // Always on
+        0b0010_0000 => false,                     // Hidden
+        0b0100_0000 => field_counter & 0x08 != 0, // Fast blink
+        0b0110_0000 => field_counter & 0x10 != 0, // Slow blink
+        _ => unreachable!(),
+    }
+}
+
+fn is_cursor_raster(
+    crtc_r10_cursor_start_raster: u8,
+    crtc_r11_cursor_end_raster: u8,
+    crtc_raster_address: u8,
+) -> bool {
+    let cursor_start = crtc_r10_cursor_start_raster & 0x1f;
+    let cursor_end = crtc_r11_cursor_end_raster;
+
+    crtc_raster_address >= cursor_start && crtc_raster_address <= cursor_end
 }
