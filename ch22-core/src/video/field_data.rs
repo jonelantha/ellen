@@ -44,6 +44,8 @@ impl Field {
 
         self.lines[line_index].update_interlace_video_and_sync(video_registers);
 
+        self.lines[line_index].set_back_porch(video_registers);
+
         self.lines[line_index].set_cursor(
             crtc_raster_address_even,
             crtc_raster_address_odd,

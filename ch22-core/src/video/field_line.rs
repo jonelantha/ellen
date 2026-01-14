@@ -1,3 +1,5 @@
+use std::cmp::{max, min};
+
 use crate::video::{
     VideoRegisters,
     video_registers::{R8_CURSOR_DELAY_HIDDEN, R10CursorBlinkMode},
@@ -9,10 +11,8 @@ const MAX_CHARS: usize = 100;
 pub struct FieldLine {
     flags: u8,
     char_data: [u8; MAX_CHARS],
-    crtc_r0_horizontal_total: u8,
     crtc_r1_horizontal_displayed: u8,
-    crtc_r2_horizontal_sync_position: u8,
-    crtc_r3_sync_width: u8,
+    back_porch: u8,
     ula_control: u8,
     ula_palette: u64,
     cursor_char: u8,
@@ -23,10 +23,8 @@ impl Default for FieldLine {
         FieldLine {
             flags: 0,
             char_data: [0; MAX_CHARS],
-            crtc_r0_horizontal_total: 0,
             crtc_r1_horizontal_displayed: 0,
-            crtc_r2_horizontal_sync_position: 0,
-            crtc_r3_sync_width: 0,
+            back_porch: 0,
             ula_control: 0,
             ula_palette: 0,
             cursor_char: 0,
@@ -43,10 +41,7 @@ impl FieldLine {
         self.ula_control = video_registers.ula_control;
         self.ula_palette = video_registers.ula_palette;
 
-        self.crtc_r0_horizontal_total = video_registers.crtc_r0_horizontal_total;
         self.crtc_r1_horizontal_displayed = video_registers.crtc_r1_horizontal_displayed;
-        self.crtc_r2_horizontal_sync_position = video_registers.crtc_r2_horizontal_sync_position;
-        self.crtc_r3_sync_width = video_registers.crtc_r3_sync_width;
     }
 
     pub fn set_cursor(
@@ -96,6 +91,19 @@ impl FieldLine {
         if is_odd_in_range {
             self.flags |= flags::CURSOR_RASTER_ODD;
         }
+    }
+
+    pub fn set_back_porch(&mut self, video_registers: &VideoRegisters) {
+        let full_horizontal_total = (video_registers.crtc_r0_horizontal_total as u16) + 1;
+
+        let h_sync_width = max(video_registers.r3_h_sync_width(), 1);
+
+        let h_sync_end = min(
+            video_registers.crtc_r2_horizontal_sync_position as u16 + h_sync_width as u16,
+            full_horizontal_total as u16,
+        );
+
+        self.back_porch = (full_horizontal_total - h_sync_end) as u8;
     }
 
     pub fn update_interlace_video_and_sync(&mut self, video_registers: &VideoRegisters) {

@@ -5,6 +5,7 @@ struct LineDataSlices<'a> {
     flags: u8,
     char_data: &'a [u8],
     crtc_registers: &'a [u8],
+    back_porch: u8,
     crtc_ula_control_and_palette: &'a [u8],
     cursor_char: u8,
 }
@@ -14,9 +15,10 @@ fn get_line_data_slices(line: &FieldLine) -> LineDataSlices<'_> {
     LineDataSlices {
         flags: raw_data[0],                                // flags
         char_data: &raw_data[1..101],                      // char data
-        crtc_registers: &raw_data[101..105],               // crtc registers
-        crtc_ula_control_and_palette: &raw_data[105..114], // crtc ula control & palette
-        cursor_char: raw_data[114],                        // cursor char
+        crtc_registers: &raw_data[101..102],               // crtc registers
+        back_porch: raw_data[102],                         // back porch
+        crtc_ula_control_and_palette: &raw_data[103..112], // crtc ula control & palette
+        cursor_char: raw_data[112],                        // cursor char
     }
 }
 
@@ -53,7 +55,8 @@ mod field_data_tests {
 
         let data_slices = get_line_data_slices(&field.lines[line_index]);
 
-        assert_eq!(data_slices.crtc_registers, [0x80, 0x12, 0x13, 0x14]);
+        assert_eq!(data_slices.crtc_registers, [0x12]);
+        assert_eq!(data_slices.back_porch, 0x6a);
         assert_eq!(
             data_slices.crtc_ula_control_and_palette,
             [0x20, 0xEF, 0xCD, 0xAB, 0x89, 0x67, 0x45, 0x23, 0x01]
@@ -120,7 +123,7 @@ mod field_data_tests {
         let line_index = 7;
 
         let test_cases = [
-            // crtc_, expected_flags
+            // r8, expected_flags
             (0, 0),
             (0x03, INTERLACE_VIDEO_AND_SYNC),
         ];
@@ -288,6 +291,73 @@ mod field_data_tests {
                     r10_blink_mode_bits, field_counter
                 );
             }
+        }
+    }
+
+    #[test]
+    fn test_back_porch_logic() {
+        let line_index = 7;
+
+        let test_cases = [
+            // r0, r2, r3, expected_back_porch
+            // basic cases
+            (0x7F, 0x60, 0x02, 0x1E),
+            (0x7F, 0x63, 0x28, 0x15),
+            (0x63, 0x4F, 0x05, 0x10),
+            // sync width variations
+            (0x80, 0x60, 0x0F, 0x12),
+            (0x80, 0x60, 0x08, 0x19),
+            (0x80, 0x60, 0xF2, 0x1F), // only lower nibble r3 used
+            (0x7F, 0x70, 0xA5, 0x0B), // only lower nibble r3 used
+            (0x63, 0x50, 0x3F, 0x05), // only lower nibble r3 used
+            (0x80, 0x60, 0x00, 0x20), // r3 & 0x0f = 0, uses min of 1
+            // edge cases
+            (0x63, 0x5A, 0x0A, 0x00), // back porch = 0
+            (0xFE, 0xF0, 0x0E, 0x01), // large r0
+            (0xFF, 0x80, 0x00, 0x7F), // largest r0, r3 = 0 uses min of 1
+            (0x01, 0x00, 0x00, 0x01), // small r0, r3 = 0 uses min of 1
+            (0x00, 0x00, 0x00, 0x00), // smallest r0, r3 = 0 uses min of 1
+            (0x40, 0x50, 0x05, 0x00), // r2 + r3 > r0 + 1
+            (0x10, 0x20, 0x08, 0x00), // r2 + r3 > r0 + 1
+            (0x00, 0x01, 0x01, 0x00), // r2 + r3 > r0 + 1
+            (0xFF, 0xFF, 0x00, 0x00), // r3 = 0
+            (0xFE, 0x00, 0x00, 0xFE), // r3 = 0
+        ];
+
+        for (
+            crtc_r0_horizontal_total,
+            crtc_r2_horizontal_sync_position,
+            crtc_r3_sync_width,
+            expected_back_porch,
+        ) in test_cases
+        {
+            let mut field = Field::default();
+
+            let video_registers = VideoRegisters {
+                crtc_r0_horizontal_total,
+                crtc_r2_horizontal_sync_position,
+                crtc_r3_sync_width,
+                ..VideoRegisters::default()
+            };
+
+            field.snapshot_scanline(
+                line_index,
+                0x1000, // crtc start
+                0,      // raster_even
+                0,      // raster_odd
+                0,      // ic32 latch value
+                0,      // field counter
+                &video_registers,
+                |_| &[],
+            );
+
+            let data_slices = get_line_data_slices(&field.lines[line_index]);
+
+            assert_eq!(
+                data_slices.back_porch, expected_back_porch,
+                "Failed for crtc_r0_horizontal_total=0x{:02x}, crtc_r2_horizontal_sync_position=0x{:02x}, crtc_r3_sync_width=0x{:02x}",
+                crtc_r0_horizontal_total, crtc_r2_horizontal_sync_position, crtc_r3_sync_width
+            );
         }
     }
 

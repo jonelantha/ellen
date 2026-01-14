@@ -6,7 +6,7 @@
 
 // field buffer
 
-const BYTES_PER_LINE = 115u;
+const BYTES_PER_LINE = 113u;
 
 const FLAG_DISPLAYED = 0x01u;
 const FLAG_HAS_BYTES = 0x02u;
@@ -14,13 +14,11 @@ const FLAG_INVALID_RANGE = 0x04u;
 
 const OFFSET_FLAGS = 0u;
 const OFFSET_DATA = 1u;
-const OFFSET_R0_HORIZONTAL_TOTAL = 101u;
-const OFFSET_R1_HORIZONTAL_DISPLAYED = 102u;
-const OFFSET_R2_HORIZONTAL_SYNC_POS = 103u;
-const OFFSET_R3_SYNC_WIDTH = 104u;
-const OFFSET_VIDEO_ULA_CONTROL_REG = 105u;
-const OFFSET_PALETTE_START = 106u;
-const OFFSET_CURSOR_CHAR = 114u;
+const OFFSET_R1_HORIZONTAL_DISPLAYED = 101u;
+const OFFSET_BACK_PORCH = 102u;
+const OFFSET_VIDEO_ULA_CONTROL_REG = 103u;
+const OFFSET_PALETTE_START = 104u;
+const OFFSET_CURSOR_CHAR = 112u;
 
 struct FieldBuf {
     bytes: array<u32>,
@@ -70,21 +68,16 @@ fn metrics_main() {
         let flags = get_field_line_byte(line, OFFSET_FLAGS);
         if (flags & FLAG_DISPLAYED) == 0u { continue; };
 
-        let r0_horizontal_total = get_field_line_byte(line, OFFSET_R0_HORIZONTAL_TOTAL);
         let r1_horizontal_displayed = get_field_line_byte(line, OFFSET_R1_HORIZONTAL_DISPLAYED);
-        let r2_horizontal_sync_pos = get_field_line_byte(line, OFFSET_R2_HORIZONTAL_SYNC_POS);
-        let r3_sync_width = get_field_line_byte(line, OFFSET_R3_SYNC_WIDTH);
+        let back_porch = get_field_line_byte(line, OFFSET_BACK_PORCH);
         let video_ula_control_reg = get_field_line_byte(line, OFFSET_VIDEO_ULA_CONTROL_REG);
         let is_high_freq = (video_ula_control_reg & ULA_HIGH_FREQ) != 0u;
 
-        let bm_left = calc_line_bm_left(
-            r0_horizontal_total,
-            r2_horizontal_sync_pos,
-            r3_sync_width,
-            is_high_freq,
-        );
+        let char_width = select(16u, 8u, is_high_freq);
 
-        let width = calc_line_width(r1_horizontal_displayed, is_high_freq);
+        let bm_left = back_porch * char_width;
+
+        let width = r1_horizontal_displayed * char_width;
 
         line_metrics.lines[line] = LineMetrics(bm_left, width);
 
@@ -195,47 +188,6 @@ const ULA_NUM_COLOURS: array<u32, 8> = array<u32, 8>(16u, 4u, 2u, 0u, 0u, 16u, 4
 
 fn num_colours(video_ula_control_reg: u32) -> u32 {
     return ULA_NUM_COLOURS[(video_ula_control_reg & ULA_NUM_COLOURS_MASK) >> 2u];
-}
-
-fn h_pixels_per_char(is_high_freq: bool) -> u32 {
-    return select(16u, 8u, is_high_freq);
-}
-
-// line metric calcs
-
-fn calc_back_porch(
-    r0_horizontal_total: u32,
-    r2_horizontal_sync_pos: u32,
-    r3_sync_width: u32,
-) -> u32 {
-    let h_sync_width = r3_sync_width & 0x0fu;
-    let sync_end = r2_horizontal_sync_pos + h_sync_width;
-    if sync_end >= r0_horizontal_total + 1 {
-        return 0u;
-    } else {
-        return r0_horizontal_total + 1 - sync_end;
-    }
-}
-
-fn calc_line_bm_left(
-    r0_horizontal_total: u32,
-    r2_horizontal_sync_pos: u32,
-    r3_sync_width: u32,
-    is_high_freq: bool,
-) -> u32 {
-    let back_porch = calc_back_porch(
-        r0_horizontal_total,
-        r2_horizontal_sync_pos,
-        r3_sync_width,
-    );
-    return back_porch * h_pixels_per_char(is_high_freq);
-}
-
-fn calc_line_width(
-    r1_horizontal_displayed: u32,
-    is_high_freq: bool,
-) -> u32 {
-    return r1_horizontal_displayed * h_pixels_per_char(is_high_freq);
 }
 
 // screen metric calcs
