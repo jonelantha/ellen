@@ -40,16 +40,19 @@ impl Field {
     ) {
         self.lines[line_index].set_displayed();
 
-        self.lines[line_index].set_registers(crtc_memory_address, video_registers);
+        self.lines[line_index].set_registers(video_registers);
 
-        self.lines[line_index].set_cursor_flags(
+        self.lines[line_index].update_interlace_video_and_sync(video_registers);
+
+        self.lines[line_index].set_cursor(
             crtc_raster_address_even,
             crtc_raster_address_odd,
             field_counter,
+            crtc_memory_address,
             video_registers,
         );
 
-        if video_registers.is_ula_teletext() {
+        if video_registers.ula_is_teletext() {
             snapshot_teletext_scanline_data(
                 &mut self.lines[line_index],
                 crtc_memory_address,
@@ -99,7 +102,7 @@ fn snapshot_hires_scanline_raster_data<'a>(
 
     if crtc_length == 0
         || crtc_raster_address_even >= 8
-        || video_registers.is_crtc_screen_delay_no_output()
+        || video_registers.r8_is_crtc_screen_delay_no_output()
     {
         return;
     }
