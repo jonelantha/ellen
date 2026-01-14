@@ -14,7 +14,7 @@ const FIELD_BUFFER_BINDING = 0;
 const LINE_METRICS_BUFFER_BINDING = 1;
 const FRAME_METRICS_BUFFER_BINDING = 2;
 
-const FIELD_BUFFER_BYTES_PER_LINE = 113;
+const FIELD_BUFFER_BYTES_PER_LINE = 116;
 const FRAME_METRICS_BUFFER_SIZE = 3 * 4; // three 32-bit values
 
 export async function initRenderer(

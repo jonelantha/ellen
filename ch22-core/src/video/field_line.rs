@@ -10,24 +10,26 @@ const MAX_CHARS: usize = 100;
 #[repr(C, packed)]
 pub struct FieldLine {
     flags: u8,
-    char_data: [u8; MAX_CHARS],
-    crtc_r1_horizontal_displayed: u8,
-    back_porch: u8,
     ula_control: u8,
-    ula_palette: u64,
+    total_chars: u8,
+    back_porch: u8,
     cursor_char: u8,
+    pad: [u8; 3],
+    ula_palette: u64,
+    char_data: [u8; MAX_CHARS],
 }
 
 impl Default for FieldLine {
     fn default() -> Self {
         FieldLine {
             flags: 0,
-            char_data: [0; MAX_CHARS],
-            crtc_r1_horizontal_displayed: 0,
-            back_porch: 0,
             ula_control: 0,
-            ula_palette: 0,
+            total_chars: 0,
+            back_porch: 0,
             cursor_char: 0,
+            pad: [0; 3],
+            ula_palette: 0,
+            char_data: [0; MAX_CHARS],
         }
     }
 }
@@ -37,14 +39,42 @@ impl FieldLine {
         self.flags = 0;
     }
 
-    pub fn set_registers(&mut self, video_registers: &VideoRegisters) {
-        self.ula_control = video_registers.ula_control;
-        self.ula_palette = video_registers.ula_palette;
+    pub fn set_line_parameters(
+        &mut self,
+        crtc_raster_address_even: u8,
+        crtc_raster_address_odd: u8,
+        field_counter: u8,
+        crtc_memory_address: u16,
+        video_registers: &VideoRegisters,
+    ) {
+        self.update_metrics(video_registers);
 
-        self.crtc_r1_horizontal_displayed = video_registers.crtc_r1_horizontal_displayed;
+        self.snapshot_ula(video_registers);
+
+        self.update_cursor_fields(
+            crtc_raster_address_even,
+            crtc_raster_address_odd,
+            field_counter,
+            crtc_memory_address,
+            video_registers,
+        );
     }
 
-    pub fn set_cursor(
+    pub fn update_metrics(&mut self, video_registers: &VideoRegisters) {
+        self.total_chars = video_registers.crtc_r1_horizontal_displayed;
+        self.back_porch = calc_back_porch(video_registers);
+
+        if video_registers.r8_is_interlace_sync_and_video() {
+            self.flags |= flags::INTERLACE_VIDEO_AND_SYNC;
+        }
+    }
+
+    pub fn snapshot_ula(&mut self, video_registers: &VideoRegisters) {
+        self.ula_control = video_registers.ula_control;
+        self.ula_palette = video_registers.ula_palette;
+    }
+
+    pub fn update_cursor_fields(
         &mut self,
         crtc_raster_address_even: u8,
         crtc_raster_address_odd: u8,
@@ -90,25 +120,6 @@ impl FieldLine {
 
         if is_odd_in_range {
             self.flags |= flags::CURSOR_RASTER_ODD;
-        }
-    }
-
-    pub fn set_back_porch(&mut self, video_registers: &VideoRegisters) {
-        let full_horizontal_total = (video_registers.crtc_r0_horizontal_total as u16) + 1;
-
-        let h_sync_width = max(video_registers.r3_h_sync_width(), 1);
-
-        let h_sync_end = min(
-            video_registers.crtc_r2_horizontal_sync_position as u16 + h_sync_width as u16,
-            full_horizontal_total as u16,
-        );
-
-        self.back_porch = (full_horizontal_total - h_sync_end) as u8;
-    }
-
-    pub fn update_interlace_video_and_sync(&mut self, video_registers: &VideoRegisters) {
-        if video_registers.r8_is_interlace_sync_and_video() {
-            self.flags |= flags::INTERLACE_VIDEO_AND_SYNC;
         }
     }
 
@@ -202,4 +213,17 @@ fn is_r10_cursor_blink_visible(
         R10CursorBlinkMode::Fast => field_counter & 0x08 != 0, // Fast blink
         R10CursorBlinkMode::Slow => field_counter & 0x10 != 0, // Slow blink
     }
+}
+
+fn calc_back_porch(video_registers: &VideoRegisters) -> u8 {
+    let full_horizontal_total = (video_registers.crtc_r0_horizontal_total as u16) + 1;
+
+    let h_sync_width = max(video_registers.r3_h_sync_width(), 1);
+
+    let h_sync_end = min(
+        video_registers.crtc_r2_horizontal_sync_position as u16 + h_sync_width as u16,
+        full_horizontal_total as u16,
+    );
+
+    return (full_horizontal_total - h_sync_end) as u8;
 }

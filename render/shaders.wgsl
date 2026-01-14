@@ -6,19 +6,19 @@
 
 // field buffer
 
-const BYTES_PER_LINE = 113u;
+const BYTES_PER_LINE = 116u;
 
 const FLAG_DISPLAYED = 0x01u;
 const FLAG_HAS_BYTES = 0x02u;
 const FLAG_INVALID_RANGE = 0x04u;
 
 const OFFSET_FLAGS = 0u;
-const OFFSET_DATA = 1u;
-const OFFSET_R1_HORIZONTAL_DISPLAYED = 101u;
-const OFFSET_BACK_PORCH = 102u;
-const OFFSET_VIDEO_ULA_CONTROL_REG = 103u;
-const OFFSET_PALETTE_START = 104u;
-const OFFSET_CURSOR_CHAR = 112u;
+const OFFSET_VIDEO_ULA_CONTROL_REG = 1u;
+const OFFSET_TOTAL_CHARS = 2u;
+const OFFSET_BACK_PORCH = 3u;
+const OFFSET_PALETTE_START = 4u;
+const OFFSET_CURSOR_CHAR = 12u;
+const OFFSET_DATA = 16u;
 
 struct FieldBuf {
     bytes: array<u32>,
@@ -68,7 +68,7 @@ fn metrics_main() {
         let flags = get_field_line_byte(line, OFFSET_FLAGS);
         if (flags & FLAG_DISPLAYED) == 0u { continue; };
 
-        let r1_horizontal_displayed = get_field_line_byte(line, OFFSET_R1_HORIZONTAL_DISPLAYED);
+        let total_chars = get_field_line_byte(line, OFFSET_TOTAL_CHARS);
         let back_porch = get_field_line_byte(line, OFFSET_BACK_PORCH);
         let video_ula_control_reg = get_field_line_byte(line, OFFSET_VIDEO_ULA_CONTROL_REG);
         let is_high_freq = (video_ula_control_reg & ULA_HIGH_FREQ) != 0u;
@@ -77,7 +77,7 @@ fn metrics_main() {
 
         let bm_left = back_porch * char_width;
 
-        let width = r1_horizontal_displayed * char_width;
+        let width = total_chars * char_width;
 
         line_metrics.lines[line] = LineMetrics(bm_left, width);
 
@@ -142,13 +142,13 @@ fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
         return vec4f(0.0, 1.0, 1.0, 1.0);
     }
     
-    let r1_horizontal_displayed = get_field_line_byte(line, OFFSET_R1_HORIZONTAL_DISPLAYED);
+    let total_chars = get_field_line_byte(line, OFFSET_TOTAL_CHARS);
     let is_high_freq = (video_ula_control_reg & ULA_HIGH_FREQ) != 0u;
     let bm_line_left = line_metrics.lines[line].bm_left;
     
     let char_index_and_pixel = get_char_index_and_pixel(
         display_x,
-        r1_horizontal_displayed,
+        total_chars,
         bm_line_left,
         is_high_freq
     );
@@ -214,7 +214,7 @@ struct ByteIndexAndPixel {
 
 fn get_char_index_and_pixel(
     display_x: u32,
-    r1_horizontal_displayed: u32,
+    total_chars: u32,
     bm_line_left: u32,
     is_high_freq: bool
 ) -> ByteIndexAndPixel {
@@ -229,7 +229,7 @@ fn get_char_index_and_pixel(
     let char_index = data_x >> select(4u, 3u, is_high_freq);
     let pixel = data_x & select(0x0fu, 0x07u, is_high_freq);
 
-    if char_index >= r1_horizontal_displayed {
+    if char_index >= total_chars {
         return ByteIndexAndPixel(true, 2, 0);
     }
 

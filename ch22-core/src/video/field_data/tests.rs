@@ -3,22 +3,25 @@ use crate::video::{FieldLine, VideoRegisters, field_line_flags::*};
 
 struct LineDataSlices<'a> {
     flags: u8,
-    char_data: &'a [u8],
-    crtc_registers: &'a [u8],
+    crtc_ula_control: u8,
+    total_chars: u8,
     back_porch: u8,
-    crtc_ula_control_and_palette: &'a [u8],
     cursor_char: u8,
+    ula_palette: &'a [u8],
+    char_data: &'a [u8],
 }
 
 fn get_line_data_slices(line: &FieldLine) -> LineDataSlices<'_> {
     let raw_data = line.get_raw_data();
     LineDataSlices {
-        flags: raw_data[0],                                // flags
-        char_data: &raw_data[1..101],                      // char data
-        crtc_registers: &raw_data[101..102],               // crtc registers
-        back_porch: raw_data[102],                         // back porch
-        crtc_ula_control_and_palette: &raw_data[103..112], // crtc ula control & palette
-        cursor_char: raw_data[112],                        // cursor char
+        flags: raw_data[0],            // flags
+        crtc_ula_control: raw_data[1], // crtc ula control
+        total_chars: raw_data[2],      //
+        back_porch: raw_data[3],       // back porch
+        cursor_char: raw_data[4],      // cursor char
+        // 3 bytes padding
+        ula_palette: &raw_data[8..16], // crtc ula control & palette
+        char_data: &raw_data[16..],    // char data
     }
 }
 
@@ -55,13 +58,14 @@ mod field_data_tests {
 
         let data_slices = get_line_data_slices(&field.lines[line_index]);
 
-        assert_eq!(data_slices.crtc_registers, [0x12]);
+        assert_eq!(data_slices.crtc_ula_control, 0x20);
+        assert_eq!(data_slices.total_chars, 0x12);
         assert_eq!(data_slices.back_porch, 0x6a);
-        assert_eq!(
-            data_slices.crtc_ula_control_and_palette,
-            [0x20, 0xEF, 0xCD, 0xAB, 0x89, 0x67, 0x45, 0x23, 0x01]
-        );
         assert_eq!(data_slices.cursor_char, 0x00);
+        assert_eq!(
+            data_slices.ula_palette,
+            [0xEF, 0xCD, 0xAB, 0x89, 0x67, 0x45, 0x23, 0x01]
+        );
     }
 
     #[test]
