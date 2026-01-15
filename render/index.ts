@@ -11,8 +11,7 @@ interface BufferParams {
 
 const BIND_GROUP_INDEX = 0;
 const FIELD_BUFFER_BINDING = 0;
-const LINE_METRICS_BUFFER_BINDING = 1;
-const FRAME_METRICS_BUFFER_BINDING = 2;
+const FRAME_METRICS_BUFFER_BINDING = 1;
 
 const FIELD_BUFFER_BYTES_PER_LINE = 116;
 const FRAME_METRICS_BUFFER_SIZE = 3 * 4; // three 32-bit values
@@ -34,17 +33,10 @@ export async function initRenderer(
     throw new Error(`Not multiple of line size: ${sourceFieldBuffer.length}`);
   }
 
-  const numLines = sourceFieldBuffer.length / FIELD_BUFFER_BYTES_PER_LINE;
-
   const gpuFieldBuffer = createGPUBuffer(
     device,
     sourceFieldBuffer.length,
     true,
-  );
-  const gpuLineMetricsBuffer = createGPUBuffer(
-    device,
-    numLines * 8, // 8 bytes per LineMetrics struct
-    false,
   );
   const gpuFrameMetricsBuffer = createGPUBuffer(
     device,
@@ -57,7 +49,6 @@ export async function initRenderer(
     device,
     computePipeline,
     gpuFieldBuffer,
-    gpuLineMetricsBuffer,
     gpuFrameMetricsBuffer,
   );
 
@@ -66,7 +57,6 @@ export async function initRenderer(
     device,
     renderPipeline,
     gpuFieldBuffer,
-    gpuLineMetricsBuffer,
     gpuFrameMetricsBuffer,
   );
 
@@ -168,7 +158,6 @@ function createBindGroup(
   device: GPUDevice,
   pipeline: GPURenderPipeline | GPUComputePipeline,
   gpuFieldBuffer: GPUBuffer,
-  gpuLineMetricsBuffer: GPUBuffer,
   gpuFrameMetricsBuffer: GPUBuffer,
 ) {
   return device.createBindGroup({
@@ -177,10 +166,6 @@ function createBindGroup(
       {
         binding: FIELD_BUFFER_BINDING,
         resource: { buffer: gpuFieldBuffer },
-      },
-      {
-        binding: LINE_METRICS_BUFFER_BINDING,
-        resource: { buffer: gpuLineMetricsBuffer },
       },
       {
         binding: FRAME_METRICS_BUFFER_BINDING,

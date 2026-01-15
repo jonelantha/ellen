@@ -1,8 +1,7 @@
 // bindings
 
 @group(0) @binding(0) var<storage, read> field : FieldBuf;
-@group(0) @binding(1) var<storage, read_write> line_metrics : LineMetricsBuf;
-@group(0) @binding(2) var<storage, read_write> frame_metrics : FrameMetricsBuf;
+@group(0) @binding(1) var<storage, read_write> frame_metrics : FrameMetricsBuf;
 
 // field buffer
 
@@ -59,15 +58,6 @@ fn get_field_line_char(line: u32, offset: u32) -> u32 {
 
 // metrics buffers
 
-struct LineMetrics {
-    bm_left: u32,
-    width: u32,
-}
-
-struct LineMetricsBuf {
-    lines: array<LineMetrics>,
-};
-
 struct FrameMetricsBuf {
     num_lines: u32,
     bm_display_origin_x: u32,
@@ -96,17 +86,11 @@ fn metrics_main() {
         let flags = flags_and_metrics.flags;
         
         if (flags & FLAG_DISPLAYED) == 0u { continue; };
-        let total_chars = flags_and_metrics.total_chars;
-        let back_porch = flags_and_metrics.back_porch;
-        let is_high_freq = (flags & FLAG_ULA_HIGH_FREQ) != 0u;
 
-        let char_width = select(16u, 8u, is_high_freq);
+        let char_width = char_width(flags);
 
-        let bm_left = back_porch * char_width;
-
-        let width = total_chars * char_width;
-
-        line_metrics.lines[line] = LineMetrics(bm_left, width);
+        let bm_left = flags_and_metrics.back_porch * char_width;
+        let width = flags_and_metrics.total_chars * char_width;
 
         bm_min_x = min(bm_min_x, bm_left);
         bm_max_x = max(bm_max_x, bm_left + width);
@@ -170,9 +154,11 @@ fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
         return vec4f(0.0, 1.0, 1.0, 1.0);
     }
     
-    let total_chars = flags_and_metrics.total_chars;
+    let char_width = char_width(flags);
     let is_high_freq = (flags & FLAG_ULA_HIGH_FREQ) != 0u;
-    let bm_line_left = line_metrics.lines[line].bm_left;
+
+    let total_chars = flags_and_metrics.total_chars;
+    let bm_line_left = flags_and_metrics.back_porch * char_width;
     
     let char_index_and_pixel = get_char_index_and_pixel(
         display_x,
@@ -211,6 +197,10 @@ const ULA_NUM_COLOURS: array<u32, 8> = array<u32, 8>(16u, 4u, 2u, 0u, 0u, 16u, 4
 
 fn num_colours(flags: u32) -> u32 {
     return ULA_NUM_COLOURS[(flags & FLAG_ULA_NUM_COLOURS_MASK) >> 10u];
+}
+
+fn char_width(flags: u32) -> u32 {
+    return select(16u, 8u, (flags & FLAG_ULA_HIGH_FREQ) != 0u);
 }
 
 // screen metric calcs
