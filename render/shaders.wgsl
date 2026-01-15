@@ -6,29 +6,55 @@
 
 // field buffer
 
-const BYTES_PER_LINE = 116u;
+const DWORDS_PER_LINE = 29u;
 
-const FLAG_DISPLAYED = 0x01u;
-const FLAG_HAS_BYTES = 0x02u;
-const FLAG_INVALID_RANGE = 0x04u;
+const FLAG_DISPLAYED = 0x0001u;
+const FLAG_HAS_BYTES = 0x0002u;
+const FLAG_INVALID_RANGE = 0x0004u;
+const FLAG_ULA_FLASH = 0x0100u;
+const FLAG_ULA_TELETEXT = 0x0200u;
+const FLAG_ULA_HIGH_FREQ = 0x1000u;
+const FLAG_ULA_NUM_COLOURS_MASK = 0x1c00u;
 
-const OFFSET_FLAGS = 0u;
-const OFFSET_VIDEO_ULA_CONTROL_REG = 1u;
-const OFFSET_TOTAL_CHARS = 2u;
-const OFFSET_BACK_PORCH = 3u;
-const OFFSET_PALETTE_START = 4u;
-const OFFSET_CURSOR_CHAR = 12u;
-const OFFSET_DATA = 16u;
+const OFFSET_FLAGS_AND_METRICS = 0u;
+const OFFSET_CURSOR = 1u;
+const OFFSET_PALETTE_START = 2u;
+const OFFSET_DATA_START = 4u;
 
 struct FieldBuf {
     bytes: array<u32>,
 };
 
-fn get_field_line_byte(line: u32, offset: u32) -> u32 {
-    let idx = line * BYTES_PER_LINE + offset;
+struct FlagsAndMetrics {
+    flags: u32,
+    total_chars: u32,
+    back_porch: u32,
+};
 
-    let word = field.bytes[idx >> 2u];
-    return (word >> ((idx & 0x3u) * 8u)) & 0xffu;
+fn get_line_dword(line: u32, offset: u32) -> u32 {
+    return field.bytes[line * DWORDS_PER_LINE + offset];
+}
+
+fn get_line_flags_and_metrics(line: u32) -> FlagsAndMetrics {
+    let dword = get_line_dword(line, OFFSET_FLAGS_AND_METRICS);
+
+    return FlagsAndMetrics(
+        dword & 0xffffu,
+        extract_byte(dword, 2u),
+        extract_byte(dword, 3u)
+    );
+}
+
+fn get_field_line_palette(line: u32, index: u32) -> u32 {
+    let palette_dword = get_line_dword(line, OFFSET_PALETTE_START + (index >> 3u));
+
+    return extract_nibble(palette_dword, index & 0x07u);
+}
+
+fn get_field_line_char(line: u32, offset: u32) -> u32 {
+    let dword = get_line_dword(line, OFFSET_DATA_START + (offset >> 2u));
+
+    return extract_byte(dword, offset & 0x03u);
 }
 
 // metrics buffers
@@ -57,7 +83,7 @@ const CANVAS_HEIGHT = 512u;
 
 @compute @workgroup_size(1)
 fn metrics_main() {
-    let num_lines = arrayLength(&field.bytes) * 4u / BYTES_PER_LINE;
+    let num_lines = arrayLength(&field.bytes) / DWORDS_PER_LINE;
 
     var bm_min_y: u32 = 0xffffffffu;
     var bm_max_y: u32 = 0u;
@@ -65,13 +91,14 @@ fn metrics_main() {
     var bm_max_x: u32 = 0u;
 
     for (var line = 0u; line < num_lines; line++) {
-        let flags = get_field_line_byte(line, OFFSET_FLAGS);
-        if (flags & FLAG_DISPLAYED) == 0u { continue; };
+        let flags_and_metrics = get_line_flags_and_metrics(line);
 
-        let total_chars = get_field_line_byte(line, OFFSET_TOTAL_CHARS);
-        let back_porch = get_field_line_byte(line, OFFSET_BACK_PORCH);
-        let video_ula_control_reg = get_field_line_byte(line, OFFSET_VIDEO_ULA_CONTROL_REG);
-        let is_high_freq = (video_ula_control_reg & ULA_HIGH_FREQ) != 0u;
+        let flags = flags_and_metrics.flags;
+        
+        if (flags & FLAG_DISPLAYED) == 0u { continue; };
+        let total_chars = flags_and_metrics.total_chars;
+        let back_porch = flags_and_metrics.back_porch;
+        let is_high_freq = (flags & FLAG_ULA_HIGH_FREQ) != 0u;
 
         let char_width = select(16u, 8u, is_high_freq);
 
@@ -126,7 +153,10 @@ fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
         return vec4f(0.0, 0.0, 1.0, 1.0);
     }
 
-    let flags = get_field_line_byte(line, OFFSET_FLAGS);
+    let flags_and_metrics = get_line_flags_and_metrics(line);
+
+    let flags = flags_and_metrics.flags;
+    
     if ((flags & FLAG_DISPLAYED) == 0u) {
         return vec4f(0.0, 0.0, 0.0, 1.0);
     }
@@ -136,14 +166,12 @@ fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
         return vec4f(0.0, 1.0, 0.0, 1.0);
     }
 
-    let video_ula_control_reg = get_field_line_byte(line, OFFSET_VIDEO_ULA_CONTROL_REG);
-    
-    if (video_ula_control_reg & ULA_TELETEXT) != 0u {
+    if ((flags & FLAG_ULA_TELETEXT) != 0u) {
         return vec4f(0.0, 1.0, 1.0, 1.0);
     }
     
-    let total_chars = get_field_line_byte(line, OFFSET_TOTAL_CHARS);
-    let is_high_freq = (video_ula_control_reg & ULA_HIGH_FREQ) != 0u;
+    let total_chars = flags_and_metrics.total_chars;
+    let is_high_freq = (flags & FLAG_ULA_HIGH_FREQ) != 0u;
     let bm_line_left = line_metrics.lines[line].bm_left;
     
     let char_index_and_pixel = get_char_index_and_pixel(
@@ -157,16 +185,16 @@ fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
         return vec4f(0.0, 0.0, 0.0, 1.0);
     }
 
-    let byte = get_field_line_byte(line, OFFSET_DATA + char_index_and_pixel.char_index);
+    let byte = get_field_line_char(line,  char_index_and_pixel.char_index);
 
-    if num_colours(video_ula_control_reg) == 4u && !is_high_freq {
-        let palette_idx = extract_palette_index_4col(byte, char_index_and_pixel.pixel >> 2);
+    if num_colours(flags) == 4u && !is_high_freq {
+        let palette_index = extract_palette_index_4col(byte, char_index_and_pixel.pixel >> 2);
         
-        let flash = (video_ula_control_reg & ULA_FLASH) != 0u;
+        let flash = (flags & FLAG_ULA_FLASH) != 0u;
 
-        let colour_idx = get_colour_index_from_palette_index(line, palette_idx, flash);
+        let colour_index = get_colour_index_from_palette_index(line, palette_index, flash);
 
-        return colour_idx_to_rgb(colour_idx);
+        return colour_index_to_rgb(colour_index);
     } else {
         if byte > 0 {
             return vec4f(0.0, 1.0, 0.0, 1.0);
@@ -178,16 +206,11 @@ fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
 
 // ula control helpers
 
-const ULA_FLASH = 0x01u;
-const ULA_TELETEXT = 0x02u;
-const ULA_HIGH_FREQ = 0x10u;
-const ULA_NUM_COLOURS_MASK = 0x1cu;
-
 // Advanced User Guide 204 onwards
 const ULA_NUM_COLOURS: array<u32, 8> = array<u32, 8>(16u, 4u, 2u, 0u, 0u, 16u, 4u, 2u);
 
-fn num_colours(video_ula_control_reg: u32) -> u32 {
-    return ULA_NUM_COLOURS[(video_ula_control_reg & ULA_NUM_COLOURS_MASK) >> 2u];
+fn num_colours(flags: u32) -> u32 {
+    return ULA_NUM_COLOURS[(flags & FLAG_ULA_NUM_COLOURS_MASK) >> 10u];
 }
 
 // screen metric calcs
@@ -271,27 +294,20 @@ fn extract_palette_index_4col(byte_val: u32, pixel_in_byte: u32) -> u32 {
     }
 }
 
-fn get_colour_index_from_palette_index(line: u32, palette_idx: u32, flash: bool) -> u32 {
-    let palette_byte = get_field_line_byte(line, OFFSET_PALETTE_START + (palette_idx >> 1u));
+fn get_colour_index_from_palette_index(line: u32, index: u32, flash: bool) -> u32 {
+    var colour_index = get_field_line_palette(line, index);
     
-    var colour_idx: u32;
-    if (palette_idx & 1u) == 0u {
-        colour_idx = palette_byte & 0x0fu;
-    } else {
-        colour_idx = (palette_byte >> 4u) & 0x0fu;
+    if colour_index > 7u {
+        colour_index &= 7u;
+
+        if flash { colour_index ^= 7u; }
     }
 
-    if colour_idx > 7u {
-        colour_idx &= 7u;
-
-        if flash { colour_idx ^= 7u; }
-    }
-
-    return colour_idx;
+    return colour_index;
 }
 
-fn colour_idx_to_rgb(colour_idx: u32) -> vec4f {
-    switch colour_idx {
+fn colour_index_to_rgb(colour_index: u32) -> vec4f {
+    switch colour_index {
         case 0u: { return vec4f(0.0, 0.0, 0.0, 1.0); }      // Black
         case 1u: { return vec4f(1.0, 0.0, 0.0, 1.0); }      // Red
         case 2u: { return vec4f(0.0, 1.0, 0.0, 1.0); }      // Green
@@ -301,4 +317,14 @@ fn colour_idx_to_rgb(colour_idx: u32) -> vec4f {
         case 6u: { return vec4f(0.0, 1.0, 1.0, 1.0); }      // Cyan
         default: { return vec4f(1.0, 1.0, 1.0, 1.0); }      // White
     }
+}
+
+// helpers
+
+fn extract_byte(value: u32, byte_index: u32) -> u32 {
+    return (value >> (byte_index * 8u)) & 0xffu;
+}
+
+fn extract_nibble(value: u32, nibble_index: u32) -> u32 {
+    return (value >> (nibble_index * 4u)) & 0x0fu;
 }
