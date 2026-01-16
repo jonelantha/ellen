@@ -12,8 +12,18 @@ const FLAG_HAS_BYTES = 0x0002u;
 const FLAG_INVALID_RANGE = 0x0004u;
 const FLAG_ULA_FLASH = 0x0100u;
 const FLAG_ULA_TELETEXT = 0x0200u;
-const FLAG_ULA_HIGH_FREQ = 0x1000u;
-const FLAG_ULA_NUM_COLOURS_MASK = 0x1c00u;
+const FLAG_ULA_FLAG_ULA_HIGH_FREQ = 0x1000u;
+const FLAG_ULA_PIXEL_SEL_MASK = 0x1c00u;
+
+const FLAG_ULA_HIGH_FREQ_80 = 0x1c00u;
+const FLAG_ULA_HIGH_FREQ_40 = 0x1800u;
+const FLAG_ULA_HIGH_FREQ_20 = 0x1400u;
+const FLAG_ULA_HIGH_FREQ_10 = 0x1000u;
+const FLAG_ULA_LOW_FREQ_80 = 0x0c00u;
+const FLAG_ULA_LOW_FREQ_40 = 0x0800u;
+const FLAG_ULA_LOW_FREQ_20 = 0x0400u;
+const FLAG_ULA_LOW_FREQ_10 = 0x0000u;
+
 
 const OFFSET_FLAGS_AND_METRICS = 0u;
 const OFFSET_CURSOR = 1u;
@@ -147,25 +157,14 @@ fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
 
     if ((flags & FLAG_HAS_BYTES) == 0u) {
         // cursor could be visible
-        return vec4f(0.0, 1.0, 0.0, 1.0);
+        return vec4f(0.0, 0.0, 0.0, 1.0);
     }
 
     if ((flags & FLAG_ULA_TELETEXT) != 0u) {
         return vec4f(0.0, 1.0, 1.0, 1.0);
     }
-    
-    let char_width = char_width(flags);
-    let is_high_freq = (flags & FLAG_ULA_HIGH_FREQ) != 0u;
 
-    let total_chars = flags_and_metrics.total_chars;
-    let bm_line_left = flags_and_metrics.back_porch * char_width;
-    
-    let char_index_and_pixel = get_char_index_and_pixel(
-        display_x,
-        total_chars,
-        bm_line_left,
-        is_high_freq
-    );
+    let char_index_and_pixel = get_char_index_and_pixel(display_x, flags_and_metrics);
     
     if char_index_and_pixel.out_of_bounds {
         return vec4f(0.0, 0.0, 0.0, 1.0);
@@ -173,34 +172,19 @@ fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
 
     let byte = get_field_line_char(line,  char_index_and_pixel.char_index);
 
-    if num_colours(flags) == 4u && !is_high_freq {
-        let palette_index = extract_palette_index_4col(byte, char_index_and_pixel.pixel >> 2);
-        
-        let flash = (flags & FLAG_ULA_FLASH) != 0u;
+    let palette_index = extract_palette_index(byte, char_index_and_pixel.pixel);
 
-        let colour_index = get_colour_index_from_palette_index(line, palette_index, flash);
+    let flash = (flags & FLAG_ULA_FLASH) != 0u;
 
-        return colour_index_to_rgb(colour_index);
-    } else {
-        if byte > 0 {
-            return vec4f(0.0, 1.0, 0.0, 1.0);
-        } else {
-            return vec4f(1.0, 0.0, 0.0, 1.0);
-        }
-    }
+    let colour_index = get_colour_index_from_palette_index(line, palette_index, flash);
+
+    return colour_index_to_rgb(colour_index);
 }
 
 // ula control helpers
 
-// Advanced User Guide 204 onwards
-const ULA_NUM_COLOURS: array<u32, 8> = array<u32, 8>(16u, 4u, 2u, 0u, 0u, 16u, 4u, 2u);
-
-fn num_colours(flags: u32) -> u32 {
-    return ULA_NUM_COLOURS[(flags & FLAG_ULA_NUM_COLOURS_MASK) >> 10u];
-}
-
 fn char_width(flags: u32) -> u32 {
-    return select(16u, 8u, (flags & FLAG_ULA_HIGH_FREQ) != 0u);
+    return select(16u, 8u, (flags & FLAG_ULA_FLAG_ULA_HIGH_FREQ) != 0u);
 }
 
 // screen metric calcs
@@ -227,59 +211,90 @@ struct ByteIndexAndPixel {
 
 fn get_char_index_and_pixel(
     display_x: u32,
-    total_chars: u32,
-    bm_line_left: u32,
-    is_high_freq: bool
+    flags_and_metrics: FlagsAndMetrics
 ) -> ByteIndexAndPixel {
     let bm_x = frame_metrics.bm_display_origin_x + display_x;
 
+    let bm_line_left = flags_and_metrics.back_porch * char_width(flags_and_metrics.flags);
+    
     if bm_x < bm_line_left {
         return ByteIndexAndPixel(true, 1, 0);
     }
 
-    let data_x = bm_x - bm_line_left;
+    let x = bm_x - bm_line_left;
 
-    let char_index = data_x >> select(4u, 3u, is_high_freq);
-    let pixel = data_x & select(0x0fu, 0x07u, is_high_freq);
-
-    if char_index >= total_chars {
+    let char_index = x >> select(4u, 3u, (flags_and_metrics.flags & FLAG_ULA_FLAG_ULA_HIGH_FREQ) != 0u);
+    if char_index >= flags_and_metrics.total_chars {
         return ByteIndexAndPixel(true, 2, 0);
     }
+
+    let pixel = pixel_in_char(x, flags_and_metrics.flags);
 
     return ByteIndexAndPixel(false, char_index, pixel);
 }
 
+fn pixel_in_char(x: u32, flags: u32) -> u32 {
+    // bits = bits in mask
+    // px/byte = 2^bits
+    // depth = bits/pixel = 8 / px/byte
+    // 2^(num rh ignored bits) = px width
+    switch flags & FLAG_ULA_PIXEL_SEL_MASK {                        // bits | px/byte | depth | px width | modes
+        case FLAG_ULA_HIGH_FREQ_10: { return 0; }                   // 0    | 1       | ?     | 8        | ?
+        case FLAG_ULA_HIGH_FREQ_20: { return (x & 0x04u) >> 2; }    // 1    | 2       | 4     | 4        | 2
+        case FLAG_ULA_HIGH_FREQ_40: { return (x & 0x06u) >> 1; }    // 2    | 4       | 2     | 2        | 1
+        case FLAG_ULA_HIGH_FREQ_80: { return x & 0x07u; }           // 3    | 8       | 1     | 1        | 0,3
+        case FLAG_ULA_LOW_FREQ_10:  { return (x & 0x08u) >> 3; }    // 1    | 2       | 4     | 8        | N/A
+        case FLAG_ULA_LOW_FREQ_20:  { return (x & 0x0cu) >> 2; }    // 2    | 4       | 2     | 4        | 5
+        case FLAG_ULA_LOW_FREQ_40:  { return (x & 0x0eu) >> 1; }    // 3    | 8       | 1     | 2        | 4,6
+        default: /*LOW_FREQ_80*/    { return x & 0x0fu; }           // 4    | ?       | ?     | ?        | N/A
+    }
+}
+
 // palette
 
-fn extract_palette_index_4col(byte_val: u32, pixel_in_byte: u32) -> u32 {
-    switch pixel_in_byte {
-        case 0u: {
-            // bits 7,5,3,1
+fn extract_palette_index(byte_val: u32, index: u32) -> u32 {
+    switch index {
+        case 0u: { // bits 7,5,3,1
             return ((byte_val & 0x80u) >> 4u) |
                    ((byte_val & 0x20u) >> 3u) |
                    ((byte_val & 0x08u) >> 2u) |
                    ((byte_val & 0x02u) >> 1u);
         }
-        case 1u: {
-            // bits 6,4,2,0
+        case 1u: { // bits 6,4,2,0
             return ((byte_val & 0x40u) >> 3u) |
                    ((byte_val & 0x10u) >> 2u) |
                    ((byte_val & 0x04u) >> 1u) |
                    (byte_val & 0x01u);
         }
-        case 2u: {
-            // bits 5,3,1,H (H=1)
+        case 2u: { // bits 5,3,1,H (H=1)
             return ((byte_val & 0x20u) >> 2u) |
                    ((byte_val & 0x08u) >> 1u) |
-                   ((byte_val & 0x02u) >> 0u) |
+                   (byte_val & 0x02u) |
                    1u;
         }
-        default: { // 3u
-            // bits 4,2,0,H (H=1)
+        case 3u: { // bits 4,2,0,H (H=1)
             return ((byte_val & 0x10u) >> 1u) |
-                   ((byte_val & 0x04u) >> 0u) |
+                   (byte_val & 0x04u) |
                    ((byte_val & 0x01u) << 1u) |
                    1u;
+        }
+        case 4u: { //bits 3,1,H,H (H=1)
+            return (byte_val & 0x08u) |
+                   ((byte_val & 0x02u) << 1u) |
+                   3u;
+        }
+        case 5u: { // bits 2,0,H,H (H=1)
+            return ((byte_val & 0x04u) << 1u) |
+                   ((byte_val & 0x01u) << 2u) |
+                   3u;
+        }
+        case 6u: { // bits 1,H,H,H (H=1)
+            return ((byte_val & 0x02u) << 2u) |
+                   7u;
+        }
+        default: { // 7u, bits 0,H,H,H (H=1)
+            return ((byte_val & 0x01u) << 3u) |
+                   7u;
         }
     }
 }
