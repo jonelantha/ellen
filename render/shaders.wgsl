@@ -10,6 +10,9 @@ const DWORDS_PER_LINE = 29u;
 const FLAG_DISPLAYED = 0x0001u;
 const FLAG_HAS_BYTES = 0x0002u;
 const FLAG_INVALID_RANGE = 0x0004u;
+const FLAG_CURSOR_RASTER_EVEN = 0x0010u;
+const FLAG_CURSOR_RASTER_ODD = 0x0020u;
+
 const FLAG_ULA_FLASH = 0x0100u;
 const FLAG_ULA_TELETEXT = 0x0200u;
 const FLAG_ULA_HIGH_FREQ = 0x1000u;
@@ -22,7 +25,9 @@ const FLAG_ULA_LOW_FREQ_80 = 0x0c00u;
 const FLAG_ULA_LOW_FREQ_40 = 0x0800u;
 const FLAG_ULA_LOW_FREQ_20 = 0x0400u;
 const FLAG_ULA_LOW_FREQ_10 = 0x0000u;
-
+const FLAG_ULA_CURSOR_SEGMENT_3_4 = 0x2000u;
+const FLAG_ULA_CURSOR_SEGMENT_2 = 0x4000u;
+const FLAG_ULA_CURSOR_SEGMENT_1 = 0x8000u;
 
 const OFFSET_FLAGS_AND_METRICS = 0u;
 const OFFSET_CURSOR = 1u;
@@ -141,6 +146,7 @@ fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
     let display_y = u32(input.crt.y);
 
     let line = (frame_metrics.bm_display_origin_y + display_y) / 2;
+    let odd_line = ((frame_metrics.bm_display_origin_y + display_y) & 1u) != 0u;
     
     if line >= frame_metrics.num_lines {
         return vec4f(0.0, 0.0, 1.0, 1.0);
@@ -175,7 +181,11 @@ fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
 
     let flash = (flags & FLAG_ULA_FLASH) != 0u;
 
-    let colour_index = get_colour_index_from_palette_index(line, palette_index, flash);
+    var colour_index = get_colour_index_from_palette_index(line, palette_index, flash);
+
+    if is_cursor(flags, line, odd_line, char_index_and_pixel.char_index) {
+        colour_index ^= 7;
+    }
 
     return colour_index_to_rgb(colour_index);
 }
@@ -320,6 +330,28 @@ fn colour_index_to_rgb(colour_index: u32) -> vec4f {
         case 5u: { return vec4f(1.0, 0.0, 1.0, 1.0); }      // Magenta
         case 6u: { return vec4f(0.0, 1.0, 1.0, 1.0); }      // Cyan
         default: { return vec4f(1.0, 1.0, 1.0, 1.0); }      // White
+    }
+}
+
+// cursor
+
+fn is_cursor(flags: u32, line: u32, odd_line: bool, char_x: u32) -> bool {
+    if !odd_line && (flags & FLAG_CURSOR_RASTER_EVEN) == 0 { return false; }
+
+    if odd_line && (flags & FLAG_CURSOR_RASTER_ODD) == 0 { return false; }
+
+    let cursor_start= extract_byte(get_line_dword(line, OFFSET_CURSOR), 0u);
+
+    if char_x < cursor_start {
+        return false;
+    } else if char_x < cursor_start + 1u {
+        return (flags & FLAG_ULA_CURSOR_SEGMENT_1) != 0u;
+    } else if char_x < cursor_start + 2u {
+        return (flags & FLAG_ULA_CURSOR_SEGMENT_2) != 0u;
+    } else if char_x < cursor_start + 4u {
+        return (flags & FLAG_ULA_CURSOR_SEGMENT_3_4) != 0u;
+    } else {
+        return false;
     }
 }
 
