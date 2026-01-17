@@ -159,7 +159,7 @@ fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
     }
 
     if ((flags & FLAG_ULA_TELETEXT) != 0) {
-        return vec4f(0.0, 1.0, 1.0, 1.0);
+        return vec4f(0.0, 0.0, 0.0, 1.0);
     }
 
     let char_index_and_pixel = get_char_index_and_pixel(display_x, flags_and_metrics);
