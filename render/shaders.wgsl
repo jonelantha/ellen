@@ -101,10 +101,10 @@ fn metrics_main() {
         
         if (flags & FLAG_DISPLAYED) == 0u { continue; };
 
-        let char_width = char_width(flags);
+        let char_shift = get_char_shift(flags);
 
-        let bm_left = flags_and_metrics.back_porch * char_width;
-        let width = flags_and_metrics.total_chars * char_width;
+        let bm_left = flags_and_metrics.back_porch << char_shift;
+        let width = flags_and_metrics.total_chars << char_shift;
 
         bm_min_x = min(bm_min_x, bm_left);
         bm_max_x = max(bm_max_x, bm_left + width);
@@ -192,8 +192,8 @@ fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
 
 // ula control helpers
 
-fn char_width(flags: u32) -> u32 {
-    return select(16u, 8u, (flags & FLAG_ULA_HIGH_FREQ) != 0u);
+fn get_char_shift(flags: u32) -> u32 {
+    return select(4u, 3u, (flags & FLAG_ULA_HIGH_FREQ) != 0u);
 }
 
 // screen metric calcs
@@ -222,22 +222,24 @@ fn get_char_index_and_pixel(
     display_x: u32,
     flags_and_metrics: FlagsAndMetrics
 ) -> ByteIndexAndPixel {
+    let char_shift = get_char_shift(flags_and_metrics.flags);
+
     let bm_x = frame_metrics.bm_display_origin_x + display_x;
 
-    let bm_line_left = flags_and_metrics.back_porch * char_width(flags_and_metrics.flags);
+    let bm_line_left = flags_and_metrics.back_porch << char_shift;
     
     if bm_x < bm_line_left {
         return ByteIndexAndPixel(true, 1, 0);
     }
 
-    let x = bm_x - bm_line_left;
+    let logical_x = bm_x - bm_line_left;
 
-    let char_index = x >> select(4u, 3u, (flags_and_metrics.flags & FLAG_ULA_HIGH_FREQ) != 0u);
+    let char_index = logical_x >> char_shift;
     if char_index >= flags_and_metrics.total_chars {
         return ByteIndexAndPixel(true, 2, 0);
     }
 
-    let pixel = pixel_in_char(x, flags_and_metrics.flags);
+    let pixel = pixel_in_char(logical_x, flags_and_metrics.flags);
 
     return ByteIndexAndPixel(false, char_index, pixel);
 }
