@@ -160,11 +160,6 @@ fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
         return vec4f(0.0, 0.0, 0.0, 1.0);
     }
 
-    if ((flags & FLAG_HAS_BYTES) == 0u) {
-        // cursor could be visible
-        return vec4f(0.0, 0.0, 0.0, 1.0);
-    }
-
     if ((flags & FLAG_ULA_TELETEXT) != 0u) {
         return vec4f(0.0, 1.0, 1.0, 1.0);
     }
@@ -175,19 +170,27 @@ fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
         return vec4f(0.0, 0.0, 0.0, 1.0);
     }
 
-    let byte = get_field_line_char(line,  char_index_and_pixel.char_index);
-
-    let palette_index = extract_palette_index(byte, char_index_and_pixel.pixel);
-
-    let flash = (flags & FLAG_ULA_FLASH) != 0u;
-
-    var colour_index = get_colour_index_from_palette_index(line, palette_index, flash);
+    var colour_index = get_hires_colour_index(flags, line, char_index_and_pixel);
 
     if is_cursor(flags, line, odd_line, char_index_and_pixel.char_index) {
         colour_index ^= 7;
     }
 
     return colour_index_to_rgb(colour_index);
+}
+
+fn get_hires_colour_index(flags: u32, line: u32, char_index_and_pixel: ByteIndexAndPixel) -> u32 {
+    if ((flags & FLAG_HAS_BYTES) == 0u) {
+        return 0;
+    } else {
+        let byte = get_field_line_char(line,  char_index_and_pixel.char_index);
+
+        let palette_index = extract_palette_index(byte, char_index_and_pixel.pixel);
+
+        let flash = (flags & FLAG_ULA_FLASH) != 0u;
+
+        return get_colour_index_from_palette_index(line, palette_index, flash);
+    }
 }
 
 // ula control helpers
