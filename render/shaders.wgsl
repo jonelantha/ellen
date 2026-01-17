@@ -12,9 +12,8 @@ const FLAG_HAS_BYTES = 0x0002u;
 const FLAG_INVALID_RANGE = 0x0004u;
 const FLAG_ULA_FLASH = 0x0100u;
 const FLAG_ULA_TELETEXT = 0x0200u;
-const FLAG_ULA_FLAG_ULA_HIGH_FREQ = 0x1000u;
+const FLAG_ULA_HIGH_FREQ = 0x1000u;
 const FLAG_ULA_PIXEL_SEL_MASK = 0x1c00u;
-
 const FLAG_ULA_HIGH_FREQ_80 = 0x1c00u;
 const FLAG_ULA_HIGH_FREQ_40 = 0x1800u;
 const FLAG_ULA_HIGH_FREQ_20 = 0x1400u;
@@ -184,7 +183,7 @@ fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
 // ula control helpers
 
 fn char_width(flags: u32) -> u32 {
-    return select(16u, 8u, (flags & FLAG_ULA_FLAG_ULA_HIGH_FREQ) != 0u);
+    return select(16u, 8u, (flags & FLAG_ULA_HIGH_FREQ) != 0u);
 }
 
 // screen metric calcs
@@ -223,7 +222,7 @@ fn get_char_index_and_pixel(
 
     let x = bm_x - bm_line_left;
 
-    let char_index = x >> select(4u, 3u, (flags_and_metrics.flags & FLAG_ULA_FLAG_ULA_HIGH_FREQ) != 0u);
+    let char_index = x >> select(4u, 3u, (flags_and_metrics.flags & FLAG_ULA_HIGH_FREQ) != 0u);
     if char_index >= flags_and_metrics.total_chars {
         return ByteIndexAndPixel(true, 2, 0);
     }
