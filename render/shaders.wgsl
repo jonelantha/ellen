@@ -367,3 +367,18 @@ fn extract_byte(value: u32, byte_index: u32) -> u32 {
 fn extract_nibble(value: u32, nibble_index: u32) -> u32 {
     return (value >> (nibble_index * 4)) & 0x0f;
 }
+
+// direct renderer
+
+@group(1) @binding(0) var<storage, read> direct_buffer : array<u32>;
+
+@fragment
+fn direct_fragment_main(input: VertexOutput) -> @location(0) vec4f {
+    let x = u32(input.crt.x);
+    let y = u32(input.crt.y);
+    
+    let source_index = y * 640 + x;
+    let colour_index = extract_byte(direct_buffer[source_index >> 2], source_index & 0x03);
+    
+    return colour_index_to_rgb(colour_index);
+}

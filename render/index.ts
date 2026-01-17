@@ -4,22 +4,26 @@ const CANVAS_WIDTH = 640;
 const CANVAS_HEIGHT = 512;
 
 interface BufferParams {
-  buffer: ArrayBuffer;
+  buffer: ArrayBufferLike;
   start: number;
   length: number;
 }
 
-const BIND_GROUP_INDEX = 0;
+const FIELD_BIND_GROUP_INDEX = 0;
 const FIELD_BUFFER_BINDING = 0;
-const FRAME_METRICS_BUFFER_BINDING = 1;
-
+const FIELD_FRAME_METRICS_BUFFER_BINDING = 1;
 const FIELD_BUFFER_BYTES_PER_LINE = 116;
-const FRAME_METRICS_BUFFER_SIZE = 3 * 4; // three 32-bit values
+const FIELD_FRAME_METRICS_BUFFER_SIZE = 3 * 4; // three 32-bit values
+
+const DIRECT_BIND_GROUP_INDEX = 1;
+const DIRECT_BUFFER_BINDING = 0;
+const DIRECT_BUFFER_SIZE = CANVAS_WIDTH * CANVAS_HEIGHT; // 327,680 bytes
 
 export async function initRenderer(
   canvas: HTMLCanvasElement,
   sourceFieldBuffer: BufferParams,
-): Promise<() => void> {
+  sourceDirectBuffer: BufferParams,
+): Promise<{ renderField: () => void; renderDirect: () => void }> {
   canvas.width = CANVAS_WIDTH;
   canvas.height = CANVAS_HEIGHT;
 
@@ -40,9 +44,10 @@ export async function initRenderer(
   );
   const gpuFrameMetricsBuffer = createGPUBuffer(
     device,
-    FRAME_METRICS_BUFFER_SIZE,
+    FIELD_FRAME_METRICS_BUFFER_SIZE,
     false,
   );
+  const gpuDirectBuffer = createGPUBuffer(device, DIRECT_BUFFER_SIZE, true);
 
   const computePipeline = createComputePipeline(device, shaderModule);
   const computeBindGroup = createBindGroup(
@@ -60,17 +65,32 @@ export async function initRenderer(
     gpuFrameMetricsBuffer,
   );
 
-  return function renderFrame() {
-    writeToGPUBuffer(device, gpuFieldBuffer, sourceFieldBuffer);
+  const directRenderPipeline = createDirectRenderPipeline(device, shaderModule);
+  const directBindGroup = createDirectBindGroup(
+    device,
+    directRenderPipeline,
+    gpuDirectBuffer,
+  );
 
-    draw(
-      device,
-      context,
-      computePipeline,
-      computeBindGroup,
-      renderPipeline,
-      renderBindGroup,
-    );
+  return {
+    renderField() {
+      writeToGPUBuffer(device, gpuFieldBuffer, sourceFieldBuffer);
+
+      drawFieldData(
+        device,
+        context,
+        computePipeline,
+        computeBindGroup,
+        renderPipeline,
+        renderBindGroup,
+      );
+    },
+
+    renderDirect() {
+      writeToGPUBuffer(device, gpuDirectBuffer, sourceDirectBuffer);
+
+      drawDirect(device, context, directRenderPipeline, directBindGroup);
+    },
   };
 }
 
@@ -110,6 +130,27 @@ function createRenderPipeline(
     fragment: {
       module: shaderModule,
       entryPoint: 'fragment_main',
+      targets: [{ format: navigator.gpu.getPreferredCanvasFormat() }],
+    },
+    primitive: {
+      topology: 'triangle-list',
+    },
+  });
+}
+
+function createDirectRenderPipeline(
+  device: GPUDevice,
+  shaderModule: GPUShaderModule,
+) {
+  return device.createRenderPipeline({
+    layout: 'auto',
+    vertex: {
+      module: shaderModule,
+      entryPoint: 'vertex_main',
+    },
+    fragment: {
+      module: shaderModule,
+      entryPoint: 'direct_fragment_main',
       targets: [{ format: navigator.gpu.getPreferredCanvasFormat() }],
     },
     primitive: {
@@ -161,21 +202,37 @@ function createBindGroup(
   gpuFrameMetricsBuffer: GPUBuffer,
 ) {
   return device.createBindGroup({
-    layout: pipeline.getBindGroupLayout(BIND_GROUP_INDEX),
+    layout: pipeline.getBindGroupLayout(FIELD_BIND_GROUP_INDEX),
     entries: [
       {
         binding: FIELD_BUFFER_BINDING,
         resource: { buffer: gpuFieldBuffer },
       },
       {
-        binding: FRAME_METRICS_BUFFER_BINDING,
+        binding: FIELD_FRAME_METRICS_BUFFER_BINDING,
         resource: { buffer: gpuFrameMetricsBuffer },
       },
     ],
   });
 }
 
-function draw(
+function createDirectBindGroup(
+  device: GPUDevice,
+  pipeline: GPURenderPipeline,
+  gpuDirectBuffer: GPUBuffer,
+) {
+  return device.createBindGroup({
+    layout: pipeline.getBindGroupLayout(DIRECT_BIND_GROUP_INDEX),
+    entries: [
+      {
+        binding: DIRECT_BUFFER_BINDING,
+        resource: { buffer: gpuDirectBuffer },
+      },
+    ],
+  });
+}
+
+function drawFieldData(
   device: GPUDevice,
   context: GPUCanvasContext,
   computePipeline: GPUComputePipeline,
@@ -188,7 +245,7 @@ function draw(
   // Compute pass to calculate metrics
   const computePassEncoder = commandEncoder.beginComputePass();
   computePassEncoder.setPipeline(computePipeline);
-  computePassEncoder.setBindGroup(BIND_GROUP_INDEX, computeBindGroup);
+  computePassEncoder.setBindGroup(FIELD_BIND_GROUP_INDEX, computeBindGroup);
   computePassEncoder.dispatchWorkgroups(1);
   computePassEncoder.end();
 
@@ -204,7 +261,33 @@ function draw(
     ],
   });
   passEncoder.setPipeline(renderPipeline);
-  passEncoder.setBindGroup(BIND_GROUP_INDEX, renderBindGroup);
+  passEncoder.setBindGroup(FIELD_BIND_GROUP_INDEX, renderBindGroup);
+  passEncoder.draw(3);
+  passEncoder.end();
+
+  device.queue.submit([commandEncoder.finish()]);
+}
+
+function drawDirect(
+  device: GPUDevice,
+  context: GPUCanvasContext,
+  directRenderPipeline: GPURenderPipeline,
+  directBindGroup: GPUBindGroup,
+) {
+  const commandEncoder = device.createCommandEncoder();
+
+  const passEncoder = commandEncoder.beginRenderPass({
+    colorAttachments: [
+      {
+        view: context.getCurrentTexture().createView(),
+        clearValue: [0, 0, 0, 0],
+        loadOp: 'clear',
+        storeOp: 'store',
+      },
+    ],
+  });
+  passEncoder.setPipeline(directRenderPipeline);
+  passEncoder.setBindGroup(DIRECT_BIND_GROUP_INDEX, directBindGroup);
   passEncoder.draw(3);
   passEncoder.end();
 
