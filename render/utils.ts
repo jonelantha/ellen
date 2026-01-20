@@ -1,7 +1,7 @@
 export interface BufferParams {
   buffer: ArrayBufferLike;
-  start: number;
-  length: number;
+  byteOffset: number;
+  byteLength: number;
 }
 
 export async function getGPUDevice() {
@@ -47,5 +47,11 @@ export function writeToGPUBuffer(
   dest: GPUBuffer,
   source: BufferParams,
 ) {
-  device.queue.writeBuffer(dest, 0, source.buffer, source.start, source.length);
+  device.queue.writeBuffer(
+    dest,
+    0,
+    source.buffer,
+    source.byteOffset,
+    source.byteLength,
+  );
 }

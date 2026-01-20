@@ -16,11 +16,15 @@ export function createFieldDataRenderer(
   shaderModule: GPUShaderModule,
   sourceBuffer: BufferParams,
 ): () => void {
-  if (sourceBuffer.length % FIELD_DATA_SOURCE_BYTES_PER_LINE !== 0) {
-    throw new Error(`Not multiple of line size: ${sourceBuffer.length}`);
+  if (sourceBuffer.byteLength % FIELD_DATA_SOURCE_BYTES_PER_LINE !== 0) {
+    throw new Error(`Not multiple of line size: ${sourceBuffer.byteLength}`);
   }
 
-  const gpuSourceBuffer = createGPUBuffer(device, sourceBuffer.length, true);
+  const gpuSourceBuffer = createGPUBuffer(
+    device,
+    sourceBuffer.byteLength,
+    true,
+  );
   const gpuFrameMetricsBuffer = createGPUBuffer(
     device,
     FIELD_DATA_FRAME_METRICS_BUFFER_SIZE,

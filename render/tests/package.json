@@ -1,0 +1,18 @@
+{
+  "name": "ch22-render-tests",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev --port 8080",
+    "build-and-serve": "vite build && vite preview --port 8080",
+    "test-dev": "playwright test",
+    "test": "SERVE_COMMAND='npm run build-and-serve' playwright test",
+    "tsc": "tsc"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.1",
+    "@types/node": "^24.10.9",
+    "vite": "^7.0.6"
+  }
+}

@@ -5,7 +5,7 @@ import { defineConfig } from 'eslint/config';
 
 export default defineConfig(
   {
-    ignores: ['./ch22-core'],
+    ignores: ['./ch22-core', './render/tests/dist'],
   },
   eslint.configs.recommended,
   tseslint.configs.strict,

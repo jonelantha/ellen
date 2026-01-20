@@ -16,8 +16,8 @@ export function createDirectRenderer(
   shaderModule: GPUShaderModule,
   sourceBuffer: BufferParams,
 ): () => void {
-  if (sourceBuffer.length !== SOURCE_SIZE) {
-    throw new Error(`Incorrect source size: ${sourceBuffer.length}`);
+  if (sourceBuffer.byteLength !== SOURCE_SIZE) {
+    throw new Error(`Incorrect source size: ${sourceBuffer.byteLength}`);
   }
 
   const gpuSourceBuffer = createGPUBuffer(device, SOURCE_SIZE, true);

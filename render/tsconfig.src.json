@@ -4,9 +4,10 @@
     "lib": ["ES2024", "DOM", "DOM.Iterable"],
     "types": ["@webgpu/types"],
     "module": "ESNext",
-    "target": "ES2022",
+    "target": "ES2024",
     "moduleResolution": "bundler",
     "noEmit": true
   },
-  "include": ["."]
+  "include": ["."],
+  "exclude": ["**/tests"]
 }
