@@ -5,7 +5,7 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env['CI'],
   retries: 0,
-  reporter: process.env['CI'] ? 'github' : 'html',
+  reporter: 'html',
 
   use: {
     baseURL: 'http://localhost:8080',
