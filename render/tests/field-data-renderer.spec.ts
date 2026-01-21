@@ -26,6 +26,8 @@ for (const fixture of fixtures) {
         new Uint8Array(fixture.buffer),
       );
 
+      await page.waitForTimeout(500);
+
       await expect(page.locator('canvas')).toHaveScreenshot(
         `${fixture.name}.png`,
         { maxDiffPixels: 100, threshold: 0.2 },
