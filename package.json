@@ -1,6 +1,9 @@
 {
   "name": "ch22",
   "private": true,
+  "workspaces": [
+    "render/tests"
+  ],
   "version": "0.0.0",
   "type": "module",
   "scripts": {
