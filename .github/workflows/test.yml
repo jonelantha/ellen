@@ -25,7 +25,7 @@ jobs:
         run: |
           rustup update --no-self-update
       - name: Run tests
-        run: npm test-core
+        run: npm run test-core
   test-render:
     name: Test Render
     runs-on: macos-latest
