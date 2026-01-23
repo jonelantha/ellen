@@ -15,7 +15,12 @@ export default defineConfig({
   snapshotPathTemplate:
     '{snapshotDir}/{testFileDir}/{testFileName}-snapshots/{arg}{ext}',
 
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [
+    {
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'], channel: 'chrome' },
+    },
+  ],
 
   ...(process.env['SERVE_COMMAND'] && {
     webServer: {
