@@ -2,7 +2,7 @@
   "extends": "../../tsconfig/tsconfig.code-styles.json",
   "compilerOptions": {
     "lib": ["ES2024", "DOM"],
-    "types": ["@webgpu/types"],
+    "types": ["@webgpu/types", "node"],
     "skipLibCheck": true,
     "module": "ESNext",
     "target": "es2024",

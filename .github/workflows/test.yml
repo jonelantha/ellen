@@ -41,8 +41,8 @@ jobs:
         run: npm ci
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
-      # - name: Run check
-      #   run: npm run checks
+      - name: Run check
+        run: npm run checks
       - name: Run tests
         run: npm run test-render
       - name: Upload Playwright report
