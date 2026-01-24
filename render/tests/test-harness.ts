@@ -1,13 +1,19 @@
-import { initRenderers } from '../index.js';
+import {
+  initCanvas,
+  getGPUContext,
+  createFieldDataRenderer,
+} from '../index.js';
 
 export async function testRender(fieldData: Uint8Array) {
-  const renderers = await initRenderers(
-    document.getElementById('test-canvas') as HTMLCanvasElement,
-    fieldData,
-    new Uint8Array(640 * 512),
-  );
+  const canvas = document.getElementById('test-canvas') as HTMLCanvasElement;
 
-  renderers.renderFieldData();
+  initCanvas(canvas);
+
+  const gpuContext = await getGPUContext(canvas);
+
+  const renderFieldData = createFieldDataRenderer(gpuContext, fieldData);
+
+  renderFieldData();
 
   await new Promise(requestAnimationFrame);
 }

@@ -8,17 +8,28 @@ import {
   FIELD_DATA_FRAGMENT_ENTRY,
   FIELD_DATA_METRICS_ENTRY,
 } from './constants';
-import { BufferParams, createGPUBuffer, writeToGPUBuffer } from './utils';
+import {
+  BufferParams,
+  createGPUBuffer,
+  getShaderModule,
+  writeToGPUBuffer,
+} from './shared';
 
 export function createFieldDataRenderer(
-  device: GPUDevice,
   context: GPUCanvasContext,
-  shaderModule: GPUShaderModule,
   sourceBuffer: BufferParams,
 ): () => void {
   if (sourceBuffer.byteLength % FIELD_DATA_SOURCE_BYTES_PER_LINE !== 0) {
     throw new Error(`Not multiple of line size: ${sourceBuffer.byteLength}`);
   }
+
+  const device = context.getConfiguration()?.device;
+  if (!device) throw new Error('WebGPU device not available');
+
+  const shaderModule = getShaderModule(device);
+
+  const computePipeline = createComputePipeline(device, shaderModule);
+  const renderPipeline = createRenderPipeline(device, shaderModule);
 
   const gpuSourceBuffer = createGPUBuffer(
     device,
@@ -30,9 +41,6 @@ export function createFieldDataRenderer(
     FIELD_DATA_FRAME_METRICS_BUFFER_SIZE,
     false,
   );
-
-  const computePipeline = createComputePipeline(device, shaderModule);
-  const renderPipeline = createRenderPipeline(device, shaderModule);
 
   const computeBindGroup = createBindGroup(
     device,

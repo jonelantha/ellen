@@ -1,23 +1,29 @@
+import { CANVAS_HEIGHT, CANVAS_WIDTH } from './constants';
+import shadersWGSL from './shaders.wgsl?raw';
+
 export interface BufferParams {
   buffer: ArrayBufferLike;
   byteOffset: number;
   byteLength: number;
 }
 
-export async function getGPUDevice() {
+export function initCanvas(canvas: HTMLCanvasElement) {
+  canvas.width = CANVAS_WIDTH;
+  canvas.height = CANVAS_HEIGHT;
+}
+
+export async function getGPUContext(canvas: HTMLCanvasElement) {
   const adapter = await navigator.gpu?.requestAdapter({
     featureLevel: 'compatibility',
   });
 
-  if (!adapter) throw new Error('WebGPU adapter not available.');
+  if (!adapter) throw new Error('WebGPU adapter not available');
 
-  return await adapter.requestDevice();
-}
+  const device = await adapter.requestDevice();
 
-export function getGPUContext(canvas: HTMLCanvasElement, device: GPUDevice) {
   const context = canvas.getContext('webgpu');
 
-  if (!context) throw new Error('WebGPU context not available.');
+  if (!context) throw new Error('WebGPU context not available');
 
   context.configure({
     device,
@@ -25,6 +31,10 @@ export function getGPUContext(canvas: HTMLCanvasElement, device: GPUDevice) {
   });
 
   return context;
+}
+
+export function getShaderModule(device: GPUDevice): GPUShaderModule {
+  return device.createShaderModule({ code: shadersWGSL });
 }
 
 export function createGPUBuffer(

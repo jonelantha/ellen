@@ -186,8 +186,12 @@ ch22System.snapshot_scanline(
 
 ### Rendering
 
+#### Field data renderer
+
+Render directly from field data buffer (hires modes only)
+
 ```js
-import { initRenderers } from './render';
+import { initCanvas, getGPUContext, createFieldDataRenderer } from './render';
 import initCh22, { System } from './ch22-core/pkg';
 
 const { memory: wasmMemory } = await initCh22();
@@ -196,28 +200,46 @@ const ch22System = System.new();
 
 // ...
 
-// fieldDataBuffer - reference to wasm memory containing field data snapshot
+const canvas = document.getElementById('canvas');
+
+initCanvas(canvas);
+
+const gpuContext = getGPUContext(canvas);
+
 const fieldDataBuffer = {
   buffer: wasmMemory.buffer,
   byteOffset: ch22System.video_field_start(),
   byteLength: ch22System.video_field_size(),
 };
 
-// directBuffer - 4 bit pixel data for direct rendering
-const directBuffer = new Uint8Array(640 * 512);
-
-const { renderFieldData, renderDirect } = await initRenderers(
-  document.getElementById('canvas'),
-  fieldDataBuffer,
-  directBuffer,
-);
+const renderFieldData = createFieldDataRenderer(gpuContext, fieldDataBuffer);
 
 // ...
 
-// render from current contents of field data (hires modes only)
+// render from current contents of field data
 renderFieldData();
+```
 
-// render from direct buffer (for currently unsupported modes)
+#### Direct renderer
+
+Render directly from 4 bit screen data buffer (for rendering non hires modes)
+
+```js
+import { initCanvas, getGPUContext, createDirectRenderer } from './render';
+
+const canvas = document.getElementById('canvas');
+
+initCanvas(canvas);
+
+const gpuContext = getGPUContext(canvas);
+
+const directBuffer = new Uint8Array(640 * 512);
+
+const renderDirect = createDirectRenderer(gpuContext, directBuffer);
+
+// ...
+
+// render from directBuffer
 renderDirect();
 ```
 

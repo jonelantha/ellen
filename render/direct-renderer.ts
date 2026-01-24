@@ -6,23 +6,31 @@ import {
   DIRECT_FRAGMENT_ENTRY,
   DIRECT_VERTEX_ENTRY,
 } from './constants';
-import { BufferParams, writeToGPUBuffer, createGPUBuffer } from './utils';
+import {
+  BufferParams,
+  writeToGPUBuffer,
+  createGPUBuffer,
+  getShaderModule,
+} from './shared';
 
 const SOURCE_SIZE = CANVAS_WIDTH * CANVAS_HEIGHT;
 
 export function createDirectRenderer(
-  device: GPUDevice,
   context: GPUCanvasContext,
-  shaderModule: GPUShaderModule,
   sourceBuffer: BufferParams,
 ): () => void {
   if (sourceBuffer.byteLength !== SOURCE_SIZE) {
     throw new Error(`Incorrect source size: ${sourceBuffer.byteLength}`);
   }
 
-  const gpuSourceBuffer = createGPUBuffer(device, SOURCE_SIZE, true);
+  const device = context.getConfiguration()?.device;
+  if (!device) throw new Error('WebGPU device not available');
+
+  const shaderModule = getShaderModule(device);
 
   const renderPipeline = createRenderPipeline(device, shaderModule);
+
+  const gpuSourceBuffer = createGPUBuffer(device, SOURCE_SIZE, true);
 
   const bindGroup = createBindGroup(device, renderPipeline, gpuSourceBuffer);
 
