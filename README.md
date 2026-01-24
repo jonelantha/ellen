@@ -25,6 +25,7 @@ Targeting web assembly in the browser
 - Video:
   - ULA, CRTC and 'IC32' register addressing
   - Video memory and state snapshotting
+  - Canvas rendering (hires only)
 
 ## ✔️ Requirements
 
@@ -142,14 +143,15 @@ const videoRegisters = ch22System.get_partial_video_registers();
 ```js
 /**
  * get buffer of snapshotted scanline data
- * each line is 122 bytes:
- * - 1 byte     - flags: 0x01 => line displayed, 0x02 => has bytes, 0x04 => invalid crtc range
- * - 100 bytes  - snapshot of up to 100 bytes of video memory for the scanline
- * - 2 bytes    - crtcMemoryAddress of snapshot
- * - 1 byte    - crtcRasterAddress of snapshot (even field)
- * - 9 bytes    - crtc registers: R0, R1, R2, R3, R8, R10, R11, R14, R15
+ * each line is 116 bytes:
+ * - 1 byte     - flags: 0x01 => line displayed, 0x02 => has bytes, 0x04 => invalid crtc range, 0x10 => cursor displayed (even field), 0x20 => cursor displayed (odd field)
  * - 1 byte     - ula control register
- * - 8 bytes    - ula palette (16 nibbles)
+ * - 1 byte     - total chars (R1)
+ * - 1 byte     - back porch chars
+ * - 1 byte     - cursor char
+ * - 3 bytes    - padding
+ * - 8 bytes    - ula pallete
+ * - 100 bytes  - snapshot of up to 100 bytes of video memory for the scanline
  */
 const memory = new Uint8Array(
   wasmMemory.buffer,
@@ -163,16 +165,60 @@ const memory = new Uint8Array(
 ch22System.video_field_clear();
 
 /**
+ * increment field count (used by cursor flash)
+ */
+ch22System.inc_field_counter();
+
+/**
  * add a snapshot of the current video memory and registers
  * - lineIndex: line in buffer for snapshot
  * - crtcMemoryAddress: crtc address for snapshot
  * - crtcRasterAddress: line index relative to current character row for the even field
+ * - crtcRasterAddress: line index relative to current character row for the odd field
  */
 ch22System.snapshot_scanline(
   lineIndex,
   crtcMemoryAddress,
   crtcRasterAddressEvenField,
+  crtcRasterAddressOddField,
 );
+```
+
+### Rendering
+
+```js
+import { initRenderers } from './render';
+import initCh22, { System } from './ch22-core/pkg';
+
+const { memory: wasmMemory } = await initCh22();
+
+const ch22System = System.new();
+
+// ...
+
+// fieldDataBuffer - reference to wasm memory containing field data snapshot
+const fieldDataBuffer = {
+  buffer: wasmMemory.buffer,
+  byteOffset: ch22System.video_field_start(),
+  byteLength: ch22System.video_field_size(),
+};
+
+// directBuffer - 4 bit pixel data for direct rendering
+const directBuffer = new Uint8Array(640 * 512);
+
+const { renderFieldData, renderDirect } = await initRenderers(
+  document.getElementById('canvas'),
+  fieldDataBuffer,
+  directBuffer,
+);
+
+// ...
+
+// render from current contents of field data (hires modes only)
+renderFieldData();
+
+// render from direct buffer (for currently unsupported modes)
+renderDirect();
 ```
 
 ## 🧪 Running tests
