@@ -255,7 +255,7 @@ fn pixel_in_char(x: u32, flags: u32) -> u32 {
         case FLAG_ULA_HIGH_FREQ_20: { return (x & 0x04) >> 2; } // 1    | 2       | 4     | 4        | 2
         case FLAG_ULA_HIGH_FREQ_40: { return (x & 0x06) >> 1; } // 2    | 4       | 2     | 2        | 1
         case FLAG_ULA_HIGH_FREQ_80: { return x & 0x07; }        // 3    | 8       | 1     | 1        | 0,3
-        case FLAG_ULA_LOW_FREQ_10:  { return (x & 0x08) >> 3; } // 1    | 2       | 4     | 8        | N/A
+        case FLAG_ULA_LOW_FREQ_10:  { return (x & 0x08) >> 3; } // 1    | 2       | 4     | 8        | '8'
         case FLAG_ULA_LOW_FREQ_20:  { return (x & 0x0c) >> 2; } // 2    | 4       | 2     | 4        | 5
         case FLAG_ULA_LOW_FREQ_40:  { return (x & 0x0e) >> 1; } // 3    | 8       | 1     | 2        | 4,6
         default: /*LOW_FREQ_80*/    { return x & 0x0f; }        // 4    | ?       | ?     | ?        | N/A
