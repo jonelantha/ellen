@@ -1,87 +1,62 @@
-use crate::video::VideoRegisters;
-
 const MAX_CHARS: usize = 100;
 
 #[repr(C, packed)]
 pub struct FieldLine {
-    line_type: FieldLineType,
-    char_data: [u8; MAX_CHARS],
-    crtc_memory_address: u16,
-    crtc_raster_address_even: u8,
-    crtc_r0_horizontal_total: u8,
-    crtc_r1_horizontal_displayed: u8,
-    crtc_r2_horizontal_sync_position: u8,
-    crtc_r3_sync_width: u8,
-    crtc_r8_interlace_and_skew: u8,
-    crtc_r10_cursor_start_raster: u8,
-    crtc_r11_cursor_end_raster: u8,
-    crtc_r14_cursor_h: u8,
-    crtc_r15_cursor_l: u8,
-    ula_control: u8,
-    ula_palette: u64,
+    flags: u8,
+    pub(crate) ula_control: u8,
+    pub(crate) total_chars: u8,
+    pub(crate) back_porch: u8,
+    pub(crate) cursor_char: u8,
+    pad: [u8; 3],
+    pub(crate) ula_palette: u64,
+    pub(crate) char_data: [u8; MAX_CHARS],
 }
 
 impl Default for FieldLine {
     fn default() -> Self {
         FieldLine {
-            line_type: FieldLineType::OutOfScan,
-            char_data: [0; MAX_CHARS],
-            crtc_memory_address: 0,
-            crtc_raster_address_even: 0,
-            crtc_r0_horizontal_total: 0,
-            crtc_r1_horizontal_displayed: 0,
-            crtc_r2_horizontal_sync_position: 0,
-            crtc_r3_sync_width: 0,
-            crtc_r8_interlace_and_skew: 0,
-            crtc_r10_cursor_start_raster: 0,
-            crtc_r11_cursor_end_raster: 0,
-            crtc_r14_cursor_h: 0,
-            crtc_r15_cursor_l: 0,
+            flags: 0,
             ula_control: 0,
+            total_chars: 0,
+            back_porch: 0,
+            cursor_char: 0,
+            pad: [0; 3],
             ula_palette: 0,
+            char_data: [0; MAX_CHARS],
         }
     }
 }
 
 impl FieldLine {
-    pub fn set_registers(
-        &mut self,
-        crtc_memory_address: u16,
-        crtc_raster_address_even: u8,
-        video_registers: &VideoRegisters,
-    ) {
-        self.crtc_memory_address = crtc_memory_address;
-        self.crtc_raster_address_even = crtc_raster_address_even;
-
-        self.ula_control = video_registers.ula_control;
-        self.ula_palette = video_registers.ula_palette;
-
-        self.crtc_r0_horizontal_total = video_registers.crtc_r0_horizontal_total;
-        self.crtc_r1_horizontal_displayed = video_registers.crtc_r1_horizontal_displayed;
-        self.crtc_r2_horizontal_sync_position = video_registers.crtc_r2_horizontal_sync_position;
-        self.crtc_r3_sync_width = video_registers.crtc_r3_sync_width;
-        self.crtc_r8_interlace_and_skew = video_registers.crtc_r8_interlace_and_skew;
-        self.crtc_r10_cursor_start_raster = video_registers.crtc_r10_cursor_start_raster;
-        self.crtc_r11_cursor_end_raster = video_registers.crtc_r11_cursor_end_raster;
-        self.crtc_r14_cursor_h = video_registers.crtc_r14_cursor_h;
-        self.crtc_r15_cursor_l = video_registers.crtc_r15_cursor_l;
+    pub fn clear(&mut self) {
+        self.flags = 0;
     }
 
-    pub fn set_out_of_scan(&mut self) {
-        self.line_type = FieldLineType::OutOfScan;
+    pub fn set_displayed(&mut self) {
+        self.flags |= flags::DISPLAYED;
     }
 
-    pub fn set_invalid(&mut self) {
-        self.line_type = FieldLineType::Invalid;
+    pub fn set_invalid_range(&mut self) {
+        self.flags |= flags::INVALID_RANGE;
     }
 
-    pub fn set_blank(&mut self) {
-        self.line_type = FieldLineType::Blank;
+    pub fn set_interlace_video_and_sync(&mut self) {
+        self.flags |= flags::INTERLACE_VIDEO_AND_SYNC;
+    }
+
+    pub fn set_cursor_raster_flags(&mut self, even: bool, odd: bool) {
+        self.flags &= !(flags::CURSOR_RASTER_EVEN | flags::CURSOR_RASTER_ODD);
+
+        if even {
+            self.flags |= flags::CURSOR_RASTER_EVEN;
+        }
+        if odd {
+            self.flags |= flags::CURSOR_RASTER_ODD;
+        }
     }
 
     pub fn set_char_data(&mut self, first_slice: &[u8], second_slice: Option<&[u8]>) {
-        self.line_type = FieldLineType::Visible;
-
+        self.flags |= flags::HAS_BYTES;
         let first_end = first_slice.len();
 
         debug_assert!(first_end <= MAX_CHARS);
@@ -103,7 +78,7 @@ impl FieldLine {
         second_slice: Option<&[u8]>,
         raster_line: u8,
     ) {
-        self.line_type = FieldLineType::Visible;
+        self.flags |= flags::HAS_BYTES;
 
         let first_end = copy_into_stride_8(&mut self.char_data, 0, first_slice, raster_line);
 
@@ -130,7 +105,7 @@ fn copy_into_stride_8(
     source: &[u8],
     source_offset: u8,
 ) -> usize {
-    debug_assert!(source.len() % 8 == 0);
+    debug_assert!(source.len().is_multiple_of(8));
 
     let new_length = dest_start + (source.len() >> 3);
 
@@ -143,10 +118,11 @@ fn copy_into_stride_8(
     new_length
 }
 
-#[derive(Clone, Copy)]
-pub enum FieldLineType {
-    OutOfScan = 0,
-    Visible = 1,
-    Blank = 2,
-    Invalid = 3,
+pub mod flags {
+    pub const DISPLAYED: u8 = 0b0000_0001;
+    pub const HAS_BYTES: u8 = 0b0000_0010;
+    pub const INVALID_RANGE: u8 = 0b0000_0100;
+    pub const INTERLACE_VIDEO_AND_SYNC: u8 = 0b0000_1000;
+    pub const CURSOR_RASTER_EVEN: u8 = 0b0001_0000;
+    pub const CURSOR_RASTER_ODD: u8 = 0b0010_0000;
 }

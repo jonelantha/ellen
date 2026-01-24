@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig/tsconfig.code-styles.json",
+  "compilerOptions": {
+    "lib": ["ES2024", "DOM"],
+    "types": ["@webgpu/types", "node"],
+    "skipLibCheck": true,
+    "module": "ESNext",
+    "target": "es2024",
+    "moduleResolution": "bundler",
+    "noEmit": true,
+    "allowImportingTsExtensions": true
+  },
+  "include": ["."],
+  "exclude": ["../**/*.config.*"]
+}

@@ -1,14 +1,31 @@
 {
   "name": "ch22",
   "private": true,
+  "workspaces": [
+    "render/tests"
+  ],
   "version": "0.0.0",
   "type": "module",
   "scripts": {
     "build-release": "wasm-pack build ch22-core --target web",
     "build-dev": "npm run build-release -- --features console_error_panic_hook",
     "clippy": "cd ch22-core && cargo clippy && cargo clippy --tests",
-    "test": "cd ch22-core && cargo test"
+    "test": "npm run test-core && npm run test-render",
+    "test-core": "cd ch22-core && cargo test",
+    "test-render": "cd render/tests && npm test",
+    "tsc": "tsc --build",
+    "lint": "eslint .",
+    "format:check": "prettier --check .",
+    "format": "prettier --write .",
+    "checks": "npm run tsc && npm run lint && npm run format:check"
   },
-  "devDependencies": {},
-  "dependencies": {}
+  "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "@types/node": "^24.10.4",
+    "@webgpu/types": "^0.1.68",
+    "eslint": "^9.39.2",
+    "prettier": "^3.7.4",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.51.0"
+  }
 }

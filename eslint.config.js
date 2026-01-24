@@ -1,0 +1,20 @@
+// @ts-check
+import eslint from '@eslint/js';
+import tseslint from 'typescript-eslint';
+import { defineConfig } from 'eslint/config';
+
+export default defineConfig(
+  {
+    ignores: ['./ch22-core', './render/tests/dist'],
+  },
+  eslint.configs.recommended,
+  tseslint.configs.strict,
+  tseslint.configs.stylistic,
+  {
+    languageOptions: {
+      parserOptions: {
+        projectService: true,
+      },
+    },
+  },
+);

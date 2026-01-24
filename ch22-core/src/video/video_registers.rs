@@ -1,3 +1,5 @@
+use std::ops::RangeInclusive;
+
 #[derive(Default, Copy, Clone)]
 #[repr(C, packed)]
 pub struct VideoRegisters {
@@ -51,12 +53,42 @@ impl VideoRegisters {
         self.ula_palette |= ((value & 0x0f) as u64) << shift;
     }
 
-    pub fn is_ula_teletext(&self) -> bool {
+    pub fn ula_is_teletext(&self) -> bool {
         (self.ula_control & 0x02) != 0
     }
 
-    pub fn is_crtc_screen_delay_no_output(&self) -> bool {
+    pub fn r3_h_sync_width(&self) -> u8 {
+        self.crtc_r3_sync_width & 0x0f
+    }
+
+    pub fn r8_is_crtc_screen_delay_no_output(&self) -> bool {
         self.crtc_r8_interlace_and_skew & 0x30 == 0x30
+    }
+
+    pub fn r8_is_interlace_sync_and_video(&self) -> bool {
+        self.crtc_r8_interlace_and_skew & 0x03 == 0x03
+    }
+
+    pub fn r8_cursor_delay(&self) -> u8 {
+        (self.crtc_r8_interlace_and_skew & 0xc0) >> 6
+    }
+
+    pub fn r10_cursor_blink_mode(&self) -> R10CursorBlinkMode {
+        match self.crtc_r10_cursor_start_raster & 0x60 {
+            0x00 => R10CursorBlinkMode::Solid,
+            0x20 => R10CursorBlinkMode::Hidden,
+            0x40 => R10CursorBlinkMode::Fast,
+            0x60 => R10CursorBlinkMode::Slow,
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn r10_r11_cursor_raster_range(&self) -> RangeInclusive<u8> {
+        (self.crtc_r10_cursor_start_raster & 0x1f)..=self.crtc_r11_cursor_end_raster
+    }
+
+    pub fn r14_r15_cursor_address(&self) -> u16 {
+        (self.crtc_r14_cursor_h as u16) << 8 | self.crtc_r15_cursor_l as u16
     }
 
     #[cfg(test)]
@@ -81,4 +113,13 @@ impl VideoRegisters {
             _ => panic!("Invalid control_reg {}", control_reg),
         }
     }
+}
+
+pub const R8_CURSOR_DELAY_HIDDEN: u8 = 3;
+
+pub enum R10CursorBlinkMode {
+    Solid,
+    Hidden,
+    Fast,
+    Slow,
 }
