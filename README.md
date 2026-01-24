@@ -144,13 +144,13 @@ const videoRegisters = ch22System.get_partial_video_registers();
 /**
  * get buffer of snapshotted scanline data
  * each line is 116 bytes:
- * - 1 byte     - flags: 0x01 => line displayed, 0x02 => has bytes, 0x04 => invalid crtc range, 0x10 => cursor displayed (even field), 0x20 => cursor displayed (odd field)
+ * - 1 byte     - flags: 0x01 => line displayed, 0x02 => has bytes, 0x04 => invalid crtc range, 0x08 => interlace video and sync, 0x10 => cursor displayed (even field), 0x20 => cursor displayed (odd field)
  * - 1 byte     - ula control register
  * - 1 byte     - total chars (R1)
  * - 1 byte     - back porch chars
  * - 1 byte     - cursor char
  * - 3 bytes    - padding
- * - 8 bytes    - ula pallete
+ * - 8 bytes    - ula palette
  * - 100 bytes  - snapshot of up to 100 bytes of video memory for the scanline
  */
 const memory = new Uint8Array(
