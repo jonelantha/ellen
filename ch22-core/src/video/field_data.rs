@@ -170,11 +170,12 @@ fn set_line_cursor_fields(
     }
 
     let rel_address = r14_r15_cursor_address - crtc_memory_address;
-    if rel_address >= video_registers.crtc_r1_horizontal_displayed as u16 {
+    if rel_address + r8_cursor_delay as u16 >= video_registers.crtc_r1_horizontal_displayed as u16 {
         return;
     }
 
     field_line.cursor_char = r8_cursor_delay + rel_address as u8;
+
     field_line.set_cursor_raster_flags(is_even_in_range, is_odd_in_range);
 }
 
