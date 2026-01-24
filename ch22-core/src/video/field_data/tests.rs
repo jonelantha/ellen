@@ -247,7 +247,8 @@ mod field_data_tests {
 
         // Test cases: (r10_blink_mode_bits, visible_field_counter_ranges)
         let test_cases: &[(u8, Vec<std::ops::Range<u8>>)] = &[
-            (0x00, vec![0..64]),                         // solid
+            #[allow(clippy::single_range_in_vec_init)]
+            (0x00, vec![0..64]), // solid
             (0x20, vec![]),                              // off
             (0x40, vec![8..16, 24..32, 40..48, 56..64]), // fast blink
             (0x60, vec![16..32, 48..64]),                // slow blink

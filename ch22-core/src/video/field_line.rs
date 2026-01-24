@@ -105,7 +105,7 @@ fn copy_into_stride_8(
     source: &[u8],
     source_offset: u8,
 ) -> usize {
-    debug_assert!(source.len() % 8 == 0);
+    debug_assert!(source.len().is_multiple_of(8));
 
     let new_length = dest_start + (source.len() >> 3);
 
