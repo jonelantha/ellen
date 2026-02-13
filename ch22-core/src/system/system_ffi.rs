@@ -96,6 +96,7 @@ impl SystemFfi {
         addresses: &[u16],
         js_read: Function,
         js_write: Function,
+        js_on_vsync_change: Option<Function>,
         js_handle_trigger: Function,
         flags: u8,
     ) -> IODeviceID {
@@ -116,6 +117,7 @@ impl SystemFfi {
             Box::new(JsIODevice::new(
                 js_read,
                 js_write,
+                js_on_vsync_change,
                 js_handle_trigger,
                 flags & JS_DEVICE_PHASE_2_WRITE != 0,
                 ic32_latch,
@@ -129,6 +131,10 @@ impl SystemFfi {
         self.core
             .timer_devices
             .add_device(Box::new(JsTimerDevice::new(js_handle_trigger)))
+    }
+
+    pub fn on_vsync_change(&mut self, vsync: bool) {
+        self.core.on_vsync_change(vsync);
     }
 
     pub fn reset(&mut self) {

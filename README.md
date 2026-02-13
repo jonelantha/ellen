@@ -59,7 +59,7 @@ ch22System.load_rom(bank, pagedRom);
 
 /**
  * register a callback to be called at certain cycles
- * - handleTrigger: (cycles: bigint): bigint
+ * - handleTrigger: (cycles: bigint) => bigint
  *   - cycles: machine cycles at time of callback
  *   - returns: the desired next value of cycles to be called encoded as a bigint
  */
@@ -75,11 +75,14 @@ ch22System.set_device_trigger(deviceId, cycles);
 /**
  * register callbacks for an IO device
  * - addresses: UInt16Array of addresses to register device for
- * - read: (address: number, cycles: bigint): bigint
+ * - read: (address: number, cycles: bigint) => bigint
  *   - returns: read value, next cycle sync and interrupt encoded as bigint
- * - write: (address: number, value: number, cycles: bigint): bigint
+ * - write: (address: number, value: number, cycles: bigint) => bigint
  *   - returns: next cycle sync and interrupt and optionally ic32_latch encoded as bigint
- * - handleTrigger: (address: number, value: number, cycles: bigint): bigint
+ * - onVsyncChange: ((vsync: boolean) => bigint) | null
+ *  - optional callback if device needs to know about vsync state changes
+ *  - returns: next cycle sync and interrupt encoded as bigint
+ * - handleTrigger: (address: number, value: number, cycles: bigint) => bigint
  *   - callback if sync is required
  *   - returns: next cycle sync and interrupt encoded as bigint
  * - flags:
@@ -92,6 +95,7 @@ const deviceId = ch22System.add_js_io_device(
   addresses,
   read,
   write,
+  onVsyncChange,
   handleTrigger,
   flags,
 );

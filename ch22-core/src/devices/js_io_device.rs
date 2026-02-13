@@ -10,6 +10,7 @@ use super::io_device::IODevice;
 pub struct JsIODevice {
     read: Box<dyn Fn(u16, u64) -> u64>,
     write: Box<dyn Fn(u16, u8, u64) -> u64>,
+    on_vsync_change: Option<Box<dyn Fn(bool) -> u64>>,
     handle_trigger: Box<dyn Fn(u64) -> u64>,
     trigger: Option<u64>,
     interrupt: bool,
@@ -21,6 +22,7 @@ impl JsIODevice {
     pub fn new(
         js_read: Function,
         js_write: Function,
+        js_on_vsync_change: Option<Function>,
         js_handle_trigger: Function,
         phase_2_write: bool,
         ic32_latch: Rc<Cell<u8>>,
@@ -46,6 +48,16 @@ impl JsIODevice {
                 .expect("js_write error")
         });
 
+        let on_vsync_change = js_on_vsync_change.map(|js_on_vsync_change| {
+            Box::new(move |vsync: bool| {
+                js_on_vsync_change
+                    .call1(&JsValue::NULL, &vsync.into())
+                    .expect("js_on_vsync_change error")
+                    .try_into()
+                    .expect("js_on_vsync_change error")
+            }) as Box<dyn Fn(bool) -> u64>
+        });
+
         let handle_trigger = Box::new(move |cycles: u64| {
             js_handle_trigger
                 .call1(&JsValue::NULL, &cycles.into())
@@ -57,6 +69,7 @@ impl JsIODevice {
         JsIODevice {
             read,
             write,
+            on_vsync_change,
             handle_trigger,
             trigger: None,
             interrupt: false,
@@ -96,6 +109,12 @@ impl IODevice for JsIODevice {
 
     fn set_interrupt(&mut self, interrupt: bool) {
         self.interrupt = interrupt;
+    }
+
+    fn on_vsync_change(&mut self, vsync: bool) {
+        if let Some(on_vsync_change) = &self.on_vsync_change {
+            self.set_js_device_params((on_vsync_change)(vsync));
+        }
     }
 }
 

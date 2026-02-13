@@ -84,6 +84,10 @@ impl Core {
         self.field_counter = self.field_counter.wrapping_add(1);
     }
 
+    pub fn on_vsync_change(&mut self, vsync: bool) {
+        self.io_space.on_vsync_change(vsync);
+    }
+
     pub fn snapshot_scanline(
         &mut self,
         line_index: usize,
