@@ -24,10 +24,16 @@ fn assert_snapshot_matches(actual: &SnapshotParams, expected: &ExpectedSnapshot)
         assert_eq!(actual.address, value, "address mismatch");
     }
     if let Some(value) = expected.raster_address_even {
-        assert_eq!(actual.raster_address_even, value, "raster_address_even mismatch");
+        assert_eq!(
+            actual.raster_address_even, value,
+            "raster_address_even mismatch"
+        );
     }
     if let Some(value) = expected.raster_address_odd {
-        assert_eq!(actual.raster_address_odd, value, "raster_address_odd mismatch");
+        assert_eq!(
+            actual.raster_address_odd, value,
+            "raster_address_odd mismatch"
+        );
     }
 }
 
@@ -304,9 +310,7 @@ fn should_trigger_vsync_at_correct_positions() {
         let results = collect_results(&mut crtc, length);
         let vsync_values: Vec<bool> = results.iter().map(|r| r.vsync).collect();
 
-        let expected: Vec<bool> = (0..length)
-            .map(|i| expected_indices.contains(&i))
-            .collect();
+        let expected: Vec<bool> = (0..length).map(|i| expected_indices.contains(&i)).collect();
 
         assert_eq!(vsync_values, expected);
     }
@@ -655,7 +659,9 @@ fn address_should_only_update_from_start_registers_at_frame_boundary() {
         .collect();
     assert_eq!(
         first_addresses,
-        vec![0x2000, 0x2000, 0x2032, 0x2032, 0x2064, 0x2064, 0x2000, 0x2000]
+        vec![
+            0x2000, 0x2000, 0x2032, 0x2032, 0x2064, 0x2064, 0x2000, 0x2000
+        ]
     );
 
     registers.borrow_mut().crtc_r12_start_address_h = 0x30;

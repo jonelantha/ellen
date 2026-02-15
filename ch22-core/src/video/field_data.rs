@@ -1,7 +1,7 @@
 use std::cmp::{max, min};
 
 use crate::video::{
-    FieldLine, VideoMemoryAccess, VideoRegisters, MAX_LINES,
+    FieldLine, MAX_LINES, VideoMemoryAccess, VideoRegisters,
     video_registers::{R8_CURSOR_DELAY_HIDDEN, R10CursorBlinkMode},
 };
 
