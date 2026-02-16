@@ -171,6 +171,32 @@ impl SystemFfi {
             | (registers.crtc_r13_start_address_l as u128) << 80
             | (registers.ula_control as u128) << 88
     }
+
+    pub fn advance_scanline(&mut self) -> u64 {
+        let result = self
+            .core
+            .crtc
+            .advance_scanline(&self.core.video_registers.borrow());
+
+        let mut packed: u64 = 0;
+
+        if result.field_complete {
+            packed |= 1;
+        }
+        if result.vsync {
+            packed |= 2;
+        }
+        if result.snapshot_params.in_scan {
+            packed |= 4;
+        }
+        packed |= (result.next_scanline_trigger as u64) << 4;
+        packed |= (result.snapshot_params.address as u64) << 20;
+        packed |= (result.snapshot_params.raster_address_even as u64) << 36;
+        packed |= (result.snapshot_params.raster_address_odd as u64) << 44;
+        packed |= (result.snapshot_params.scanline as u64) << 52;
+
+        packed
+    }
 }
 
 const JS_DEVICE_ONE_MHZ: u8 = 0b0000_0001;

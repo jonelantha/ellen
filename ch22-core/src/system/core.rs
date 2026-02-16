@@ -9,7 +9,9 @@ use super::{
 };
 use crate::address_spaces::{IOSpace, Ram, Rom};
 use crate::devices::{RomSelect, TimerDeviceList};
-use crate::video::{Field, VideoCRTCRegistersDevice, VideoRegisters, VideoULARegistersDevice};
+use crate::video::{
+    CRTC, Field, VideoCRTCRegistersDevice, VideoRegisters, VideoULARegistersDevice,
+};
 use crate::{cpu::Cpu, devices::DeviceSpeed};
 
 #[derive(Default)]
@@ -20,6 +22,7 @@ pub struct Core {
     pub roms: [Rom; ROMS_LEN],
     pub io_space: IOSpace,
     pub video_field: Field,
+    pub crtc: CRTC,
     pub ic32_latch: Rc<Cell<u8>>,
     pub field_counter: u8,
     pub rom_select_latch: Rc<Cell<usize>>,
@@ -30,6 +33,8 @@ pub struct Core {
 impl Core {
     pub fn setup(&mut self) {
         self.video_registers.borrow_mut().reset();
+
+        self.crtc.init(&self.video_registers.borrow());
 
         self.io_space.add_device(
             &[
