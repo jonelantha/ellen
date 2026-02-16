@@ -1,15 +1,12 @@
 #![allow(dead_code)]
 
-use std::cell::RefCell;
-use std::rc::Rc;
-
 use crate::video::{MAX_LINES, VideoRegisters};
 
 #[cfg(test)]
 mod tests;
 
+#[derive(Default)]
 pub struct CRTC {
-    registers: Rc<RefCell<VideoRegisters>>,
     addr: u16,
     char_line: u16,
     in_char_line_up: u16,
@@ -18,7 +15,6 @@ pub struct CRTC {
     scanline: u16,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SnapshotParams {
     pub in_scan: bool,
     pub scanline: u16,
@@ -27,7 +23,6 @@ pub struct SnapshotParams {
     pub raster_address_odd: u8,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct AdvanceScanlineResult {
     pub field_complete: bool,
     pub next_scanline_trigger: u16,
@@ -36,21 +31,7 @@ pub struct AdvanceScanlineResult {
 }
 
 impl CRTC {
-    pub fn new(registers: Rc<RefCell<VideoRegisters>>) -> Self {
-        CRTC {
-            registers,
-            addr: 0,
-            char_line: 0,
-            in_char_line_up: 0,
-            vsync_state: 0,
-            interlace_frame: false,
-            scanline: 0,
-        }
-    }
-
-    pub fn init(&mut self) {
-        let registers = *self.registers.borrow();
-
+    pub fn init(&mut self, registers: &VideoRegisters) {
         self.char_line = 0;
         self.in_char_line_up = 0;
         self.vsync_state = 0;
@@ -62,8 +43,7 @@ impl CRTC {
         );
     }
 
-    pub fn advance_scanline(&mut self) -> AdvanceScanlineResult {
-        let registers = *self.registers.borrow();
+    pub fn advance_scanline(&mut self, registers: &VideoRegisters) -> AdvanceScanlineResult {
         let sync_and_video = registers.r8_is_interlace_sync_and_video();
 
         let raster_base = self.in_char_line_up * if sync_and_video { 2 } else { 1 };

@@ -1,6 +1,3 @@
-use std::cell::RefCell;
-use std::rc::Rc;
-
 use super::CRTC;
 use crate::video::VideoRegisters;
 
@@ -23,21 +20,21 @@ fn create_default_registers() -> VideoRegisters {
     registers
 }
 
-fn setup_test(registers: Rc<RefCell<VideoRegisters>>) -> CRTC {
-    let mut crtc = CRTC::new(registers);
-    crtc.init();
+fn setup_test(registers: &VideoRegisters) -> CRTC {
+    let mut crtc = CRTC::default();
+    crtc.init(registers);
     crtc
 }
 
 #[test]
 fn should_increment_scanline_by_1_on_each_call() {
-    let registers = Rc::new(RefCell::new(create_default_registers()));
-    let mut crtc = setup_test(registers);
+    let registers = create_default_registers();
+    let mut crtc = setup_test(&registers);
 
     let expected_scanlines: [u16; 10] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 
     for (index, expected) in expected_scanlines.iter().enumerate() {
-        let actual = crtc.advance_scanline().snapshot_params.scanline;
+        let actual = crtc.advance_scanline(&registers).snapshot_params.scanline;
 
         assert_eq!(actual, *expected, "mismatch at index {index}");
     }
@@ -49,13 +46,15 @@ fn should_cycle_raster_address_even_pattern_after_char_scanlines_calls() {
     registers.crtc_r9_maximum_raster_address = 7;
     registers.crtc_r1_horizontal_displayed = 80;
 
-    let registers = Rc::new(RefCell::new(registers));
-    let mut crtc = setup_test(registers);
+    let mut crtc = setup_test(&registers);
 
     let expected_pattern = [0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7];
 
     for (index, expected) in expected_pattern.iter().enumerate() {
-        let actual = crtc.advance_scanline().snapshot_params.raster_address_even;
+        let actual = crtc
+            .advance_scanline(&registers)
+            .snapshot_params
+            .raster_address_even;
 
         assert_eq!(actual, *expected, "mismatch at index {index}");
     }
@@ -67,8 +66,7 @@ fn should_advance_address_by_horizontal_displayed_after_char_scanlines() {
     registers.crtc_r9_maximum_raster_address = 7; // 8 scanlines per character line (0-7)
     registers.crtc_r1_horizontal_displayed = 50; // 0x32 in hex
 
-    let registers = Rc::new(RefCell::new(registers));
-    let mut crtc = setup_test(registers);
+    let mut crtc = setup_test(&registers);
 
     // Address stays at 0x2000 for all 8 scanlines of first character line,
     // then advances by horizontal_displayed (0x32) to 0x2032 on scanline 8
@@ -77,7 +75,7 @@ fn should_advance_address_by_horizontal_displayed_after_char_scanlines() {
     ];
 
     for (index, expected) in expected_addresses.iter().enumerate() {
-        let actual = crtc.advance_scanline().snapshot_params.address;
+        let actual = crtc.advance_scanline(&registers).snapshot_params.address;
 
         assert_eq!(actual, *expected, "mismatch at index {index}");
     }
@@ -90,14 +88,13 @@ fn should_transition_in_scan_from_true_to_false_at_display_boundary() {
     registers.crtc_r6_vertical_displayed = 2; // 2 character lines displayed
     registers.crtc_r4_vertical_total = 10;
 
-    let registers = Rc::new(RefCell::new(registers));
-    let mut crtc = setup_test(registers);
+    let mut crtc = setup_test(&registers);
 
     // in_scan is true for 2 char lines * 2 scanlines = 4 scanlines, then false
     let expected_pattern = [true, true, true, true, false, false, false];
 
     for (index, expected) in expected_pattern.iter().enumerate() {
-        let actual = crtc.advance_scanline().snapshot_params.in_scan;
+        let actual = crtc.advance_scanline(&registers).snapshot_params.in_scan;
 
         assert_eq!(actual, *expected, "mismatch at index {index}");
     }
@@ -110,12 +107,11 @@ fn should_return_field_complete_true_at_max_lines() {
     // forcing the hardware limit (MAX_LINES) to trigger instead
     registers.crtc_r7_vertical_sync_position = 255;
 
-    let registers = Rc::new(RefCell::new(registers));
-    let mut crtc = setup_test(registers);
+    let mut crtc = setup_test(&registers);
 
     let mut field_complete_iteration: i32 = -1;
     for i in 0..(crate::video::MAX_LINES + 10) {
-        let result = crtc.advance_scanline();
+        let result = crtc.advance_scanline(&registers);
         if result.field_complete {
             field_complete_iteration = i as i32;
             break;
@@ -138,8 +134,7 @@ fn should_stop_incrementing_addr_after_char_line_exceeds_vertical_total() {
     registers.crtc_r6_vertical_displayed = 2; // 2 character lines visible
     registers.crtc_r7_vertical_sync_position = 10;
 
-    let registers = Rc::new(RefCell::new(registers));
-    let mut crtc = setup_test(registers);
+    let mut crtc = setup_test(&registers);
 
     // After char line 2 exceeds vertical_total (2), address remains at 0x2064
     // until frame resets at scanline 6, then pattern repeats
@@ -160,7 +155,7 @@ fn should_stop_incrementing_addr_after_char_line_exceeds_vertical_total() {
     for (index, (expected_address, expected_in_scan, expected_scanline, expected_raster)) in
         expected.iter().enumerate()
     {
-        let actual = crtc.advance_scanline().snapshot_params;
+        let actual = crtc.advance_scanline(&registers).snapshot_params;
 
         assert_eq!(
             actual.address, *expected_address,
@@ -183,13 +178,13 @@ fn should_stop_incrementing_addr_after_char_line_exceeds_vertical_total() {
 
 #[test]
 fn should_maintain_consistent_scanline_delta() {
-    let registers = Rc::new(RefCell::new(create_default_registers()));
-    let mut crtc = setup_test(registers);
+    let registers = create_default_registers();
+    let mut crtc = setup_test(&registers);
 
     let expected_scanlines: Vec<u16> = (0..50).map(|i| i as u16).collect();
 
     for (index, expected) in expected_scanlines.iter().enumerate() {
-        let actual = crtc.advance_scanline().snapshot_params.scanline;
+        let actual = crtc.advance_scanline(&registers).snapshot_params.scanline;
 
         assert_eq!(actual, *expected, "mismatch at index {index}");
     }
@@ -201,13 +196,15 @@ fn should_track_raster_address_progression_correctly() {
     registers.crtc_r9_maximum_raster_address = 3;
     registers.crtc_r8_interlace_and_skew = 0x00;
 
-    let registers = Rc::new(RefCell::new(registers));
-    let mut crtc = setup_test(registers);
+    let mut crtc = setup_test(&registers);
 
     let expected_pattern = [0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3];
 
     for (index, expected) in expected_pattern.iter().enumerate() {
-        let actual = crtc.advance_scanline().snapshot_params.raster_address_even;
+        let actual = crtc
+            .advance_scanline(&registers)
+            .snapshot_params
+            .raster_address_even;
 
         assert_eq!(actual, *expected, "mismatch at index {index}");
     }
@@ -235,11 +232,10 @@ fn should_trigger_vsync_at_correct_positions() {
         registers.crtc_r3_sync_width = r3_sync_width;
         registers.crtc_r4_vertical_total = 10;
 
-        let registers = Rc::new(RefCell::new(registers));
-        let mut crtc = setup_test(registers);
+        let mut crtc = setup_test(&registers);
 
         for index in 0..length {
-            let actual = crtc.advance_scanline().vsync;
+            let actual = crtc.advance_scanline(&registers).vsync;
             let expected = expected_indices.contains(&index);
 
             assert_eq!(
@@ -258,8 +254,7 @@ fn should_complete_frame_at_correct_boundary() {
     registers.crtc_r4_vertical_total = 2; // 3 char lines (0-2)
     registers.crtc_r5_vertical_total_adjust = 0;
 
-    let registers = Rc::new(RefCell::new(registers));
-    let mut crtc = setup_test(registers);
+    let mut crtc = setup_test(&registers);
 
     // Frame = 3 char lines * 2 scanlines = 6 scanlines total.
     // Address increments by 0x50 (default horizontal_displayed=80) per char line.
@@ -269,7 +264,7 @@ fn should_complete_frame_at_correct_boundary() {
     ];
 
     for (index, expected) in expected_addresses.iter().enumerate() {
-        let actual = crtc.advance_scanline().snapshot_params.address;
+        let actual = crtc.advance_scanline(&registers).snapshot_params.address;
 
         assert_eq!(actual, *expected, "mismatch at index {index}");
     }
@@ -277,12 +272,12 @@ fn should_complete_frame_at_correct_boundary() {
 
 #[test]
 fn should_reset_scanline_after_field_complete() {
-    let registers = Rc::new(RefCell::new(create_default_registers()));
-    let mut crtc = setup_test(registers);
+    let registers = create_default_registers();
+    let mut crtc = setup_test(&registers);
 
     // Advance to iteration 160 where field_complete should occur
     for iteration in 0..160 {
-        let result = crtc.advance_scanline();
+        let result = crtc.advance_scanline(&registers);
         assert!(
             !result.field_complete,
             "field_complete should be false before iteration 160 ({iteration})"
@@ -290,7 +285,7 @@ fn should_reset_scanline_after_field_complete() {
     }
 
     // At iteration 160: field_complete should be true and scanline should be 160
-    let result_at_160 = crtc.advance_scanline();
+    let result_at_160 = crtc.advance_scanline(&registers);
     assert!(
         result_at_160.field_complete,
         "field_complete should be true at iteration 160"
@@ -301,7 +296,7 @@ fn should_reset_scanline_after_field_complete() {
     );
 
     // At iteration 161: scanline should reset to 0
-    let result_at_161 = crtc.advance_scanline();
+    let result_at_161 = crtc.advance_scanline(&registers);
     assert_eq!(
         result_at_161.snapshot_params.scanline, 0,
         "scanline should reset to 0 after field_complete"
@@ -318,8 +313,7 @@ fn should_respect_vertical_total_adjust_when_completing_frames() {
     registers.crtc_r6_vertical_displayed = 2;
     registers.crtc_r7_vertical_sync_position = 0;
 
-    let registers = Rc::new(RefCell::new(registers));
-    let mut crtc = setup_test(registers);
+    let mut crtc = setup_test(&registers);
 
     // Frame = (3 char lines * 2 scanlines) + 3 adjust = 9 scanlines total.
     // Address increments stop after char lines complete, but scanlines continue.
@@ -340,7 +334,7 @@ fn should_respect_vertical_total_adjust_when_completing_frames() {
     ];
 
     for (index, (expected_address, expected_in_scan)) in expected.iter().enumerate() {
-        let actual = crtc.advance_scanline().snapshot_params;
+        let actual = crtc.advance_scanline(&registers).snapshot_params;
 
         assert_eq!(
             actual.in_scan, *expected_in_scan,
@@ -365,13 +359,12 @@ fn should_maintain_consistent_next_scanline_trigger_in_both_frequency_modes() {
         registers.crtc_r0_horizontal_total = 127;
         registers.ula_control = ula_control;
 
-        let registers = Rc::new(RefCell::new(registers));
-        let mut crtc = setup_test(registers);
+        let mut crtc = setup_test(&registers);
 
         let expected_triggers = [expected_trigger; 20];
 
         for (index, expected) in expected_triggers.iter().enumerate() {
-            let actual = crtc.advance_scanline().next_scanline_trigger;
+            let actual = crtc.advance_scanline(&registers).next_scanline_trigger;
 
             assert_eq!(actual, *expected, "mismatch at index {index}");
         }
@@ -380,13 +373,13 @@ fn should_maintain_consistent_next_scanline_trigger_in_both_frequency_modes() {
 
 #[test]
 fn field_complete_should_only_occur_at_boundaries() {
-    let registers = Rc::new(RefCell::new(create_default_registers()));
-    let mut crtc = setup_test(registers);
+    let registers = create_default_registers();
+    let mut crtc = setup_test(&registers);
 
     // With default registers: 20 char lines displayed * 8 scanlines/char = 160 scanlines
     // field_complete should occur exactly once at scanline 160
     for iteration in 0..165 {
-        let actual_field_complete = crtc.advance_scanline().field_complete;
+        let actual_field_complete = crtc.advance_scanline(&registers).field_complete;
         let expected_field_complete = iteration == 160;
 
         assert_eq!(
@@ -403,14 +396,13 @@ fn address_should_increment_by_horizontal_displayed_per_char_line() {
     registers.crtc_r9_maximum_raster_address = 1; // 2 scanlines per char line
     registers.crtc_r4_vertical_total = 10;
 
-    let registers = Rc::new(RefCell::new(registers));
-    let mut crtc = setup_test(registers);
+    let mut crtc = setup_test(&registers);
 
     // Address advances by horizontal_displayed (0x28) after each char line completes
     let expected_addresses = [0x2000, 0x2000, 0x2028, 0x2028, 0x2050, 0x2050];
 
     for (index, expected) in expected_addresses.iter().enumerate() {
-        let actual = crtc.advance_scanline().snapshot_params.address;
+        let actual = crtc.advance_scanline(&registers).snapshot_params.address;
 
         assert_eq!(actual, *expected, "mismatch at index {index}");
     }
@@ -421,8 +413,7 @@ fn raster_address_odd_should_equal_even_plus_one_when_interlaced() {
     let mut registers = create_default_registers();
     registers.crtc_r8_interlace_and_skew = 0x03; // Interlace mode enabled
 
-    let registers = Rc::new(RefCell::new(registers));
-    let mut crtc = setup_test(registers);
+    let mut crtc = setup_test(&registers);
 
     // In interlace mode, odd field raster addresses are offset by +1 from even field
 
@@ -441,7 +432,7 @@ fn raster_address_odd_should_equal_even_plus_one_when_interlaced() {
     ];
 
     for (index, (expected_even, expected_odd)) in expected.iter().enumerate() {
-        let actual = crtc.advance_scanline().snapshot_params;
+        let actual = crtc.advance_scanline(&registers).snapshot_params;
 
         assert_eq!(
             actual.raster_address_even, *expected_even,
@@ -459,8 +450,7 @@ fn raster_address_odd_should_equal_even_when_not_interlaced() {
     let mut registers = create_default_registers();
     registers.crtc_r8_interlace_and_skew = 0x00;
 
-    let registers = Rc::new(RefCell::new(registers));
-    let mut crtc = setup_test(registers);
+    let mut crtc = setup_test(&registers);
 
     let expected = [
         // raster_address_even, raster_address_odd
@@ -477,7 +467,7 @@ fn raster_address_odd_should_equal_even_when_not_interlaced() {
     ];
 
     for (index, (expected_even, expected_odd)) in expected.iter().enumerate() {
-        let actual = crtc.advance_scanline().snapshot_params;
+        let actual = crtc.advance_scanline(&registers).snapshot_params;
 
         assert_eq!(
             actual.raster_address_even, *expected_even,
@@ -501,15 +491,14 @@ fn address_should_only_update_from_start_registers_at_frame_boundary() {
     registers.crtc_r13_start_address_l = 0x00;
     registers.crtc_r7_vertical_sync_position = 10;
 
-    let registers = Rc::new(RefCell::new(registers));
-    let mut crtc = setup_test(registers.clone());
+    let mut crtc = setup_test(&registers);
 
     let first_expected_addresses = [
         0x2000, 0x2000, 0x2032, 0x2032, 0x2064, 0x2064, 0x2000, 0x2000,
     ];
 
     for (index, expected) in first_expected_addresses.iter().enumerate() {
-        let actual = crtc.advance_scanline().snapshot_params.address;
+        let actual = crtc.advance_scanline(&registers).snapshot_params.address;
 
         assert_eq!(
             actual, *expected,
@@ -518,14 +507,14 @@ fn address_should_only_update_from_start_registers_at_frame_boundary() {
     }
 
     // Change start address register mid-test
-    registers.borrow_mut().crtc_r12_start_address_h = 0x30;
+    registers.crtc_r12_start_address_h = 0x30;
 
     // Start address register change takes effect only at next frame boundary.
     // Continues at 0x2032, 0x2064, then resets to new start 0x3000 at frame boundary
     let second_expected_addresses = [0x2032, 0x2032, 0x2064, 0x2064, 0x3000, 0x3000];
 
     for (index, expected) in second_expected_addresses.iter().enumerate() {
-        let actual = crtc.advance_scanline().snapshot_params.address;
+        let actual = crtc.advance_scanline(&registers).snapshot_params.address;
 
         assert_eq!(
             actual, *expected,
@@ -541,13 +530,15 @@ fn should_handle_scan_lines_per_char_zero() {
     registers.crtc_r6_vertical_displayed = 2;
     registers.crtc_r4_vertical_total = 5;
 
-    let registers = Rc::new(RefCell::new(registers));
-    let mut crtc = setup_test(registers);
+    let mut crtc = setup_test(&registers);
 
     let expected_addresses = [0, 0, 0, 0, 0];
 
     for (index, expected) in expected_addresses.iter().enumerate() {
-        let actual = crtc.advance_scanline().snapshot_params.raster_address_even;
+        let actual = crtc
+            .advance_scanline(&registers)
+            .snapshot_params
+            .raster_address_even;
 
         assert_eq!(actual, *expected, "mismatch at index {index}");
     }
@@ -560,13 +551,12 @@ fn should_handle_minimal_display_area() {
     registers.crtc_r6_vertical_displayed = 1;
     registers.crtc_r4_vertical_total = 5;
 
-    let registers = Rc::new(RefCell::new(registers));
-    let mut crtc = setup_test(registers);
+    let mut crtc = setup_test(&registers);
 
     let expected_pattern = [true, true, false, false, false];
 
     for (index, expected) in expected_pattern.iter().enumerate() {
-        let actual = crtc.advance_scanline().snapshot_params.in_scan;
+        let actual = crtc.advance_scanline(&registers).snapshot_params.in_scan;
 
         assert_eq!(actual, *expected, "mismatch at index {index}");
     }
@@ -578,10 +568,9 @@ fn should_handle_horizontal_total_zero() {
     registers.crtc_r0_horizontal_total = 0; // Edge case: minimum value
     registers.ula_control = 0x00;
 
-    let registers = Rc::new(RefCell::new(registers));
-    let mut crtc = setup_test(registers);
+    let mut crtc = setup_test(&registers);
 
-    let actual = crtc.advance_scanline();
+    let actual = crtc.advance_scanline(&registers);
 
     // Trigger = (0 + 1) * 2 = 2
     assert_eq!(actual.next_scanline_trigger, 2);
@@ -593,10 +582,9 @@ fn should_handle_horizontal_total_255() {
     registers.crtc_r0_horizontal_total = 255; // Edge case: maximum value
     registers.ula_control = 0x10; // High frequency mode
 
-    let registers = Rc::new(RefCell::new(registers));
-    let mut crtc = setup_test(registers);
+    let mut crtc = setup_test(&registers);
 
-    let actual = crtc.advance_scanline();
+    let actual = crtc.advance_scanline(&registers);
 
     // Trigger = (255 + 1) * 1 = 256 (high freq mode uses divisor 1)
     assert_eq!(actual.next_scanline_trigger, 256);
@@ -611,15 +599,14 @@ fn should_maintain_consistent_trigger_values_across_multiple_frames() {
     registers.crtc_r4_vertical_total = 2; // 3 char lines
     registers.crtc_r5_vertical_total_adjust = 0;
 
-    let registers = Rc::new(RefCell::new(registers));
-    let mut crtc = setup_test(registers);
+    let mut crtc = setup_test(&registers);
 
     // Frame = 3 char lines * 2 scanlines = 6 scanlines. Test 17 scanlines = 2.8 frames
     // next_scanline_trigger should remain constant (256) throughout
     let expected_triggers = [256u16; 17];
 
     for (index, expected) in expected_triggers.iter().enumerate() {
-        let actual = crtc.advance_scanline().next_scanline_trigger;
+        let actual = crtc.advance_scanline(&registers).next_scanline_trigger;
 
         assert_eq!(actual, *expected, "mismatch at index {index}");
     }
@@ -633,8 +620,7 @@ fn should_show_pattern_stability_across_multiple_complete_frames() {
     registers.crtc_r5_vertical_total_adjust = 0;
     registers.crtc_r1_horizontal_displayed = 50;
 
-    let registers = Rc::new(RefCell::new(registers));
-    let mut crtc = setup_test(registers);
+    let mut crtc = setup_test(&registers);
 
     // Frame = 3 char lines * 2 scanlines = 6 scanlines.
     // Test 17 scanlines = 2 complete frames + 5 scanlines into 3rd frame.
@@ -642,7 +628,7 @@ fn should_show_pattern_stability_across_multiple_complete_frames() {
     let expected_scanlines = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
 
     for (index, expected) in expected_scanlines.iter().enumerate() {
-        let actual = crtc.advance_scanline().snapshot_params.scanline;
+        let actual = crtc.advance_scanline(&registers).snapshot_params.scanline;
 
         assert_eq!(actual, *expected, "mismatch at index {index}");
     }
@@ -659,8 +645,7 @@ fn should_toggle_interlace_frame_and_double_trigger_on_alternate_frames() {
     registers.crtc_r8_interlace_and_skew = 0x01; // Interlace sync enabled
     registers.crtc_r7_vertical_sync_position = 0;
 
-    let registers = Rc::new(RefCell::new(registers));
-    let mut crtc = setup_test(registers);
+    let mut crtc = setup_test(&registers);
 
     // Frame = 2 char lines * 2 scanlines = 4 scanlines.
     // In interlace sync mode, every 4th scanline (at char line 1 of odd frames)
@@ -670,7 +655,7 @@ fn should_toggle_interlace_frame_and_double_trigger_on_alternate_frames() {
     ];
 
     for (index, expected) in expected_triggers.iter().enumerate() {
-        let actual = crtc.advance_scanline().next_scanline_trigger;
+        let actual = crtc.advance_scanline(&registers).next_scanline_trigger;
 
         assert_eq!(actual, *expected, "mismatch at index {index}");
     }
