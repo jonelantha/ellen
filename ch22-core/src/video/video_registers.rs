@@ -53,8 +53,16 @@ impl VideoRegisters {
         self.ula_palette |= ((value & 0x0f) as u64) << shift;
     }
 
+    pub fn ula_is_high_frequency(&self) -> bool {
+        (self.ula_control & 0x10) != 0
+    }
+
     pub fn ula_is_teletext(&self) -> bool {
         (self.ula_control & 0x02) != 0
+    }
+
+    pub fn r3_v_sync_width(&self) -> u8 {
+        self.crtc_r3_sync_width >> 4
     }
 
     pub fn r3_h_sync_width(&self) -> u8 {
@@ -63,6 +71,10 @@ impl VideoRegisters {
 
     pub fn r8_is_crtc_screen_delay_no_output(&self) -> bool {
         self.crtc_r8_interlace_and_skew & 0x30 == 0x30
+    }
+
+    pub fn r8_is_interlace(&self) -> bool {
+        self.crtc_r8_interlace_and_skew & 0x01 == 0x01
     }
 
     pub fn r8_is_interlace_sync_and_video(&self) -> bool {
@@ -85,6 +97,10 @@ impl VideoRegisters {
 
     pub fn r10_r11_cursor_raster_range(&self) -> RangeInclusive<u8> {
         (self.crtc_r10_cursor_start_raster & 0x1f)..=self.crtc_r11_cursor_end_raster
+    }
+
+    pub fn r12_r13_screen_address(&self) -> u16 {
+        (self.crtc_r12_start_address_h as u16) << 8 | self.crtc_r13_start_address_l as u16
     }
 
     pub fn r14_r15_cursor_address(&self) -> u16 {
