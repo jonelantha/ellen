@@ -193,7 +193,7 @@ impl SystemFfi {
         packed |= (result.snapshot_params.address as u64) << 20;
         packed |= (result.snapshot_params.raster_address_even as u64) << 36;
         packed |= (result.snapshot_params.raster_address_odd as u64) << 44;
-        packed |= (result.snapshot_params.scanline as u64) << 52;
+        packed |= (result.snapshot_params.beam_scanline as u64) << 52;
 
         packed
     }

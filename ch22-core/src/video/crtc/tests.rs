@@ -34,7 +34,10 @@ fn should_increment_scanline_by_1_on_each_call() {
     let expected_scanlines: [u16; 10] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 
     for (index, expected) in expected_scanlines.iter().enumerate() {
-        let actual = crtc.advance_scanline(&registers).snapshot_params.scanline;
+        let actual = crtc
+            .advance_scanline(&registers)
+            .snapshot_params
+            .beam_scanline;
 
         assert_eq!(actual, *expected, "mismatch at index {index}");
     }
@@ -166,7 +169,7 @@ fn should_stop_incrementing_addr_after_char_line_exceeds_vertical_total() {
             "in_scan mismatch at index {index}",
         );
         assert_eq!(
-            actual.scanline, *expected_scanline,
+            actual.beam_scanline, *expected_scanline,
             "scanline mismatch at index {index}",
         );
         assert_eq!(
@@ -184,7 +187,10 @@ fn should_maintain_consistent_scanline_delta() {
     let expected_scanlines: Vec<u16> = (0..50).map(|i| i as u16).collect();
 
     for (index, expected) in expected_scanlines.iter().enumerate() {
-        let actual = crtc.advance_scanline(&registers).snapshot_params.scanline;
+        let actual = crtc
+            .advance_scanline(&registers)
+            .snapshot_params
+            .beam_scanline;
 
         assert_eq!(actual, *expected, "mismatch at index {index}");
     }
@@ -291,59 +297,64 @@ fn should_reset_scanline_after_field_complete() {
         "field_complete should be true at iteration 160"
     );
     assert_eq!(
-        result_at_160.snapshot_params.scanline, 160,
+        result_at_160.snapshot_params.beam_scanline, 160,
         "scanline should be 160 at field_complete"
     );
 
     // At iteration 161: scanline should reset to 0
     let result_at_161 = crtc.advance_scanline(&registers);
     assert_eq!(
-        result_at_161.snapshot_params.scanline, 0,
+        result_at_161.snapshot_params.beam_scanline, 0,
         "scanline should reset to 0 after field_complete"
     );
 }
 
 #[test]
 fn should_respect_vertical_total_adjust_when_completing_frames() {
-    let mut registers = create_default_registers();
-    registers.crtc_r9_maximum_raster_address = 1; // 2 scanlines per char line
-    registers.crtc_r4_vertical_total = 2; // 3 char lines
-    registers.crtc_r5_vertical_total_adjust = 3; // +3 extra scanlines at end
-    registers.crtc_r1_horizontal_displayed = 50; // 0x32
-    registers.crtc_r6_vertical_displayed = 2;
-    registers.crtc_r7_vertical_sync_position = 0;
-
-    let mut crtc = setup_test(&registers);
-
-    // Frame = (3 char lines * 2 scanlines) + 3 adjust = 9 scanlines total.
-    // Address increments stop after char lines complete, but scanlines continue.
-    // During the 3 adjust scanlines (6-8), address stays at 0x2096
-    let expected = [
-        // address, inScan
-        (0x2000, true),  // char line 0, scanline 0
-        (0x2000, true),  // char line 0, scanline 1
-        (0x2032, true),  // char line 1, scanline 2
-        (0x2032, true),  // char line 1, scanline 3
-        (0x2064, false), // char line 2, scanline 4
-        (0x2064, false), // char line 2, scanline 5
-        (0x2096, false), // adjust scanline 6 (address frozen)
-        (0x2096, false), // adjust scanline 7 (address frozen)
-        (0x2096, false), // adjust scanline 8 (address frozen)
-        (0x2000, true),  // frame reset, scanline 9
-        (0x2000, true),
+    let total_adjust_cases = [
+        // name, r8, r9
+        ("normal", 0x00, 1),
+        ("interlace sync and video", 0x03, 2),
     ];
 
-    for (index, (expected_address, expected_in_scan)) in expected.iter().enumerate() {
-        let actual = crtc.advance_scanline(&registers).snapshot_params;
+    for (mode_name, r8_interlace_and_skew, r9_maximum_raster_address) in total_adjust_cases {
+        let mut registers = create_default_registers();
+        registers.crtc_r1_horizontal_displayed = 50;
+        registers.crtc_r4_vertical_total = 2;
+        registers.crtc_r5_vertical_total_adjust = 3;
+        registers.crtc_r6_vertical_displayed = 2;
+        registers.crtc_r7_vertical_sync_position = 0;
+        registers.crtc_r8_interlace_and_skew = r8_interlace_and_skew;
+        registers.crtc_r9_maximum_raster_address = r9_maximum_raster_address;
+        registers.ula_control = 0x00;
 
-        assert_eq!(
-            actual.in_scan, *expected_in_scan,
-            "in_scan mismatch at index {index}",
-        );
-        assert_eq!(
-            actual.address, *expected_address,
-            "address mismatch at index {index}",
-        );
+        let mut crtc = setup_test(&registers);
+
+        let expected = [
+            (0x2000, true),  // char line 0, raster 0
+            (0x2000, true),  // char line 0, raster 1
+            (0x2032, true),  // char line 1, raster 0
+            (0x2032, true),  // char line 1, raster 1
+            (0x2064, false), // char line 2, raster 0
+            (0x2064, false), // char line 2, raster 1
+            (0x2096, false), // adjust scanline 0 (address frozen)
+            (0x2096, false), // adjust scanline 1 (address frozen)
+            (0x2096, false), // adjust scanline 2 (raster wraps, frame resets after)
+            (0x2000, true),
+        ];
+
+        for (index, (expected_address, expected_in_scan)) in expected.iter().enumerate() {
+            let actual = crtc.advance_scanline(&registers).snapshot_params;
+
+            assert_eq!(
+                actual.address, *expected_address,
+                "{mode_name}: address mismatch at index {index}",
+            );
+            assert_eq!(
+                actual.in_scan, *expected_in_scan,
+                "{mode_name}: in_scan mismatch at index {index}",
+            );
+        }
     }
 }
 
@@ -412,6 +423,7 @@ fn address_should_increment_by_horizontal_displayed_per_char_line() {
 fn raster_address_odd_should_equal_even_plus_one_when_interlaced() {
     let mut registers = create_default_registers();
     registers.crtc_r8_interlace_and_skew = 0x03; // Interlace mode enabled
+    registers.crtc_r9_maximum_raster_address = 6; // 8 scanlines per field
 
     let mut crtc = setup_test(&registers);
 
@@ -628,7 +640,10 @@ fn should_show_pattern_stability_across_multiple_complete_frames() {
     let expected_scanlines = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
 
     for (index, expected) in expected_scanlines.iter().enumerate() {
-        let actual = crtc.advance_scanline(&registers).snapshot_params.scanline;
+        let actual = crtc
+            .advance_scanline(&registers)
+            .snapshot_params
+            .beam_scanline;
 
         assert_eq!(actual, *expected, "mismatch at index {index}");
     }

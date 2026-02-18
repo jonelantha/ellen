@@ -85,6 +85,18 @@ impl VideoRegisters {
         (self.crtc_r8_interlace_and_skew & 0xc0) >> 6
     }
 
+    pub fn r8_r9_rasters_per_char(&self) -> u8 {
+        // r9 should only be 5 bit
+        debug_assert!(self.crtc_r9_maximum_raster_address <= 0x1F);
+
+        if self.r8_is_interlace_sync_and_video() {
+            debug_assert!(self.crtc_r9_maximum_raster_address & 0x01 == 0); // odd r9 not supported in interlace sync and video mode
+            (self.crtc_r9_maximum_raster_address >> 1) + 1
+        } else {
+            self.crtc_r9_maximum_raster_address + 1
+        }
+    }
+
     pub fn r10_cursor_blink_mode(&self) -> R10CursorBlinkMode {
         match self.crtc_r10_cursor_start_raster & 0x60 {
             0x00 => R10CursorBlinkMode::Solid,
