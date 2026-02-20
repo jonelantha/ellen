@@ -1,27 +1,26 @@
-use super::CRTC;
+use super::Crtc;
 use crate::video::VideoRegisters;
 
 fn create_default_registers() -> VideoRegisters {
-    let mut registers = VideoRegisters::default();
-
-    registers.crtc_r0_horizontal_total = 127;
-    registers.crtc_r1_horizontal_displayed = 80;
-    registers.crtc_r3_sync_width = 0x20;
-    registers.crtc_r4_vertical_total = 24;
-    registers.crtc_r5_vertical_total_adjust = 0;
-    registers.crtc_r6_vertical_displayed = 20;
-    registers.crtc_r7_vertical_sync_position = 20;
-    registers.crtc_r8_interlace_and_skew = 0x00;
-    registers.crtc_r9_maximum_raster_address = 7;
-    registers.crtc_r12_start_address_h = 0x20;
-    registers.crtc_r13_start_address_l = 0x00;
-    registers.ula_control = 0x00;
-
-    registers
+    VideoRegisters {
+        crtc_r0_horizontal_total: 127,
+        crtc_r1_horizontal_displayed: 80,
+        crtc_r3_sync_width: 0x20,
+        crtc_r4_vertical_total: 24,
+        crtc_r5_vertical_total_adjust: 0,
+        crtc_r6_vertical_displayed: 20,
+        crtc_r7_vertical_sync_position: 20,
+        crtc_r8_interlace_and_skew: 0x00,
+        crtc_r9_maximum_raster_address: 7,
+        crtc_r12_start_address_h: 0x20,
+        crtc_r13_start_address_l: 0x00,
+        ula_control: 0x00,
+        ..Default::default()
+    }
 }
 
-fn setup_test(registers: &VideoRegisters) -> CRTC {
-    let mut crtc = CRTC::default();
+fn setup_test(registers: &VideoRegisters) -> Crtc {
+    let mut crtc = Crtc::default();
     crtc.init(registers);
     crtc
 }

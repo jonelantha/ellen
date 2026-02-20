@@ -31,7 +31,7 @@ pub struct AdvanceScanlineResult {
 }
 
 #[derive(Default)]
-pub struct CRTC {
+pub struct Crtc {
     char_row_control: CharRowControl,
     address_control: AddressControl,
     vsync_control: VSyncControl,
@@ -39,7 +39,7 @@ pub struct CRTC {
     odd_field: bool,
 }
 
-impl CRTC {
+impl Crtc {
     pub fn init(&mut self, registers: &VideoRegisters) {
         self.char_row_control.reset();
         self.address_control.reset(registers);
@@ -95,7 +95,7 @@ impl CRTC {
     fn get_next_scanline_trigger(&self, registers: &VideoRegisters) -> u16 {
         let mut next_scanline_trigger = registers.crtc_r0_horizontal_total as u16 + 1;
 
-        if registers.ula_is_high_frequency() == false {
+        if !registers.ula_is_high_frequency() {
             next_scanline_trigger *= 2;
         }
 

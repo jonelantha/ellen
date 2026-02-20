@@ -8,7 +8,7 @@ mod video_ula_registers_device;
 
 pub const MAX_LINES: usize = 320;
 
-pub use crtc::CRTC;
+pub use crtc::Crtc;
 pub use field_data::Field;
 pub use field_line::FieldLine;
 pub use video_crtc_registers_device::VideoCRTCRegistersDevice;
