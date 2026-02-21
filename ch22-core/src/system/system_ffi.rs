@@ -118,10 +118,6 @@ impl SystemFfi {
             .add_device(Box::new(JsTimerDevice::new(js_handle_trigger)))
     }
 
-    pub fn on_vsync_change(&mut self, vsync: bool) {
-        self.core.on_vsync_change(vsync);
-    }
-
     pub fn reset(&mut self) {
         self.core.reset();
     }
@@ -166,9 +162,6 @@ impl SystemFfi {
 
         if crtc.is_beam_reset() {
             packed |= 1;
-        }
-        if crtc.is_in_vsync() {
-            packed |= 2;
         }
 
         packed |= (crtc.get_next_scanline_trigger(&self.core.video_registers.borrow()) as u64) << 4;

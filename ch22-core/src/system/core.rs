@@ -23,6 +23,7 @@ pub struct Core {
     pub io_space: IOSpace,
     pub video_field: Field,
     pub crtc: Crtc,
+    pub vsync: bool,
     pub ic32_latch: Rc<Cell<u8>>,
     pub field_counter: u8,
     pub rom_select_latch: Rc<Cell<usize>>,
@@ -94,24 +95,32 @@ impl Core {
     }
 
     pub fn process_scanline(&mut self) {
-        let registers = &self.video_registers.borrow();
+        {
+            let registers = &self.video_registers.borrow();
 
-        let snapshot_params = self.crtc.get_snapshot_params(registers);
+            let snapshot_params = self.crtc.get_snapshot_params(registers);
 
-        if snapshot_params.is_displayed {
-            self.video_field.snapshot_scanline(
-                snapshot_params.beam_scanline as usize,
-                snapshot_params.address,
-                snapshot_params.raster_address_even,
-                snapshot_params.raster_address_odd,
-                self.ic32_latch.get(),
-                self.field_counter,
-                registers,
-                |range| self.ram.slice(range),
-            );
+            if snapshot_params.is_displayed {
+                self.video_field.snapshot_scanline(
+                    snapshot_params.beam_scanline as usize,
+                    snapshot_params.address,
+                    snapshot_params.raster_address_even,
+                    snapshot_params.raster_address_odd,
+                    self.ic32_latch.get(),
+                    self.field_counter,
+                    registers,
+                    |range| self.ram.slice(range),
+                );
+            }
+
+            self.crtc.advance_scanline(registers);
         }
 
-        self.crtc.advance_scanline(registers);
+        let crtc_vsync = self.crtc.is_in_vsync();
+        if self.vsync != crtc_vsync {
+            self.vsync = crtc_vsync;
+            self.on_vsync_change(crtc_vsync);
+        }
     }
 
     pub fn reset(&mut self) {
