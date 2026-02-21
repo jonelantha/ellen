@@ -19,16 +19,11 @@ fn create_default_registers() -> VideoRegisters {
     }
 }
 
-fn setup_test(registers: &VideoRegisters) -> Crtc {
-    let mut crtc = Crtc::default();
-    crtc.init(registers);
-    crtc
-}
-
 #[test]
 fn should_increment_scanline_by_1_on_each_call() {
     let registers = create_default_registers();
-    let mut crtc = setup_test(&registers);
+    let mut crtc = Crtc::default();
+    crtc.init(&registers);
 
     let expected_scanlines: [u16; 10] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 
@@ -47,7 +42,8 @@ fn should_cycle_raster_address_even_pattern_after_char_scanlines_calls() {
     registers.crtc_r9_maximum_raster_address = 7;
     registers.crtc_r1_horizontal_displayed = 80;
 
-    let mut crtc = setup_test(&registers);
+    let mut crtc = Crtc::default();
+    crtc.init(&registers);
 
     let expected_pattern = [0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7];
 
@@ -66,7 +62,8 @@ fn should_advance_address_by_horizontal_displayed_after_char_scanlines() {
     registers.crtc_r9_maximum_raster_address = 7; // 8 scanlines per character line (0-7)
     registers.crtc_r1_horizontal_displayed = 50; // 0x32 in hex
 
-    let mut crtc = setup_test(&registers);
+    let mut crtc = Crtc::default();
+    crtc.init(&registers);
 
     // Address stays at 0x2000 for all 8 scanlines of first character line,
     // then advances by horizontal_displayed (0x32) to 0x2032 on scanline 8
@@ -90,7 +87,8 @@ fn should_transition_in_scan_from_true_to_false_at_display_boundary() {
     registers.crtc_r6_vertical_displayed = 2; // 2 character lines displayed
     registers.crtc_r4_vertical_total = 10;
 
-    let mut crtc = setup_test(&registers);
+    let mut crtc = Crtc::default();
+    crtc.init(&registers);
 
     // in_scan is true for 2 char lines * 2 scanlines = 4 scanlines, then false
     let expected_pattern = [true, true, true, true, false, false, false];
@@ -111,7 +109,8 @@ fn should_return_beam_scanline_0_at_max_lines() {
     // forcing the hardware limit (MAX_LINES) to trigger instead
     registers.crtc_r7_vertical_sync_position = 255;
 
-    let mut crtc = setup_test(&registers);
+    let mut crtc = Crtc::default();
+    crtc.init(&registers);
 
     // Skip iteration 0 (initial state with beam_scanline == 0)
     crtc.advance_scanline(&registers);
@@ -144,7 +143,8 @@ fn should_stop_incrementing_addr_after_char_line_exceeds_vertical_total() {
     registers.crtc_r6_vertical_displayed = 2; // 2 character lines visible
     registers.crtc_r7_vertical_sync_position = 10;
 
-    let mut crtc = setup_test(&registers);
+    let mut crtc = Crtc::default();
+    crtc.init(&registers);
 
     // After char line 2 exceeds vertical_total (2), address remains at 0x2064
     // until frame resets at scanline 6, then pattern repeats
@@ -191,7 +191,8 @@ fn should_stop_incrementing_addr_after_char_line_exceeds_vertical_total() {
 #[test]
 fn should_maintain_consistent_scanline_delta() {
     let registers = create_default_registers();
-    let mut crtc = setup_test(&registers);
+    let mut crtc = Crtc::default();
+    crtc.init(&registers);
 
     let expected_scanlines: Vec<u16> = (0..50).map(|i| i as u16).collect();
 
@@ -210,7 +211,8 @@ fn should_track_raster_address_progression_correctly() {
     registers.crtc_r9_maximum_raster_address = 3;
     registers.crtc_r8_interlace_and_skew = 0x00;
 
-    let mut crtc = setup_test(&registers);
+    let mut crtc = Crtc::default();
+    crtc.init(&registers);
 
     let expected_pattern = [0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3];
 
@@ -245,7 +247,8 @@ fn should_trigger_vsync_at_correct_positions() {
         registers.crtc_r3_sync_width = r3_sync_width;
         registers.crtc_r4_vertical_total = 10;
 
-        let mut crtc = setup_test(&registers);
+        let mut crtc = Crtc::default();
+        crtc.init(&registers);
 
         for index in 0..length {
             let actual = crtc.is_in_vsync();
@@ -269,7 +272,8 @@ fn should_complete_frame_at_correct_boundary() {
     registers.crtc_r4_vertical_total = 2; // 3 char lines (0-2)
     registers.crtc_r5_vertical_total_adjust = 0;
 
-    let mut crtc = setup_test(&registers);
+    let mut crtc = Crtc::default();
+    crtc.init(&registers);
 
     // Frame = 3 char lines * 2 scanlines = 6 scanlines total.
     // Address increments by 0x50 (default horizontal_displayed=80) per char line.
@@ -290,7 +294,8 @@ fn should_complete_frame_at_correct_boundary() {
 #[test]
 fn should_reset_scanline_after_beam_reset() {
     let registers = create_default_registers();
-    let mut crtc = setup_test(&registers);
+    let mut crtc = Crtc::default();
+    crtc.init(&registers);
 
     assert!(
         crtc.is_beam_reset(),
@@ -344,7 +349,8 @@ fn should_respect_vertical_total_adjust_when_completing_frames() {
         registers.crtc_r9_maximum_raster_address = r9_maximum_raster_address;
         registers.ula_control = 0x00;
 
-        let mut crtc = setup_test(&registers);
+        let mut crtc = Crtc::default();
+        crtc.init(&registers);
 
         let expected = [
             (0x2000, true),  // char line 0, raster 0
@@ -388,7 +394,8 @@ fn should_maintain_consistent_next_scanline_trigger_in_both_frequency_modes() {
         registers.crtc_r0_horizontal_total = 127;
         registers.ula_control = ula_control;
 
-        let mut crtc = setup_test(&registers);
+        let mut crtc = Crtc::default();
+        crtc.init(&registers);
 
         let expected_triggers = [expected_trigger; 20];
 
@@ -405,7 +412,8 @@ fn should_maintain_consistent_next_scanline_trigger_in_both_frequency_modes() {
 #[test]
 fn beam_reset_should_only_occur_at_boundaries() {
     let registers = create_default_registers();
-    let mut crtc = setup_test(&registers);
+    let mut crtc = Crtc::default();
+    crtc.init(&registers);
 
     // With default registers: 20 char lines displayed * 8 scanlines/char = 160 scanlines
     // beam_reset should occur at 0 and 161
@@ -429,7 +437,8 @@ fn address_should_increment_by_horizontal_displayed_per_char_line() {
     registers.crtc_r9_maximum_raster_address = 1; // 2 scanlines per char line
     registers.crtc_r4_vertical_total = 10;
 
-    let mut crtc = setup_test(&registers);
+    let mut crtc = Crtc::default();
+    crtc.init(&registers);
 
     // Address advances by horizontal_displayed (0x28) after each char line completes
     let expected_addresses = [0x2000, 0x2000, 0x2028, 0x2028, 0x2050, 0x2050];
@@ -449,7 +458,8 @@ fn raster_address_odd_should_equal_even_plus_one_when_interlaced() {
     registers.crtc_r8_interlace_and_skew = 0x03; // Interlace mode enabled
     registers.crtc_r9_maximum_raster_address = 6; // 8 scanlines per field
 
-    let mut crtc = setup_test(&registers);
+    let mut crtc = Crtc::default();
+    crtc.init(&registers);
 
     // In interlace mode, odd field raster addresses are offset by +1 from even field
 
@@ -488,7 +498,8 @@ fn raster_address_odd_should_equal_even_when_not_interlaced() {
     let mut registers = create_default_registers();
     registers.crtc_r8_interlace_and_skew = 0x00;
 
-    let mut crtc = setup_test(&registers);
+    let mut crtc = Crtc::default();
+    crtc.init(&registers);
 
     let expected = [
         // raster_address_even, raster_address_odd
@@ -531,7 +542,8 @@ fn address_should_only_update_from_start_registers_at_frame_boundary() {
     registers.crtc_r13_start_address_l = 0x00;
     registers.crtc_r7_vertical_sync_position = 10;
 
-    let mut crtc = setup_test(&registers);
+    let mut crtc = Crtc::default();
+    crtc.init(&registers);
 
     let first_expected_addresses = [
         0x2000, 0x2000, 0x2032, 0x2032, 0x2064, 0x2064, 0x2000, 0x2000,
@@ -574,7 +586,8 @@ fn should_handle_scan_lines_per_char_zero() {
     registers.crtc_r6_vertical_displayed = 2;
     registers.crtc_r4_vertical_total = 5;
 
-    let mut crtc = setup_test(&registers);
+    let mut crtc = Crtc::default();
+    crtc.init(&registers);
 
     let expected_addresses = [0, 0, 0, 0, 0];
 
@@ -594,7 +607,8 @@ fn should_handle_minimal_display_area() {
     registers.crtc_r6_vertical_displayed = 1;
     registers.crtc_r4_vertical_total = 5;
 
-    let mut crtc = setup_test(&registers);
+    let mut crtc = Crtc::default();
+    crtc.init(&registers);
 
     let expected_pattern = [true, true, false, false, false];
 
@@ -613,7 +627,8 @@ fn should_handle_horizontal_total_zero() {
     registers.crtc_r0_horizontal_total = 0; // Edge case: minimum value
     registers.ula_control = 0x00;
 
-    let crtc = setup_test(&registers);
+    let mut crtc = Crtc::default();
+    crtc.init(&registers);
 
     let actual = crtc.get_next_scanline_trigger(&registers);
 
@@ -627,7 +642,8 @@ fn should_handle_horizontal_total_255() {
     registers.crtc_r0_horizontal_total = 255; // Edge case: maximum value
     registers.ula_control = 0x10; // High frequency mode
 
-    let crtc = setup_test(&registers);
+    let mut crtc = Crtc::default();
+    crtc.init(&registers);
 
     let actual = crtc.get_next_scanline_trigger(&registers);
 
@@ -644,7 +660,8 @@ fn should_maintain_consistent_trigger_values_across_multiple_frames() {
     registers.crtc_r4_vertical_total = 2; // 3 char lines
     registers.crtc_r5_vertical_total_adjust = 0;
 
-    let mut crtc = setup_test(&registers);
+    let mut crtc = Crtc::default();
+    crtc.init(&registers);
 
     // Frame = 3 char lines * 2 scanlines = 6 scanlines. Test 17 scanlines = 2.8 frames
     // next_scanline_trigger should remain constant (256) throughout
@@ -667,7 +684,8 @@ fn should_show_pattern_stability_across_multiple_complete_frames() {
     registers.crtc_r5_vertical_total_adjust = 0;
     registers.crtc_r1_horizontal_displayed = 50;
 
-    let mut crtc = setup_test(&registers);
+    let mut crtc = Crtc::default();
+    crtc.init(&registers);
 
     // Frame = 3 char lines * 2 scanlines = 6 scanlines.
     // Test 17 scanlines = 2 complete frames + 5 scanlines into 3rd frame.
@@ -694,7 +712,8 @@ fn should_toggle_interlace_frame_and_double_trigger_on_alternate_frames() {
     registers.crtc_r8_interlace_and_skew = 0x01; // Interlace sync enabled
     registers.crtc_r7_vertical_sync_position = 0;
 
-    let mut crtc = setup_test(&registers);
+    let mut crtc = Crtc::default();
+    crtc.init(&registers);
 
     // Frame = 2 char lines * 2 scanlines = 4 scanlines.
     // In interlace sync mode, every 4th scanline (at char line 1 of odd frames)
