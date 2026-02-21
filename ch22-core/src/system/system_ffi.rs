@@ -136,23 +136,6 @@ impl SystemFfi {
             .set_device_trigger(device_id, trigger);
     }
 
-    pub fn get_partial_video_registers(&self) -> u128 {
-        let registers = self.core.video_registers.borrow();
-
-        (registers.crtc_r0_horizontal_total as u128)
-            | (registers.crtc_r1_horizontal_displayed as u128) << 8
-            | (registers.crtc_r3_sync_width as u128) << 16
-            | (registers.crtc_r4_vertical_total as u128) << 24
-            | (registers.crtc_r5_vertical_total_adjust as u128) << 32
-            | (registers.crtc_r6_vertical_displayed as u128) << 40
-            | (registers.crtc_r7_vertical_sync_position as u128) << 48
-            | (registers.crtc_r8_interlace_and_skew as u128) << 56
-            | (registers.crtc_r9_maximum_raster_address as u128) << 64
-            | (registers.crtc_r12_start_address_h as u128) << 72
-            | (registers.crtc_r13_start_address_l as u128) << 80
-            | (registers.ula_control as u128) << 88
-    }
-
     pub fn process_scanline(&mut self) -> u64 {
         self.core.process_scanline();
 

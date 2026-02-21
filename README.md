@@ -132,16 +132,6 @@ ch22System.reset();
 const cycleCount = ch22System.run(targetCycles);
 ```
 
-### Getting current state
-
-```js
-/**
- * get video registers
- * [r0,r1,r3,r4,r5,r6,r7,r8,r9,r12,r13,ula control] packed into u128
- */
-const videoRegisters = ch22System.get_partial_video_registers();
-```
-
 ### Snapshotting Video memory into a buffer
 
 ```js
