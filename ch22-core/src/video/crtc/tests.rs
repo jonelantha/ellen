@@ -1,31 +1,14 @@
 use super::Crtc;
 use crate::video::VideoRegisters;
 
-fn create_default_registers() -> VideoRegisters {
-    VideoRegisters {
-        crtc_r0_horizontal_total: 127,
-        crtc_r1_horizontal_displayed: 80,
-        crtc_r3_sync_width: 0x20,
-        crtc_r4_vertical_total: 24,
-        crtc_r5_vertical_total_adjust: 0,
-        crtc_r6_vertical_displayed: 20,
-        crtc_r7_vertical_sync_position: 20,
-        crtc_r8_interlace_and_skew: 0x00,
-        crtc_r9_maximum_raster_address: 7,
-        crtc_r12_start_address_h: 0x20,
-        crtc_r13_start_address_l: 0x00,
-        ula_control: 0x00,
-        ..Default::default()
-    }
-}
-
 // ============================================================================
 // BASIC SCANLINE BEHAVIOR
 // ============================================================================
 
 #[test]
 fn should_increment_scanline_by_1_on_each_call() {
-    let registers = create_default_registers();
+    let registers = VideoRegisters::default();
+
     let mut crtc = Crtc::default();
     crtc.init(&registers);
 
@@ -46,9 +29,15 @@ fn should_increment_scanline_by_1_on_each_call() {
 
 #[test]
 fn should_advance_address_by_horizontal_displayed_after_char_scanlines() {
-    let mut registers = create_default_registers();
-    registers.crtc_r9_maximum_raster_address = 7; // 8 scanlines per character line (0-7)
-    registers.crtc_r1_horizontal_displayed = 50; // 0x32 in hex
+    let registers = VideoRegisters {
+        crtc_r1_horizontal_displayed: 50, // 0x32 in hex
+        crtc_r4_vertical_total: 24,
+        crtc_r6_vertical_displayed: 20,
+        crtc_r9_maximum_raster_address: 7, // 8 scanlines per character line (0-7)
+        crtc_r12_start_address_h: 0x20,
+        crtc_r13_start_address_l: 0x00,
+        ..Default::default()
+    };
 
     let mut crtc = Crtc::default();
     crtc.init(&registers);
@@ -70,12 +59,16 @@ fn should_advance_address_by_horizontal_displayed_after_char_scanlines() {
 
 #[test]
 fn should_stop_incrementing_addr_after_char_line_exceeds_vertical_total() {
-    let mut registers = create_default_registers();
-    registers.crtc_r9_maximum_raster_address = 1; // 2 scanlines per character line
-    registers.crtc_r4_vertical_total = 2; // 3 character lines total (0-2)
-    registers.crtc_r1_horizontal_displayed = 50; // 0x32 per line
-    registers.crtc_r6_vertical_displayed = 2; // 2 character lines visible
-    registers.crtc_r7_vertical_sync_position = 10;
+    let registers = VideoRegisters {
+        crtc_r1_horizontal_displayed: 50, // 0x32 per line
+        crtc_r4_vertical_total: 2,        // 3 character lines total (0-2)
+        crtc_r6_vertical_displayed: 2,    // 2 character lines visible
+        crtc_r7_vertical_sync_position: 10,
+        crtc_r9_maximum_raster_address: 1, // 2 scanlines per character line
+        crtc_r12_start_address_h: 0x20,    // Start address 0x2000
+        crtc_r13_start_address_l: 0x00,
+        ..Default::default()
+    };
 
     let mut crtc = Crtc::default();
     crtc.init(&registers);
@@ -135,10 +128,12 @@ fn should_track_raster_address_progression_correctly() {
         (7, [0, 1, 2, 3, 4, 5, 6, 7, 0, 1]),
     ];
 
-    for (r9_value, expected_pattern) in test_cases {
-        let mut registers = create_default_registers();
-        registers.crtc_r9_maximum_raster_address = r9_value;
-        registers.crtc_r8_interlace_and_skew = 0x00;
+    for (crtc_r9_maximum_raster_address, expected_pattern) in test_cases {
+        let registers = VideoRegisters {
+            crtc_r8_interlace_and_skew: 0x00, // No interlace
+            crtc_r9_maximum_raster_address,
+            ..Default::default()
+        };
 
         let mut crtc = Crtc::default();
         crtc.init(&registers);
@@ -149,7 +144,7 @@ fn should_track_raster_address_progression_correctly() {
             assert_eq!(
                 actual, *expected,
                 "mismatch at index {index} for r9={}",
-                r9_value
+                crtc_r9_maximum_raster_address
             );
 
             crtc.advance_scanline(&registers);
@@ -176,12 +171,15 @@ fn should_trigger_vsync_at_correct_positions() {
         (2, 0x40, vec![5, 6, 7, 8], 15), // vsync at char 2 (scanline 4), width=4
     ];
 
-    for (r7_vertical_sync_position, r3_sync_width, expected_indices, length) in test_cases {
-        let mut registers = create_default_registers();
-        registers.crtc_r9_maximum_raster_address = 1;
-        registers.crtc_r7_vertical_sync_position = r7_vertical_sync_position;
-        registers.crtc_r3_sync_width = r3_sync_width;
-        registers.crtc_r4_vertical_total = 10;
+    for (crtc_r7_vertical_sync_position, crtc_r3_sync_width, expected_indices, length) in test_cases
+    {
+        let registers = VideoRegisters {
+            crtc_r3_sync_width, // Sync width (pulse length)
+            crtc_r4_vertical_total: 10,
+            crtc_r7_vertical_sync_position,    // Position of vsync
+            crtc_r9_maximum_raster_address: 1, // 2 scanlines per character line
+            ..Default::default()
+        };
 
         let mut crtc = Crtc::default();
         crtc.init(&registers);
@@ -192,8 +190,8 @@ fn should_trigger_vsync_at_correct_positions() {
 
             assert_eq!(
                 actual, expected,
-                "vsync mismatch at index {index} for r7_vertical_sync_position={}, r3_sync_width={:#04x}",
-                r7_vertical_sync_position, r3_sync_width
+                "vsync mismatch at index {index} for crtc_r7_vertical_sync_position={}, crtc_r3_sync_width={:#04x}",
+                crtc_r7_vertical_sync_position, crtc_r3_sync_width
             );
 
             crtc.advance_scanline(&registers);
@@ -207,10 +205,12 @@ fn should_trigger_vsync_at_correct_positions() {
 
 #[test]
 fn should_transition_in_scan_from_true_to_false_at_display_boundary() {
-    let mut registers = create_default_registers();
-    registers.crtc_r9_maximum_raster_address = 1; // 2 scanlines per character line
-    registers.crtc_r6_vertical_displayed = 2; // 2 character lines displayed
-    registers.crtc_r4_vertical_total = 10;
+    let registers = VideoRegisters {
+        crtc_r4_vertical_total: 10,
+        crtc_r6_vertical_displayed: 2, // 2 character lines displayed
+        crtc_r9_maximum_raster_address: 1, // 2 scanlines per character line
+        ..Default::default()
+    };
 
     let mut crtc = Crtc::default();
     crtc.init(&registers);
@@ -229,10 +229,10 @@ fn should_transition_in_scan_from_true_to_false_at_display_boundary() {
 
 #[test]
 fn should_return_beam_scanline_0_at_max_lines() {
-    let mut registers = create_default_registers();
-    // Set vsync position to max to prevent normal field completion,
-    // forcing the hardware limit (MAX_LINES) to trigger instead
-    registers.crtc_r7_vertical_sync_position = 255;
+    let registers = VideoRegisters {
+        crtc_r7_vertical_sync_position: 255, // Prevent normal field completion
+        ..Default::default()
+    };
 
     let mut crtc = Crtc::default();
     crtc.init(&registers);
@@ -261,10 +261,15 @@ fn should_return_beam_scanline_0_at_max_lines() {
 
 #[test]
 fn should_complete_frame_at_correct_boundary() {
-    let mut registers = create_default_registers();
-    registers.crtc_r9_maximum_raster_address = 1; // 2 scanlines per char line
-    registers.crtc_r4_vertical_total = 2; // 3 char lines (0-2)
-    registers.crtc_r5_vertical_total_adjust = 0;
+    let registers = VideoRegisters {
+        crtc_r1_horizontal_displayed: 80,
+        crtc_r4_vertical_total: 2, // 3 char lines (0-2)
+        crtc_r5_vertical_total_adjust: 0,
+        crtc_r9_maximum_raster_address: 1, // 2 scanlines per char line
+        crtc_r12_start_address_h: 0x20,
+        crtc_r13_start_address_l: 0x00,
+        ..Default::default()
+    };
 
     let mut crtc = Crtc::default();
     crtc.init(&registers);
@@ -291,7 +296,14 @@ fn should_complete_frame_at_correct_boundary() {
 
 #[test]
 fn should_reset_scanline_after_beam_reset() {
-    let registers = create_default_registers();
+    let registers = VideoRegisters {
+        crtc_r4_vertical_total: 24,
+        crtc_r5_vertical_total_adjust: 0,
+        crtc_r7_vertical_sync_position: 20,
+        crtc_r9_maximum_raster_address: 7, // 8 scanlines per character line
+        ..Default::default()
+    };
+
     let mut crtc = Crtc::default();
     crtc.init(&registers);
 
@@ -336,16 +348,22 @@ fn should_respect_vertical_total_adjust_when_completing_frames() {
         ("interlace sync and video", 0x03, 2),
     ];
 
-    for (mode_name, r8_interlace_and_skew, r9_maximum_raster_address) in total_adjust_cases {
-        let mut registers = create_default_registers();
-        registers.crtc_r1_horizontal_displayed = 50;
-        registers.crtc_r4_vertical_total = 2;
-        registers.crtc_r5_vertical_total_adjust = 3;
-        registers.crtc_r6_vertical_displayed = 2;
-        registers.crtc_r7_vertical_sync_position = 0;
-        registers.crtc_r8_interlace_and_skew = r8_interlace_and_skew;
-        registers.crtc_r9_maximum_raster_address = r9_maximum_raster_address;
-        registers.ula_control = 0x00;
+    for (mode_name, crtc_r8_interlace_and_skew, crtc_r9_maximum_raster_address) in
+        total_adjust_cases
+    {
+        let registers = VideoRegisters {
+            crtc_r1_horizontal_displayed: 50,
+            crtc_r4_vertical_total: 2,
+            crtc_r5_vertical_total_adjust: 3,
+            crtc_r6_vertical_displayed: 2,
+            crtc_r7_vertical_sync_position: 0,
+            crtc_r8_interlace_and_skew,     // Variable per test case
+            crtc_r9_maximum_raster_address, // Variable per test case
+            crtc_r12_start_address_h: 0x20, // Start address 0x2000
+            crtc_r13_start_address_l: 0x00,
+            ula_control: 0x00,
+            ..Default::default()
+        };
 
         let mut crtc = Crtc::default();
         crtc.init(&registers);
@@ -392,9 +410,11 @@ fn should_maintain_consistent_next_scanline_trigger_in_both_frequency_modes() {
     let frequency_test_cases = [(0x00, 256u16), (0x10, 128u16)];
 
     for (ula_control, expected_trigger) in frequency_test_cases {
-        let mut registers = create_default_registers();
-        registers.crtc_r0_horizontal_total = 127;
-        registers.ula_control = ula_control;
+        let registers = VideoRegisters {
+            crtc_r0_horizontal_total: 127,
+            ula_control, // 0x00=normal, 0x10=high frequency
+            ..Default::default()
+        };
 
         let mut crtc = Crtc::default();
         crtc.init(&registers);
@@ -417,7 +437,14 @@ fn should_maintain_consistent_next_scanline_trigger_in_both_frequency_modes() {
 
 #[test]
 fn beam_reset_should_only_occur_at_boundaries() {
-    let registers = create_default_registers();
+    let registers = VideoRegisters {
+        crtc_r4_vertical_total: 24,
+        crtc_r5_vertical_total_adjust: 0,
+        crtc_r7_vertical_sync_position: 20,
+        crtc_r9_maximum_raster_address: 7, // 8 scanlines per character line
+        ..Default::default()
+    };
+
     let mut crtc = Crtc::default();
     crtc.init(&registers);
 
@@ -438,9 +465,11 @@ fn beam_reset_should_only_occur_at_boundaries() {
 
 #[test]
 fn raster_address_odd_should_equal_even_plus_one_when_interlaced() {
-    let mut registers = create_default_registers();
-    registers.crtc_r8_interlace_and_skew = 0x03; // Interlace mode enabled
-    registers.crtc_r9_maximum_raster_address = 6; // 8 scanlines per field
+    let registers = VideoRegisters {
+        crtc_r8_interlace_and_skew: 0x03,  // Interlace mode enabled
+        crtc_r9_maximum_raster_address: 6, // 8 scanlines per field
+        ..Default::default()
+    };
 
     let mut crtc = Crtc::default();
     crtc.init(&registers);
@@ -479,8 +508,11 @@ fn raster_address_odd_should_equal_even_plus_one_when_interlaced() {
 
 #[test]
 fn raster_address_odd_should_equal_even_when_not_interlaced() {
-    let mut registers = create_default_registers();
-    registers.crtc_r8_interlace_and_skew = 0x00;
+    let registers = VideoRegisters {
+        crtc_r8_interlace_and_skew: 0x00,
+        crtc_r9_maximum_raster_address: 7, // Default 8 scanlines per char
+        ..Default::default()
+    };
 
     let mut crtc = Crtc::default();
     crtc.init(&registers);
@@ -517,14 +549,16 @@ fn raster_address_odd_should_equal_even_when_not_interlaced() {
 
 #[test]
 fn address_should_only_update_from_start_registers_at_frame_boundary() {
-    let mut registers = create_default_registers();
-    registers.crtc_r9_maximum_raster_address = 1;
-    registers.crtc_r4_vertical_total = 2;
-    registers.crtc_r5_vertical_total_adjust = 0;
-    registers.crtc_r1_horizontal_displayed = 50;
-    registers.crtc_r12_start_address_h = 0x20;
-    registers.crtc_r13_start_address_l = 0x00;
-    registers.crtc_r7_vertical_sync_position = 10;
+    let mut registers = VideoRegisters {
+        crtc_r1_horizontal_displayed: 50,
+        crtc_r4_vertical_total: 2,
+        crtc_r5_vertical_total_adjust: 0,
+        crtc_r7_vertical_sync_position: 10,
+        crtc_r9_maximum_raster_address: 1,
+        crtc_r12_start_address_h: 0x20,
+        crtc_r13_start_address_l: 0x00,
+        ..Default::default()
+    };
 
     let mut crtc = Crtc::default();
     crtc.init(&registers);
@@ -569,10 +603,12 @@ fn address_should_only_update_from_start_registers_at_frame_boundary() {
 
 #[test]
 fn should_handle_scan_lines_per_char_zero() {
-    let mut registers = create_default_registers();
-    registers.crtc_r9_maximum_raster_address = 0; // Edge case: 1 scanline per char
-    registers.crtc_r6_vertical_displayed = 2;
-    registers.crtc_r4_vertical_total = 5;
+    let registers = VideoRegisters {
+        crtc_r4_vertical_total: 5,
+        crtc_r6_vertical_displayed: 2,
+        crtc_r9_maximum_raster_address: 0, // Edge case: 1 scanline per char
+        ..Default::default()
+    };
 
     let mut crtc = Crtc::default();
     crtc.init(&registers);
@@ -590,10 +626,12 @@ fn should_handle_scan_lines_per_char_zero() {
 
 #[test]
 fn should_handle_minimal_display_area() {
-    let mut registers = create_default_registers();
-    registers.crtc_r9_maximum_raster_address = 1;
-    registers.crtc_r6_vertical_displayed = 1;
-    registers.crtc_r4_vertical_total = 5;
+    let registers = VideoRegisters {
+        crtc_r4_vertical_total: 5,
+        crtc_r6_vertical_displayed: 1, // Minimal display area
+        crtc_r9_maximum_raster_address: 1,
+        ..Default::default()
+    };
 
     let mut crtc = Crtc::default();
     crtc.init(&registers);
@@ -611,9 +649,11 @@ fn should_handle_minimal_display_area() {
 
 #[test]
 fn should_handle_horizontal_total_zero() {
-    let mut registers = create_default_registers();
-    registers.crtc_r0_horizontal_total = 0; // Edge case: minimum value
-    registers.ula_control = 0x00;
+    let registers = VideoRegisters {
+        crtc_r0_horizontal_total: 0, // Edge case: minimum value
+        ula_control: 0x00,
+        ..Default::default()
+    };
 
     let mut crtc = Crtc::default();
     crtc.init(&registers);
@@ -626,9 +666,11 @@ fn should_handle_horizontal_total_zero() {
 
 #[test]
 fn should_handle_horizontal_total_255() {
-    let mut registers = create_default_registers();
-    registers.crtc_r0_horizontal_total = 255; // Edge case: maximum value
-    registers.ula_control = 0x10; // High frequency mode
+    let registers = VideoRegisters {
+        crtc_r0_horizontal_total: 255, // Edge case: maximum value
+        ula_control: 0x10,             // High frequency mode
+        ..Default::default()
+    };
 
     let mut crtc = Crtc::default();
     crtc.init(&registers);
@@ -641,12 +683,14 @@ fn should_handle_horizontal_total_255() {
 
 #[test]
 fn should_maintain_consistent_trigger_values_across_multiple_frames() {
-    let mut registers = create_default_registers();
-    registers.crtc_r0_horizontal_total = 127;
-    registers.ula_control = 0x00;
-    registers.crtc_r9_maximum_raster_address = 1; // 2 scanlines per char
-    registers.crtc_r4_vertical_total = 2; // 3 char lines
-    registers.crtc_r5_vertical_total_adjust = 0;
+    let registers = VideoRegisters {
+        crtc_r0_horizontal_total: 127,
+        crtc_r4_vertical_total: 2, // 3 char lines
+        crtc_r5_vertical_total_adjust: 0,
+        crtc_r9_maximum_raster_address: 1, // 2 scanlines per char
+        ula_control: 0x00,
+        ..Default::default()
+    };
 
     let mut crtc = Crtc::default();
     crtc.init(&registers);
@@ -670,14 +714,14 @@ fn should_maintain_consistent_trigger_values_across_multiple_frames() {
 
 #[test]
 fn should_toggle_interlace_frame_and_double_trigger_on_alternate_frames() {
-    let mut registers = create_default_registers();
-    registers.crtc_r9_maximum_raster_address = 1;
-    registers.crtc_r4_vertical_total = 1; // 2 char lines per frame
-    registers.crtc_r5_vertical_total_adjust = 0;
-    registers.crtc_r0_horizontal_total = 127;
-    registers.ula_control = 0x00;
-    registers.crtc_r8_interlace_and_skew = 0x01; // Interlace sync enabled
-    registers.crtc_r7_vertical_sync_position = 0;
+    let registers = VideoRegisters {
+        crtc_r9_maximum_raster_address: 1,
+        crtc_r4_vertical_total: 1, // 2 char lines per frame
+        crtc_r5_vertical_total_adjust: 0,
+        crtc_r0_horizontal_total: 127,
+        crtc_r8_interlace_and_skew: 0x01, // Interlace sync enabled
+        ..Default::default()
+    };
 
     let mut crtc = Crtc::default();
     crtc.init(&registers);
