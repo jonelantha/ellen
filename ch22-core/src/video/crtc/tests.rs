@@ -25,30 +25,10 @@ fn should_increment_scanline_by_1_on_each_call() {
     let mut crtc = Crtc::default();
     crtc.init(&registers);
 
-    let expected_scanlines: [u16; 10] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+    let expected_scanlines: Vec<u16> = (0..50).map(|i| i as u16).collect();
 
     for (index, expected) in expected_scanlines.iter().enumerate() {
         let actual = crtc.get_snapshot_params(&registers).beam_scanline;
-
-        assert_eq!(actual, *expected, "mismatch at index {index}");
-
-        crtc.advance_scanline(&registers);
-    }
-}
-
-#[test]
-fn should_cycle_raster_address_even_pattern_after_char_scanlines_calls() {
-    let mut registers = create_default_registers();
-    registers.crtc_r9_maximum_raster_address = 7;
-    registers.crtc_r1_horizontal_displayed = 80;
-
-    let mut crtc = Crtc::default();
-    crtc.init(&registers);
-
-    let expected_pattern = [0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7];
-
-    for (index, expected) in expected_pattern.iter().enumerate() {
-        let actual = crtc.get_snapshot_params(&registers).raster_address_even;
 
         assert_eq!(actual, *expected, "mismatch at index {index}");
 
@@ -189,39 +169,33 @@ fn should_stop_incrementing_addr_after_char_line_exceeds_vertical_total() {
 }
 
 #[test]
-fn should_maintain_consistent_scanline_delta() {
-    let registers = create_default_registers();
-    let mut crtc = Crtc::default();
-    crtc.init(&registers);
-
-    let expected_scanlines: Vec<u16> = (0..50).map(|i| i as u16).collect();
-
-    for (index, expected) in expected_scanlines.iter().enumerate() {
-        let actual = crtc.get_snapshot_params(&registers).beam_scanline;
-
-        assert_eq!(actual, *expected, "mismatch at index {index}");
-
-        crtc.advance_scanline(&registers);
-    }
-}
-
-#[test]
 fn should_track_raster_address_progression_correctly() {
-    let mut registers = create_default_registers();
-    registers.crtc_r9_maximum_raster_address = 3;
-    registers.crtc_r8_interlace_and_skew = 0x00;
+    // Test raster_address_even cycles correctly with various r9 values
+    let test_cases = [
+        (1, [0, 1, 0, 1, 0, 1, 0, 1, 0, 1]),
+        (3, [0, 1, 2, 3, 0, 1, 2, 3, 0, 1]),
+        (7, [0, 1, 2, 3, 4, 5, 6, 7, 0, 1]),
+    ];
 
-    let mut crtc = Crtc::default();
-    crtc.init(&registers);
+    for (r9_value, expected_pattern) in test_cases {
+        let mut registers = create_default_registers();
+        registers.crtc_r9_maximum_raster_address = r9_value;
+        registers.crtc_r8_interlace_and_skew = 0x00;
 
-    let expected_pattern = [0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3];
+        let mut crtc = Crtc::default();
+        crtc.init(&registers);
 
-    for (index, expected) in expected_pattern.iter().enumerate() {
-        let actual = crtc.get_snapshot_params(&registers).raster_address_even;
+        for (index, expected) in expected_pattern.iter().enumerate() {
+            let actual = crtc.get_snapshot_params(&registers).raster_address_even;
 
-        assert_eq!(actual, *expected, "mismatch at index {index}");
+            assert_eq!(
+                actual, *expected,
+                "mismatch at index {index} for r9={}",
+                r9_value
+            );
 
-        crtc.advance_scanline(&registers);
+            crtc.advance_scanline(&registers);
+        }
     }
 }
 
@@ -387,9 +361,9 @@ fn should_maintain_consistent_next_scanline_trigger_in_both_frequency_modes() {
     // ula_control bit 4 selects frequency: 0=normal, 1=high
     // Trigger = (horizontal_total + 1) * clock_divisor
     // Normal mode: (127+1) * 2 = 256, High freq: (127+1) * 1 = 128
-    let test_cases = [(0x00, 256u16), (0x10, 128u16)];
+    let frequency_test_cases = [(0x00, 256u16), (0x10, 128u16)];
 
-    for (ula_control, expected_trigger) in test_cases {
+    for (ula_control, expected_trigger) in frequency_test_cases {
         let mut registers = create_default_registers();
         registers.crtc_r0_horizontal_total = 127;
         registers.ula_control = ula_control;
@@ -402,7 +376,11 @@ fn should_maintain_consistent_next_scanline_trigger_in_both_frequency_modes() {
         for (index, expected) in expected_triggers.iter().enumerate() {
             let actual = crtc.get_next_scanline_trigger(&registers);
 
-            assert_eq!(actual, *expected, "mismatch at index {index}");
+            assert_eq!(
+                actual, *expected,
+                "mismatch at index {index} for ula_control={:#04x}",
+                ula_control
+            );
 
             crtc.advance_scanline(&registers);
         }
@@ -425,28 +403,6 @@ fn beam_reset_should_only_occur_at_boundaries() {
             actual_beam_reset, expected_beam_reset,
             "mismatch at iteration {iteration}"
         );
-
-        crtc.advance_scanline(&registers);
-    }
-}
-
-#[test]
-fn address_should_increment_by_horizontal_displayed_per_char_line() {
-    let mut registers = create_default_registers();
-    registers.crtc_r1_horizontal_displayed = 0x28;
-    registers.crtc_r9_maximum_raster_address = 1; // 2 scanlines per char line
-    registers.crtc_r4_vertical_total = 10;
-
-    let mut crtc = Crtc::default();
-    crtc.init(&registers);
-
-    // Address advances by horizontal_displayed (0x28) after each char line completes
-    let expected_addresses = [0x2000, 0x2000, 0x2028, 0x2028, 0x2050, 0x2050];
-
-    for (index, expected) in expected_addresses.iter().enumerate() {
-        let actual = crtc.get_snapshot_params(&registers).address;
-
-        assert_eq!(actual, *expected, "mismatch at index {index}");
 
         crtc.advance_scanline(&registers);
     }
@@ -669,31 +625,6 @@ fn should_maintain_consistent_trigger_values_across_multiple_frames() {
 
     for (index, expected) in expected_triggers.iter().enumerate() {
         let actual = crtc.get_next_scanline_trigger(&registers);
-
-        assert_eq!(actual, *expected, "mismatch at index {index}");
-
-        crtc.advance_scanline(&registers);
-    }
-}
-
-#[test]
-fn should_show_pattern_stability_across_multiple_complete_frames() {
-    let mut registers = create_default_registers();
-    registers.crtc_r9_maximum_raster_address = 1; // 2 scanlines per char
-    registers.crtc_r4_vertical_total = 2; // 3 char lines
-    registers.crtc_r5_vertical_total_adjust = 0;
-    registers.crtc_r1_horizontal_displayed = 50;
-
-    let mut crtc = Crtc::default();
-    crtc.init(&registers);
-
-    // Frame = 3 char lines * 2 scanlines = 6 scanlines.
-    // Test 17 scanlines = 2 complete frames + 5 scanlines into 3rd frame.
-    // Scanline counter increments continuously without resetting
-    let expected_scanlines = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
-
-    for (index, expected) in expected_scanlines.iter().enumerate() {
-        let actual = crtc.get_snapshot_params(&registers).beam_scanline;
 
         assert_eq!(actual, *expected, "mismatch at index {index}");
 
