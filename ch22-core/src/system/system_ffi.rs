@@ -45,21 +45,6 @@ impl SystemFfi {
         self.core.inc_field_counter();
     }
 
-    pub fn snapshot_scanline(
-        &mut self,
-        line_index: usize,
-        crtc_memory_address: u16,
-        crtc_raster_address_even: u8,
-        crtc_raster_address_odd: u8,
-    ) {
-        self.core.snapshot_scanline(
-            line_index,
-            crtc_memory_address,
-            crtc_raster_address_even,
-            crtc_raster_address_odd,
-        );
-    }
-
     pub fn load_rom(&mut self, bank: usize, data: &[u8]) {
         if bank >= ROMS_LEN {
             panic!("Invalid ROM bank: {bank}");
@@ -173,14 +158,11 @@ impl SystemFfi {
     }
 
     pub fn process_scanline(&mut self) -> u64 {
-        let registers = &self.core.video_registers.borrow();
-        let crtc = &mut self.core.crtc;
-
-        let snapshot_params = crtc.get_snapshot_params(registers);
-
-        crtc.advance_scanline(registers);
+        self.core.process_scanline();
 
         let mut packed: u64 = 0;
+
+        let crtc = &self.core.crtc;
 
         if crtc.is_beam_reset() {
             packed |= 1;
@@ -188,14 +170,8 @@ impl SystemFfi {
         if crtc.is_in_vsync() {
             packed |= 2;
         }
-        if snapshot_params.is_displayed {
-            packed |= 4;
-        }
-        packed |= (crtc.get_next_scanline_trigger(registers) as u64) << 4;
-        packed |= (snapshot_params.address as u64) << 20;
-        packed |= (snapshot_params.raster_address_even as u64) << 36;
-        packed |= (snapshot_params.raster_address_odd as u64) << 44;
-        packed |= (snapshot_params.beam_scanline as u64) << 52;
+
+        packed |= (crtc.get_next_scanline_trigger(&self.core.video_registers.borrow()) as u64) << 4;
 
         packed
     }

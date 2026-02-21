@@ -172,20 +172,6 @@ ch22System.video_field_clear();
  * increment field count (used by cursor flash)
  */
 ch22System.inc_field_counter();
-
-/**
- * add a snapshot of the current video memory and registers
- * - lineIndex: line in buffer for snapshot
- * - crtcMemoryAddress: crtc address for snapshot
- * - crtcRasterAddress: line index relative to current character row for the even field
- * - crtcRasterAddress: line index relative to current character row for the odd field
- */
-ch22System.snapshot_scanline(
-  lineIndex,
-  crtcMemoryAddress,
-  crtcRasterAddressEvenField,
-  crtcRasterAddressOddField,
-);
 ```
 
 ### Rendering

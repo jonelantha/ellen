@@ -93,23 +93,25 @@ impl Core {
         self.io_space.on_vsync_change(vsync);
     }
 
-    pub fn snapshot_scanline(
-        &mut self,
-        line_index: usize,
-        crtc_memory_address: u16,
-        crtc_raster_address_even: u8,
-        crtc_raster_address_odd: u8,
-    ) {
-        self.video_field.snapshot_scanline(
-            line_index,
-            crtc_memory_address,
-            crtc_raster_address_even,
-            crtc_raster_address_odd,
-            self.ic32_latch.get(),
-            self.field_counter,
-            &self.video_registers.borrow(),
-            |range| self.ram.slice(range),
-        );
+    pub fn process_scanline(&mut self) {
+        let registers = &self.video_registers.borrow();
+
+        let snapshot_params = self.crtc.get_snapshot_params(registers);
+
+        if snapshot_params.is_displayed {
+            self.video_field.snapshot_scanline(
+                snapshot_params.beam_scanline as usize,
+                snapshot_params.address,
+                snapshot_params.raster_address_even,
+                snapshot_params.raster_address_odd,
+                self.ic32_latch.get(),
+                self.field_counter,
+                registers,
+                |range| self.ram.slice(range),
+            );
+        }
+
+        self.crtc.advance_scanline(registers);
     }
 
     pub fn reset(&mut self) {
