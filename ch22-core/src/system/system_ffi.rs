@@ -188,7 +188,7 @@ impl SystemFfi {
         if crtc.is_in_vsync() {
             packed |= 2;
         }
-        if snapshot_params.in_scan {
+        if snapshot_params.is_displayed {
             packed |= 4;
         }
         packed |= (crtc.get_next_scanline_trigger(registers) as u64) << 4;

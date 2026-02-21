@@ -57,7 +57,7 @@ impl CharRasterControl {
         self.char_row == 0 && self.char_raster_in_row == 0
     }
 
-    pub fn is_in_scan(&self, registers: &VideoRegisters) -> bool {
+    pub fn is_displayed(&self, registers: &VideoRegisters) -> bool {
         self.char_row < registers.crtc_r6_vertical_displayed
     }
 

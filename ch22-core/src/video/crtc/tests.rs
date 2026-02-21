@@ -76,7 +76,7 @@ fn should_stop_incrementing_addr_after_char_line_exceeds_vertical_total() {
     // After char line 2 exceeds vertical_total (2), address remains at 0x2064
     // until frame resets at scanline 6, then pattern repeats
     let expected = [
-        // address, in_scan, scanline, raster_address_even
+        // address, is_displayed, scanline, raster_address_even
         (0x2000, true, 0, 0),  // char line 0, raster 0
         (0x2000, true, 1, 1),  // char line 0, raster 1
         (0x2032, true, 2, 0),  // char line 1, raster 0
@@ -89,7 +89,7 @@ fn should_stop_incrementing_addr_after_char_line_exceeds_vertical_total() {
         (0x2032, true, 9, 1),
     ];
 
-    for (index, (expected_address, expected_in_scan, expected_scanline, expected_raster)) in
+    for (index, (expected_address, expected_is_displayed, expected_scanline, expected_raster)) in
         expected.iter().enumerate()
     {
         let actual = crtc.get_snapshot_params(&registers);
@@ -99,12 +99,12 @@ fn should_stop_incrementing_addr_after_char_line_exceeds_vertical_total() {
             "address mismatch at index {index}",
         );
         assert_eq!(
-            actual.in_scan, *expected_in_scan,
-            "in_scan mismatch at index {index}",
+            actual.is_displayed, *expected_is_displayed,
+            "is_displayed mismatch at index {index}",
         );
         assert_eq!(
             actual.beam_scanline, *expected_scanline,
-            "scanline mismatch at index {index}",
+            "beam_scanline mismatch at index {index}",
         );
         assert_eq!(
             actual.raster_address_even, *expected_raster,
@@ -204,7 +204,7 @@ fn should_trigger_vsync_at_correct_positions() {
 // ============================================================================
 
 #[test]
-fn should_transition_in_scan_from_true_to_false_at_display_boundary() {
+fn should_transition_is_displayed_from_true_to_false_at_display_boundary() {
     let registers = VideoRegisters {
         crtc_r4_vertical_total: 10,
         crtc_r6_vertical_displayed: 2, // 2 character lines displayed
@@ -215,11 +215,11 @@ fn should_transition_in_scan_from_true_to_false_at_display_boundary() {
     let mut crtc = Crtc::default();
     crtc.init(&registers);
 
-    // in_scan is true for 2 char lines * 2 scanlines = 4 scanlines, then false
+    // is_displayed is true for 2 char lines * 2 scanlines = 4 scanlines, then false
     let expected_pattern = [true, true, true, true, false, false, false];
 
     for (index, expected) in expected_pattern.iter().enumerate() {
-        let actual = crtc.get_snapshot_params(&registers).in_scan;
+        let actual = crtc.get_snapshot_params(&registers).is_displayed;
 
         assert_eq!(actual, *expected, "mismatch at index {index}");
 
@@ -381,7 +381,7 @@ fn should_respect_vertical_total_adjust_when_completing_frames() {
             (0x2000, true),
         ];
 
-        for (index, (expected_address, expected_in_scan)) in expected.iter().enumerate() {
+        for (index, (expected_address, expected_is_displayed)) in expected.iter().enumerate() {
             let actual = crtc.get_snapshot_params(&registers);
 
             assert_eq!(
@@ -389,8 +389,8 @@ fn should_respect_vertical_total_adjust_when_completing_frames() {
                 "{mode_name}: address mismatch at index {index}",
             );
             assert_eq!(
-                actual.in_scan, *expected_in_scan,
-                "{mode_name}: in_scan mismatch at index {index}",
+                actual.is_displayed, *expected_is_displayed,
+                "{mode_name}: is_displayed mismatch at index {index}",
             );
 
             crtc.advance_scanline(&registers);
@@ -639,7 +639,7 @@ fn should_handle_minimal_display_area() {
     let expected_pattern = [true, true, false, false, false];
 
     for (index, expected) in expected_pattern.iter().enumerate() {
-        let actual = crtc.get_snapshot_params(&registers).in_scan;
+        let actual = crtc.get_snapshot_params(&registers).is_displayed;
 
         assert_eq!(actual, *expected, "mismatch at index {index}");
 

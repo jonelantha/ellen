@@ -16,7 +16,7 @@ use self::vsync_control::VSyncControl;
 mod tests;
 
 pub struct SnapshotParams {
-    pub in_scan: bool,
+    pub is_displayed: bool,
     pub beam_scanline: u16,
     pub address: u16,
     pub raster_address_even: u8,
@@ -76,7 +76,7 @@ impl Crtc {
 
     pub fn get_snapshot_params(&self, registers: &VideoRegisters) -> SnapshotParams {
         SnapshotParams {
-            in_scan: self.char_raster_control.is_in_scan(registers),
+            is_displayed: self.char_raster_control.is_displayed(registers),
             beam_scanline: self.beam_control.get_scanline(),
             address: self.address_control.get_address(),
             raster_address_even: self.char_raster_control.get_raster_address_even(registers),
