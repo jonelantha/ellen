@@ -152,16 +152,6 @@ const memory = new Uint8Array(
   ch22System.video_field_start(),
   ch22System.video_field_size(),
 );
-
-/**
- * clear the buffer
- */
-ch22System.video_field_clear();
-
-/**
- * increment field count (used by cursor flash)
- */
-ch22System.inc_field_counter();
 ```
 
 ### Rendering

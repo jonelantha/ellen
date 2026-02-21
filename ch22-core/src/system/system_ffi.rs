@@ -37,14 +37,6 @@ impl SystemFfi {
         size_of::<Field>()
     }
 
-    pub fn video_field_clear(&mut self) {
-        self.core.video_field.clear();
-    }
-
-    pub fn inc_field_counter(&mut self) {
-        self.core.inc_field_counter();
-    }
-
     pub fn load_rom(&mut self, bank: usize, data: &[u8]) {
         if bank >= ROMS_LEN {
             panic!("Invalid ROM bank: {bank}");

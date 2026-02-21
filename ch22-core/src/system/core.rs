@@ -86,10 +86,6 @@ impl Core {
         }
     }
 
-    pub fn inc_field_counter(&mut self) {
-        self.field_counter = self.field_counter.wrapping_add(1);
-    }
-
     pub fn on_vsync_change(&mut self, vsync: bool) {
         self.io_space.on_vsync_change(vsync);
     }
@@ -99,6 +95,12 @@ impl Core {
             let registers = &self.video_registers.borrow();
 
             let snapshot_params = self.crtc.get_snapshot_params(registers);
+
+            if snapshot_params.beam_scanline == 0 {
+                self.field_counter = self.field_counter.wrapping_add(1);
+
+                self.video_field.clear();
+            }
 
             if snapshot_params.is_displayed {
                 self.video_field.snapshot_scanline(
