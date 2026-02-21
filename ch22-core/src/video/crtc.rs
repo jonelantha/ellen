@@ -23,13 +23,6 @@ pub struct SnapshotParams {
     pub raster_address_odd: u8,
 }
 
-pub struct AdvanceScanlineResult {
-    pub field_complete: bool,
-    pub next_scanline_trigger: u16,
-    pub snapshot_params: SnapshotParams,
-    pub vsync: bool,
-}
-
 #[derive(Default)]
 pub struct Crtc {
     char_row_control: CharRowControl,
@@ -48,9 +41,7 @@ impl Crtc {
         self.odd_field = false;
     }
 
-    pub fn advance_scanline(&mut self, registers: &VideoRegisters) -> AdvanceScanlineResult {
-        let snapshot_params = self.get_snapshot_params(registers);
-
+    pub fn advance_scanline(&mut self, registers: &VideoRegisters) {
         self.beam_control.advance_scanline();
 
         self.vsync_control.advance_scanline();
@@ -73,16 +64,17 @@ impl Crtc {
                 }
             }
         }
-
-        AdvanceScanlineResult {
-            field_complete: self.beam_control.get_scanline() == 0,
-            next_scanline_trigger: self.get_next_scanline_trigger(registers),
-            snapshot_params,
-            vsync: self.vsync_control.is_in_vsync(),
-        }
     }
 
-    fn get_snapshot_params(&self, registers: &VideoRegisters) -> SnapshotParams {
+    pub fn is_beam_reset(&self) -> bool {
+        self.beam_control.get_scanline() == 0
+    }
+
+    pub fn is_in_vsync(&self) -> bool {
+        self.vsync_control.is_in_vsync()
+    }
+
+    pub fn get_snapshot_params(&self, registers: &VideoRegisters) -> SnapshotParams {
         SnapshotParams {
             in_scan: self.char_row_control.is_in_scan(registers),
             beam_scanline: self.beam_control.get_scanline(),
@@ -92,7 +84,7 @@ impl Crtc {
         }
     }
 
-    fn get_next_scanline_trigger(&self, registers: &VideoRegisters) -> u16 {
+    pub fn get_next_scanline_trigger(&self, registers: &VideoRegisters) -> u16 {
         let mut next_scanline_trigger = registers.crtc_r0_horizontal_total as u16 + 1;
 
         if !registers.ula_is_high_frequency() {
@@ -102,10 +94,7 @@ impl Crtc {
         // in interlace mode, each field is offset by half a raster
         // so a delay for the two halves is inserted every other field
         // (this is an approximation)
-        if self.char_row_control.is_start_of_field()
-            && self.odd_field
-            && registers.r8_is_interlace()
-        {
+        if self.char_row_control.is_at_start() && self.odd_field && registers.r8_is_interlace() {
             next_scanline_trigger *= 2;
         }
 

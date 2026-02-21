@@ -53,7 +53,7 @@ impl CharRowControl {
         }
     }
 
-    pub fn is_start_of_field(&self) -> bool {
+    pub fn is_at_start(&self) -> bool {
         self.char_row == 0 && self.char_raster == 0
     }
 

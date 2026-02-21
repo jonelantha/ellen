@@ -173,27 +173,29 @@ impl SystemFfi {
     }
 
     pub fn advance_scanline(&mut self) -> u64 {
-        let result = self
-            .core
-            .crtc
-            .advance_scanline(&self.core.video_registers.borrow());
+        let registers = &self.core.video_registers.borrow();
+        let crtc = &mut self.core.crtc;
+
+        let snapshot_params = crtc.get_snapshot_params(registers);
+
+        crtc.advance_scanline(registers);
 
         let mut packed: u64 = 0;
 
-        if result.field_complete {
+        if crtc.is_beam_reset() {
             packed |= 1;
         }
-        if result.vsync {
+        if crtc.is_in_vsync() {
             packed |= 2;
         }
-        if result.snapshot_params.in_scan {
+        if snapshot_params.in_scan {
             packed |= 4;
         }
-        packed |= (result.next_scanline_trigger as u64) << 4;
-        packed |= (result.snapshot_params.address as u64) << 20;
-        packed |= (result.snapshot_params.raster_address_even as u64) << 36;
-        packed |= (result.snapshot_params.raster_address_odd as u64) << 44;
-        packed |= (result.snapshot_params.beam_scanline as u64) << 52;
+        packed |= (crtc.get_next_scanline_trigger(registers) as u64) << 4;
+        packed |= (snapshot_params.address as u64) << 20;
+        packed |= (snapshot_params.raster_address_even as u64) << 36;
+        packed |= (snapshot_params.raster_address_odd as u64) << 44;
+        packed |= (snapshot_params.beam_scanline as u64) << 52;
 
         packed
     }
