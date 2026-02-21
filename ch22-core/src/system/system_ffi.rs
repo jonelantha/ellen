@@ -172,7 +172,7 @@ impl SystemFfi {
             | (registers.ula_control as u128) << 88
     }
 
-    pub fn advance_scanline(&mut self) -> u64 {
+    pub fn process_scanline(&mut self) -> u64 {
         let registers = &self.core.video_registers.borrow();
         let crtc = &mut self.core.crtc;
 
