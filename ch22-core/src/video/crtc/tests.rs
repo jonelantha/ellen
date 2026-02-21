@@ -19,6 +19,10 @@ fn create_default_registers() -> VideoRegisters {
     }
 }
 
+// ============================================================================
+// BASIC SCANLINE BEHAVIOR
+// ============================================================================
+
 #[test]
 fn should_increment_scanline_by_1_on_each_call() {
     let registers = create_default_registers();
@@ -35,6 +39,10 @@ fn should_increment_scanline_by_1_on_each_call() {
         crtc.advance_scanline(&registers);
     }
 }
+
+// ============================================================================
+// ADDRESS BEHAVIOR
+// ============================================================================
 
 #[test]
 fn should_advance_address_by_horizontal_displayed_after_char_scanlines() {
@@ -58,60 +66,6 @@ fn should_advance_address_by_horizontal_displayed_after_char_scanlines() {
 
         crtc.advance_scanline(&registers);
     }
-}
-
-#[test]
-fn should_transition_in_scan_from_true_to_false_at_display_boundary() {
-    let mut registers = create_default_registers();
-    registers.crtc_r9_maximum_raster_address = 1; // 2 scanlines per character line
-    registers.crtc_r6_vertical_displayed = 2; // 2 character lines displayed
-    registers.crtc_r4_vertical_total = 10;
-
-    let mut crtc = Crtc::default();
-    crtc.init(&registers);
-
-    // in_scan is true for 2 char lines * 2 scanlines = 4 scanlines, then false
-    let expected_pattern = [true, true, true, true, false, false, false];
-
-    for (index, expected) in expected_pattern.iter().enumerate() {
-        let actual = crtc.get_snapshot_params(&registers).in_scan;
-
-        assert_eq!(actual, *expected, "mismatch at index {index}");
-
-        crtc.advance_scanline(&registers);
-    }
-}
-
-#[test]
-fn should_return_beam_scanline_0_at_max_lines() {
-    let mut registers = create_default_registers();
-    // Set vsync position to max to prevent normal field completion,
-    // forcing the hardware limit (MAX_LINES) to trigger instead
-    registers.crtc_r7_vertical_sync_position = 255;
-
-    let mut crtc = Crtc::default();
-    crtc.init(&registers);
-
-    // Skip iteration 0 (initial state with beam_scanline == 0)
-    crtc.advance_scanline(&registers);
-
-    let mut beam_scanline_0_iteration: i32 = -1;
-    for i in 1..(crate::video::MAX_LINES + 10) {
-        let beam_scanline = crtc.get_snapshot_params(&registers).beam_scanline;
-
-        if beam_scanline == 0 {
-            beam_scanline_0_iteration = i as i32;
-            break;
-        }
-
-        crtc.advance_scanline(&registers);
-    }
-
-    assert_eq!(
-        beam_scanline_0_iteration,
-        crate::video::MAX_LINES as i32,
-        "beam scanline should be 0 at iteration MAX_LINES (after hardware limit reset)",
-    );
 }
 
 #[test]
@@ -168,6 +122,10 @@ fn should_stop_incrementing_addr_after_char_line_exceeds_vertical_total() {
     }
 }
 
+// ============================================================================
+// RASTER ADDRESS BEHAVIOR
+// ============================================================================
+
 #[test]
 fn should_track_raster_address_progression_correctly() {
     // Test raster_address_even cycles correctly with various r9 values
@@ -198,6 +156,10 @@ fn should_track_raster_address_progression_correctly() {
         }
     }
 }
+
+// ============================================================================
+// VSYNC BEHAVIOR
+// ============================================================================
 
 #[test]
 fn should_trigger_vsync_at_correct_positions() {
@@ -239,6 +201,64 @@ fn should_trigger_vsync_at_correct_positions() {
     }
 }
 
+// ============================================================================
+// FRAME AND SCAN BEHAVIOR
+// ============================================================================
+
+#[test]
+fn should_transition_in_scan_from_true_to_false_at_display_boundary() {
+    let mut registers = create_default_registers();
+    registers.crtc_r9_maximum_raster_address = 1; // 2 scanlines per character line
+    registers.crtc_r6_vertical_displayed = 2; // 2 character lines displayed
+    registers.crtc_r4_vertical_total = 10;
+
+    let mut crtc = Crtc::default();
+    crtc.init(&registers);
+
+    // in_scan is true for 2 char lines * 2 scanlines = 4 scanlines, then false
+    let expected_pattern = [true, true, true, true, false, false, false];
+
+    for (index, expected) in expected_pattern.iter().enumerate() {
+        let actual = crtc.get_snapshot_params(&registers).in_scan;
+
+        assert_eq!(actual, *expected, "mismatch at index {index}");
+
+        crtc.advance_scanline(&registers);
+    }
+}
+
+#[test]
+fn should_return_beam_scanline_0_at_max_lines() {
+    let mut registers = create_default_registers();
+    // Set vsync position to max to prevent normal field completion,
+    // forcing the hardware limit (MAX_LINES) to trigger instead
+    registers.crtc_r7_vertical_sync_position = 255;
+
+    let mut crtc = Crtc::default();
+    crtc.init(&registers);
+
+    // Skip iteration 0 (initial state with beam_scanline == 0)
+    crtc.advance_scanline(&registers);
+
+    let mut beam_scanline_0_iteration: i32 = -1;
+    for i in 1..(crate::video::MAX_LINES + 10) {
+        let beam_scanline = crtc.get_snapshot_params(&registers).beam_scanline;
+
+        if beam_scanline == 0 {
+            beam_scanline_0_iteration = i as i32;
+            break;
+        }
+
+        crtc.advance_scanline(&registers);
+    }
+
+    assert_eq!(
+        beam_scanline_0_iteration,
+        crate::video::MAX_LINES as i32,
+        "beam scanline should be 0 at iteration MAX_LINES (after hardware limit reset)",
+    );
+}
+
 #[test]
 fn should_complete_frame_at_correct_boundary() {
     let mut registers = create_default_registers();
@@ -264,6 +284,10 @@ fn should_complete_frame_at_correct_boundary() {
         crtc.advance_scanline(&registers);
     }
 }
+
+// ============================================================================
+// BEAM RESET BEHAVIOR
+// ============================================================================
 
 #[test]
 fn should_reset_scanline_after_beam_reset() {
@@ -355,6 +379,10 @@ fn should_respect_vertical_total_adjust_when_completing_frames() {
         }
     }
 }
+
+// ============================================================================
+// TRIGGER AND FREQUENCY BEHAVIOR
+// ============================================================================
 
 #[test]
 fn should_maintain_consistent_next_scanline_trigger_in_both_frequency_modes() {
@@ -535,6 +563,10 @@ fn address_should_only_update_from_start_registers_at_frame_boundary() {
     }
 }
 
+// ============================================================================
+// EDGE CASES
+// ============================================================================
+
 #[test]
 fn should_handle_scan_lines_per_char_zero() {
     let mut registers = create_default_registers();
@@ -631,6 +663,10 @@ fn should_maintain_consistent_trigger_values_across_multiple_frames() {
         crtc.advance_scanline(&registers);
     }
 }
+
+// ============================================================================
+// INTERLACE BEHAVIOR
+// ============================================================================
 
 #[test]
 fn should_toggle_interlace_frame_and_double_trigger_on_alternate_frames() {
