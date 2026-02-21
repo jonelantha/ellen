@@ -318,8 +318,8 @@ fn should_reset_scanline_after_beam_reset() {
     for iteration in 0..160 {
         let actual = crtc.is_beam_reset();
 
-        assert_eq!(
-            actual, false,
+        assert!(
+            !actual,
             "is_beam_reset should be false before iteration 160 ({iteration})"
         );
 
@@ -330,8 +330,8 @@ fn should_reset_scanline_after_beam_reset() {
     let snapshot_params_at_160 = crtc.get_snapshot_params(&registers);
     let beam_reset_at_160 = crtc.is_beam_reset();
 
-    assert_eq!(
-        beam_reset_at_160, true,
+    assert!(
+        beam_reset_at_160,
         "is_beam_reset should be true at iteration 160"
     );
     assert_eq!(
