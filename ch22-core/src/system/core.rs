@@ -22,12 +22,13 @@ pub struct Core {
     pub roms: [Rom; ROMS_LEN],
     pub io_space: IOSpace,
     pub video_field: Field,
-    pub crtc: Crtc,
-    pub vsync: bool,
+    crtc: Crtc,
+    vsync: bool,
+    video_trigger: u64,
     pub ic32_latch: Rc<Cell<u8>>,
-    pub field_counter: u8,
-    pub rom_select_latch: Rc<Cell<usize>>,
-    pub video_registers: Rc<RefCell<VideoRegisters>>,
+    field_counter: u8,
+    rom_select_latch: Rc<Cell<usize>>,
+    video_registers: Rc<RefCell<VideoRegisters>>,
     pub timer_devices: TimerDeviceList,
 }
 
@@ -131,7 +132,24 @@ impl Core {
         });
     }
 
-    pub fn run(&mut self, until: u64) -> u64 {
+    pub fn run_one_field(&mut self) -> u64 {
+        loop {
+            let cycles = self.run(self.video_trigger);
+
+            self.process_scanline();
+
+            self.video_trigger += self
+                .crtc
+                .get_next_scanline_trigger(&self.video_registers.borrow())
+                as u64;
+
+            if self.crtc.is_beam_reset() {
+                return cycles;
+            }
+        }
+    }
+
+    fn run(&mut self, until: u64) -> u64 {
         self.with_runner(|runner| {
             runner.run(until);
         })

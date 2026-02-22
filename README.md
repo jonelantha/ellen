@@ -126,10 +126,10 @@ ch22System.add_static_device(addresses, readValue, oneMhz, panicOnWrite);
 ch22System.reset();
 
 /**
- * executes instructions until targetCycles is reached
+ * executes instructions until until the next field is ready for render
  * returns number of cycles
  */
-const cycleCount = ch22System.run(targetCycles);
+const cycleCount = ch22System.run_one_field();
 ```
 
 ### Snapshotting Video memory into a buffer

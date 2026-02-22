@@ -114,8 +114,8 @@ impl SystemFfi {
         self.core.reset();
     }
 
-    pub fn run(&mut self, until: u64) -> u64 {
-        self.core.run(until)
+    pub fn run_one_field(&mut self) -> u64 {
+        self.core.run_one_field()
     }
 
     pub fn set_device_interrupt(&mut self, device_id: IODeviceID, interrupt: bool) {
@@ -126,22 +126,6 @@ impl SystemFfi {
         self.core
             .timer_devices
             .set_device_trigger(device_id, trigger);
-    }
-
-    pub fn process_scanline(&mut self) -> u64 {
-        self.core.process_scanline();
-
-        let mut packed: u64 = 0;
-
-        let crtc = &self.core.crtc;
-
-        if crtc.is_beam_reset() {
-            packed |= 1;
-        }
-
-        packed |= (crtc.get_next_scanline_trigger(&self.core.video_registers.borrow()) as u64) << 4;
-
-        packed
     }
 }
 
