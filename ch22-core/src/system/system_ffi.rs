@@ -30,7 +30,7 @@ impl SystemFfi {
     }
 
     pub fn video_field_start(&mut self) -> *const Field {
-        &self.core.video_field as *const Field
+        self.core.video.get_field_start()
     }
 
     pub fn video_field_size(&self) -> usize {

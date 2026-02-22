@@ -8,13 +8,85 @@ mod video_ula_registers_device;
 
 pub const MAX_LINES: usize = 320;
 
-pub use crtc::Crtc;
+use std::{cell::RefCell, rc::Rc};
+
+use crtc::Crtc;
 pub use field_data::Field;
-pub use field_line::FieldLine;
+use field_line::FieldLine;
 pub use video_crtc_registers_device::VideoCRTCRegistersDevice;
-pub use video_memory_access::VideoMemoryAccess;
+use video_memory_access::VideoMemoryAccess;
 pub use video_registers::VideoRegisters;
 pub use video_ula_registers_device::VideoULARegistersDevice;
 
 #[cfg(test)]
 pub use field_line::flags as field_line_flags;
+
+#[derive(Default)]
+pub struct Video {
+    field: Field,
+    crtc: Crtc,
+    pub registers: Rc<RefCell<VideoRegisters>>,
+    field_counter: u8,
+    next_scanline_trigger: u64,
+    vsync: bool,
+}
+
+impl Video {
+    pub fn init(&mut self) {
+        self.registers.borrow_mut().reset();
+
+        self.crtc.init(&self.registers.borrow());
+
+        self.field_counter = 0;
+    }
+
+    pub fn process_scanline<'a>(
+        &mut self,
+        ic32_latch: u8,
+        get_buffer: impl Fn(std::ops::Range<u16>) -> &'a [u8],
+        mut on_vsync_change: impl FnMut(bool),
+    ) -> bool {
+        let registers = &self.registers.borrow();
+
+        let snapshot_params = self.crtc.get_snapshot_params(registers);
+
+        if snapshot_params.beam_scanline == 0 {
+            self.field_counter = self.field_counter.wrapping_add(1);
+
+            self.field.clear();
+        }
+
+        if snapshot_params.is_displayed {
+            self.field.snapshot_scanline(
+                snapshot_params.beam_scanline as usize,
+                snapshot_params.address,
+                snapshot_params.raster_address_even,
+                snapshot_params.raster_address_odd,
+                ic32_latch,
+                self.field_counter,
+                registers,
+                get_buffer,
+            );
+        }
+
+        self.crtc.advance_scanline(registers);
+
+        self.next_scanline_trigger += self.crtc.get_next_scanline_trigger(registers) as u64;
+
+        let new_vsync = self.crtc.is_in_vsync();
+        if self.vsync != new_vsync {
+            self.vsync = new_vsync;
+            on_vsync_change(new_vsync);
+        }
+
+        self.crtc.is_beam_reset()
+    }
+
+    pub fn get_next_scanline_trigger(&self) -> u64 {
+        self.next_scanline_trigger
+    }
+
+    pub fn get_field_start(&self) -> *const Field {
+        &self.field as *const Field
+    }
+}

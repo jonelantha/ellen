@@ -1,4 +1,4 @@
-use std::cell::{Cell, RefCell};
+use std::cell::Cell;
 use std::rc::Rc;
 
 use super::{
@@ -9,9 +9,7 @@ use super::{
 };
 use crate::address_spaces::{IOSpace, Ram, Rom};
 use crate::devices::{RomSelect, TimerDeviceList};
-use crate::video::{
-    Crtc, Field, VideoCRTCRegistersDevice, VideoRegisters, VideoULARegistersDevice,
-};
+use crate::video::{Video, VideoCRTCRegistersDevice, VideoULARegistersDevice};
 use crate::{cpu::Cpu, devices::DeviceSpeed};
 
 #[derive(Default)]
@@ -21,35 +19,28 @@ pub struct Core {
     ram: Ram,
     pub roms: [Rom; ROMS_LEN],
     pub io_space: IOSpace,
-    pub video_field: Field,
-    crtc: Crtc,
-    vsync: bool,
-    video_trigger: u64,
     pub ic32_latch: Rc<Cell<u8>>,
-    field_counter: u8,
     rom_select_latch: Rc<Cell<usize>>,
-    video_registers: Rc<RefCell<VideoRegisters>>,
     pub timer_devices: TimerDeviceList,
+    pub video: Video,
 }
 
 impl Core {
     pub fn setup(&mut self) {
-        self.video_registers.borrow_mut().reset();
-
-        self.crtc.init(&self.video_registers.borrow());
+        self.video.init();
 
         self.io_space.add_device(
             &[
                 0xfe00, 0xfe01, 0xfe02, 0xfe03, 0xfe04, 0xfe05, 0xfe06, 0xfe07,
             ],
-            Box::new(VideoCRTCRegistersDevice::new(self.video_registers.clone())),
+            Box::new(VideoCRTCRegistersDevice::new(self.video.registers.clone())),
             None,
             DeviceSpeed::OneMhz,
         );
 
         self.io_space.add_device(
             &[0xfe20, 0xfe21, 0xfe22, 0xfe23],
-            Box::new(VideoULARegistersDevice::new(self.video_registers.clone())),
+            Box::new(VideoULARegistersDevice::new(self.video.registers.clone())),
             None,
             DeviceSpeed::OneMhz,
         );
@@ -62,8 +53,6 @@ impl Core {
             None,
             DeviceSpeed::TwoMhz,
         );
-
-        self.field_counter = 0;
     }
 
     fn address_map() -> impl AddressMap {
@@ -87,45 +76,6 @@ impl Core {
         }
     }
 
-    pub fn on_vsync_change(&mut self, vsync: bool) {
-        self.io_space.on_vsync_change(vsync);
-    }
-
-    pub fn process_scanline(&mut self) {
-        {
-            let registers = &self.video_registers.borrow();
-
-            let snapshot_params = self.crtc.get_snapshot_params(registers);
-
-            if snapshot_params.beam_scanline == 0 {
-                self.field_counter = self.field_counter.wrapping_add(1);
-
-                self.video_field.clear();
-            }
-
-            if snapshot_params.is_displayed {
-                self.video_field.snapshot_scanline(
-                    snapshot_params.beam_scanline as usize,
-                    snapshot_params.address,
-                    snapshot_params.raster_address_even,
-                    snapshot_params.raster_address_odd,
-                    self.ic32_latch.get(),
-                    self.field_counter,
-                    registers,
-                    |range| self.ram.slice(range),
-                );
-            }
-
-            self.crtc.advance_scanline(registers);
-        }
-
-        let crtc_vsync = self.crtc.is_in_vsync();
-        if self.vsync != crtc_vsync {
-            self.vsync = crtc_vsync;
-            self.on_vsync_change(crtc_vsync);
-        }
-    }
-
     pub fn reset(&mut self) {
         self.with_runner(|runner| {
             runner.reset();
@@ -134,28 +84,27 @@ impl Core {
 
     pub fn run_one_field(&mut self) -> u64 {
         loop {
-            let cycles = self.run(self.video_trigger);
+            self.run(self.video.get_next_scanline_trigger());
 
-            self.process_scanline();
+            let is_field_complete = self.video.process_scanline(
+                self.ic32_latch.get(),
+                |range| self.ram.slice(range),
+                |vsync| self.io_space.on_vsync_change(vsync),
+            );
 
-            self.video_trigger += self
-                .crtc
-                .get_next_scanline_trigger(&self.video_registers.borrow())
-                as u64;
-
-            if self.crtc.is_beam_reset() {
-                return cycles;
+            if is_field_complete {
+                return self.cycles;
             }
         }
     }
 
-    fn run(&mut self, until: u64) -> u64 {
+    fn run(&mut self, until: u64) {
         self.with_runner(|runner| {
             runner.run(until);
         })
     }
 
-    fn with_runner(&mut self, run_fn: impl FnOnce(&mut dyn RunnerTrait)) -> u64 {
+    fn with_runner(&mut self, run_fn: impl FnOnce(&mut dyn RunnerTrait)) {
         let clock = Clock::new(&mut self.cycles, &mut self.timer_devices);
 
         let cpu_bus = CpuBus::new(
@@ -173,8 +122,6 @@ impl Core {
         };
 
         run_fn(&mut runner);
-
-        self.cycles
     }
 }
 
