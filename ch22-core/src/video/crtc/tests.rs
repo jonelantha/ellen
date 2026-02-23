@@ -399,17 +399,17 @@ fn should_respect_vertical_total_adjust_when_completing_frames() {
 }
 
 // ============================================================================
-// TRIGGER AND FREQUENCY BEHAVIOR
+// CYCLES AND FREQUENCY BEHAVIOR
 // ============================================================================
 
 #[test]
-fn should_maintain_consistent_next_scanline_trigger_in_both_frequency_modes() {
+fn should_maintain_consistent_next_scanline_cycles_in_both_frequency_modes() {
     // ula_control bit 4 selects frequency: 0=normal, 1=high
-    // Trigger = (horizontal_total + 1) * clock_divisor
+    // Cycles = (horizontal_total + 1) * clock_divisor
     // Normal mode: (127+1) * 2 = 256, High freq: (127+1) * 1 = 128
-    let frequency_test_cases = [(0x00, 256u16), (0x10, 128u16)];
+    let frequency_test_cases = [(0x00, 256u64), (0x10, 128u64)];
 
-    for (ula_control, expected_trigger) in frequency_test_cases {
+    for (ula_control, expected_cycles) in frequency_test_cases {
         let registers = VideoRegisters {
             crtc_r0_horizontal_total: 127,
             ula_control, // 0x00=normal, 0x10=high frequency
@@ -419,10 +419,10 @@ fn should_maintain_consistent_next_scanline_trigger_in_both_frequency_modes() {
         let mut crtc = Crtc::default();
         crtc.init(&registers);
 
-        let expected_triggers = [expected_trigger; 20];
+        let expected_cycles = [expected_cycles; 20];
 
-        for (index, expected) in expected_triggers.iter().enumerate() {
-            let actual = crtc.get_next_scanline_trigger(&registers);
+        for (index, expected) in expected_cycles.iter().enumerate() {
+            let actual = crtc.get_next_scanline_cycles(&registers);
 
             assert_eq!(
                 actual, *expected,
@@ -658,9 +658,9 @@ fn should_handle_horizontal_total_zero() {
     let mut crtc = Crtc::default();
     crtc.init(&registers);
 
-    let actual = crtc.get_next_scanline_trigger(&registers);
+    let actual = crtc.get_next_scanline_cycles(&registers);
 
-    // Trigger = (0 + 1) * 2 = 2
+    // cycles = (0 + 1) * 2 = 2
     assert_eq!(actual, 2);
 }
 
@@ -675,14 +675,14 @@ fn should_handle_horizontal_total_255() {
     let mut crtc = Crtc::default();
     crtc.init(&registers);
 
-    let actual = crtc.get_next_scanline_trigger(&registers);
+    let actual = crtc.get_next_scanline_cycles(&registers);
 
-    // Trigger = (255 + 1) * 1 = 256 (high freq mode uses divisor 1)
+    // cycles = (255 + 1) * 1 = 256 (high freq mode uses divisor 1)
     assert_eq!(actual, 256);
 }
 
 #[test]
-fn should_maintain_consistent_trigger_values_across_multiple_frames() {
+fn should_maintain_consistent_cycle_values_across_multiple_frames() {
     let registers = VideoRegisters {
         crtc_r0_horizontal_total: 127,
         crtc_r4_vertical_total: 2, // 3 char lines
@@ -696,11 +696,11 @@ fn should_maintain_consistent_trigger_values_across_multiple_frames() {
     crtc.init(&registers);
 
     // Frame = 3 char lines * 2 scanlines = 6 scanlines. Test 17 scanlines = 2.8 frames
-    // next_scanline_trigger should remain constant (256) throughout
-    let expected_triggers = [256u16; 17];
+    // next_scanline_cycles should remain constant (256) throughout
+    let expected_cycles = [256u64; 17];
 
-    for (index, expected) in expected_triggers.iter().enumerate() {
-        let actual = crtc.get_next_scanline_trigger(&registers);
+    for (index, expected) in expected_cycles.iter().enumerate() {
+        let actual = crtc.get_next_scanline_cycles(&registers);
 
         assert_eq!(actual, *expected, "mismatch at index {index}");
 
@@ -713,7 +713,7 @@ fn should_maintain_consistent_trigger_values_across_multiple_frames() {
 // ============================================================================
 
 #[test]
-fn should_toggle_interlace_frame_and_double_trigger_on_alternate_frames() {
+fn should_toggle_interlace_frame_and_double_cycles_on_alternate_frames() {
     let registers = VideoRegisters {
         crtc_r9_maximum_raster_address: 1,
         crtc_r4_vertical_total: 1, // 2 char lines per frame
@@ -728,13 +728,13 @@ fn should_toggle_interlace_frame_and_double_trigger_on_alternate_frames() {
 
     // Frame = 2 char lines * 2 scanlines = 4 scanlines.
     // In interlace sync mode, every 4th scanline (at char line 1 of odd frames)
-    // gets double trigger (512) for half-line offset. Pattern: 256,256,256,512,...
-    let expected_triggers = [
+    // gets double cycles (512) for half-line offset. Pattern: 256,256,256,512,...
+    let expected_cycles = [
         256, 256, 256, 256, 512, 256, 256, 256, 256, 256, 256, 256, 512, 256,
     ];
 
-    for (index, expected) in expected_triggers.iter().enumerate() {
-        let actual = crtc.get_next_scanline_trigger(&registers);
+    for (index, expected) in expected_cycles.iter().enumerate() {
+        let actual = crtc.get_next_scanline_cycles(&registers);
 
         assert_eq!(actual, *expected, "mismatch at index {index}");
 

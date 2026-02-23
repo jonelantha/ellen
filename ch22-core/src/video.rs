@@ -13,19 +13,19 @@ use std::{cell::RefCell, rc::Rc};
 use crtc::Crtc;
 pub use field_data::Field;
 use field_line::FieldLine;
-pub use video_crtc_registers_device::VideoCRTCRegistersDevice;
+use video_crtc_registers_device::VideoCRTCRegistersDevice;
 use video_memory_access::VideoMemoryAccess;
-pub use video_registers::VideoRegisters;
-pub use video_ula_registers_device::VideoULARegistersDevice;
+use video_registers::VideoRegisters;
+use video_ula_registers_device::VideoULARegistersDevice;
 
 #[cfg(test)]
 pub use field_line::flags as field_line_flags;
 
 #[derive(Default)]
 pub struct Video {
-    field: Field,
+    field_data: Field,
     crtc: Crtc,
-    pub registers: Rc<RefCell<VideoRegisters>>,
+    registers: Rc<RefCell<VideoRegisters>>,
     field_counter: u8,
     next_scanline_trigger: u64,
     vsync: bool,
@@ -38,6 +38,14 @@ impl Video {
         self.crtc.init(&self.registers.borrow());
 
         self.field_counter = 0;
+    }
+
+    pub fn create_crtc_registers_device(&self) -> VideoCRTCRegistersDevice {
+        VideoCRTCRegistersDevice::new(self.registers.clone())
+    }
+
+    pub fn create_ula_registers_device(&self) -> VideoULARegistersDevice {
+        VideoULARegistersDevice::new(self.registers.clone())
     }
 
     pub fn process_scanline<'a>(
@@ -53,11 +61,11 @@ impl Video {
         if snapshot_params.beam_scanline == 0 {
             self.field_counter = self.field_counter.wrapping_add(1);
 
-            self.field.clear();
+            self.field_data.clear();
         }
 
         if snapshot_params.is_displayed {
-            self.field.snapshot_scanline(
+            self.field_data.snapshot_scanline(
                 snapshot_params.beam_scanline as usize,
                 snapshot_params.address,
                 snapshot_params.raster_address_even,
@@ -71,7 +79,7 @@ impl Video {
 
         self.crtc.advance_scanline(registers);
 
-        self.next_scanline_trigger += self.crtc.get_next_scanline_trigger(registers) as u64;
+        self.next_scanline_trigger += self.crtc.get_next_scanline_cycles(registers);
 
         let new_vsync = self.crtc.is_in_vsync();
         if self.vsync != new_vsync {
@@ -79,6 +87,7 @@ impl Video {
             on_vsync_change(new_vsync);
         }
 
+        // field is complete
         self.crtc.is_beam_reset()
     }
 
@@ -87,6 +96,6 @@ impl Video {
     }
 
     pub fn get_field_start(&self) -> *const Field {
-        &self.field as *const Field
+        &self.field_data as *const Field
     }
 }

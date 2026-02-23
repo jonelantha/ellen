@@ -9,7 +9,7 @@ use super::{
 };
 use crate::address_spaces::{IOSpace, Ram, Rom};
 use crate::devices::{RomSelect, TimerDeviceList};
-use crate::video::{Video, VideoCRTCRegistersDevice, VideoULARegistersDevice};
+use crate::video::Video;
 use crate::{cpu::Cpu, devices::DeviceSpeed};
 
 #[derive(Default)]
@@ -33,14 +33,14 @@ impl Core {
             &[
                 0xfe00, 0xfe01, 0xfe02, 0xfe03, 0xfe04, 0xfe05, 0xfe06, 0xfe07,
             ],
-            Box::new(VideoCRTCRegistersDevice::new(self.video.registers.clone())),
+            Box::new(self.video.create_crtc_registers_device()),
             None,
             DeviceSpeed::OneMhz,
         );
 
         self.io_space.add_device(
             &[0xfe20, 0xfe21, 0xfe22, 0xfe23],
-            Box::new(VideoULARegistersDevice::new(self.video.registers.clone())),
+            Box::new(self.video.create_ula_registers_device()),
             None,
             DeviceSpeed::OneMhz,
         );
@@ -86,11 +86,7 @@ impl Core {
         loop {
             self.run(self.video.get_next_scanline_trigger());
 
-            let is_field_complete = self.video.process_scanline(
-                self.ic32_latch.get(),
-                |range| self.ram.slice(range),
-                |vsync| self.io_space.on_vsync_change(vsync),
-            );
+            let is_field_complete = self.process_scanline();
 
             if is_field_complete {
                 return self.cycles;
@@ -122,6 +118,14 @@ impl Core {
         };
 
         run_fn(&mut runner);
+    }
+
+    fn process_scanline(&mut self) -> bool {
+        self.video.process_scanline(
+            self.ic32_latch.get(),
+            |range| self.ram.slice(range),
+            |vsync| self.io_space.on_vsync_change(vsync),
+        )
     }
 }
 

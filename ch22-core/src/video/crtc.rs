@@ -84,8 +84,8 @@ impl Crtc {
         }
     }
 
-    pub fn get_next_scanline_trigger(&self, registers: &VideoRegisters) -> u16 {
-        let mut next_scanline_trigger = registers.crtc_r0_horizontal_total as u16 + 1;
+    pub fn get_next_scanline_cycles(&self, registers: &VideoRegisters) -> u64 {
+        let mut next_scanline_trigger = registers.crtc_r0_horizontal_total as u64 + 1;
 
         if !registers.ula_is_high_frequency() {
             next_scanline_trigger *= 2;
