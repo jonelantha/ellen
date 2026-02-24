@@ -30,34 +30,11 @@ impl SystemFfi {
     }
 
     pub fn video_field_start(&mut self) -> *const Field {
-        &self.core.video_field as *const Field
+        self.core.video.get_field_start()
     }
 
     pub fn video_field_size(&self) -> usize {
         size_of::<Field>()
-    }
-
-    pub fn video_field_clear(&mut self) {
-        self.core.video_field.clear();
-    }
-
-    pub fn inc_field_counter(&mut self) {
-        self.core.inc_field_counter();
-    }
-
-    pub fn snapshot_scanline(
-        &mut self,
-        line_index: usize,
-        crtc_memory_address: u16,
-        crtc_raster_address_even: u8,
-        crtc_raster_address_odd: u8,
-    ) {
-        self.core.snapshot_scanline(
-            line_index,
-            crtc_memory_address,
-            crtc_raster_address_even,
-            crtc_raster_address_odd,
-        );
     }
 
     pub fn load_rom(&mut self, bank: usize, data: &[u8]) {
@@ -96,6 +73,7 @@ impl SystemFfi {
         addresses: &[u16],
         js_read: Function,
         js_write: Function,
+        js_on_vsync_change: Option<Function>,
         js_handle_trigger: Function,
         flags: u8,
     ) -> IODeviceID {
@@ -116,6 +94,7 @@ impl SystemFfi {
             Box::new(JsIODevice::new(
                 js_read,
                 js_write,
+                js_on_vsync_change,
                 js_handle_trigger,
                 flags & JS_DEVICE_PHASE_2_WRITE != 0,
                 ic32_latch,
@@ -135,8 +114,8 @@ impl SystemFfi {
         self.core.reset();
     }
 
-    pub fn run(&mut self, until: u64) -> u64 {
-        self.core.run(until)
+    pub fn run_one_field(&mut self) -> u64 {
+        self.core.run_one_field()
     }
 
     pub fn set_device_interrupt(&mut self, device_id: IODeviceID, interrupt: bool) {
@@ -147,23 +126,6 @@ impl SystemFfi {
         self.core
             .timer_devices
             .set_device_trigger(device_id, trigger);
-    }
-
-    pub fn get_partial_video_registers(&self) -> u128 {
-        let registers = self.core.video_registers.borrow();
-
-        (registers.crtc_r0_horizontal_total as u128)
-            | (registers.crtc_r1_horizontal_displayed as u128) << 8
-            | (registers.crtc_r3_sync_width as u128) << 16
-            | (registers.crtc_r4_vertical_total as u128) << 24
-            | (registers.crtc_r5_vertical_total_adjust as u128) << 32
-            | (registers.crtc_r6_vertical_displayed as u128) << 40
-            | (registers.crtc_r7_vertical_sync_position as u128) << 48
-            | (registers.crtc_r8_interlace_and_skew as u128) << 56
-            | (registers.crtc_r9_maximum_raster_address as u128) << 64
-            | (registers.crtc_r12_start_address_h as u128) << 72
-            | (registers.crtc_r13_start_address_l as u128) << 80
-            | (registers.ula_control as u128) << 88
     }
 }
 

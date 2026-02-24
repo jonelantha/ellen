@@ -59,7 +59,7 @@ ch22System.load_rom(bank, pagedRom);
 
 /**
  * register a callback to be called at certain cycles
- * - handleTrigger: (cycles: bigint): bigint
+ * - handleTrigger: (cycles: bigint) => bigint
  *   - cycles: machine cycles at time of callback
  *   - returns: the desired next value of cycles to be called encoded as a bigint
  */
@@ -75,11 +75,14 @@ ch22System.set_device_trigger(deviceId, cycles);
 /**
  * register callbacks for an IO device
  * - addresses: UInt16Array of addresses to register device for
- * - read: (address: number, cycles: bigint): bigint
+ * - read: (address: number, cycles: bigint) => bigint
  *   - returns: read value, next cycle sync and interrupt encoded as bigint
- * - write: (address: number, value: number, cycles: bigint): bigint
+ * - write: (address: number, value: number, cycles: bigint) => bigint
  *   - returns: next cycle sync and interrupt and optionally ic32_latch encoded as bigint
- * - handleTrigger: (address: number, value: number, cycles: bigint): bigint
+ * - onVsyncChange: ((vsync: boolean) => bigint) | null
+ *  - optional callback if device needs to know about vsync state changes
+ *  - returns: next cycle sync and interrupt encoded as bigint
+ * - handleTrigger: (address: number, value: number, cycles: bigint) => bigint
  *   - callback if sync is required
  *   - returns: next cycle sync and interrupt encoded as bigint
  * - flags:
@@ -92,6 +95,7 @@ const deviceId = ch22System.add_js_io_device(
   addresses,
   read,
   write,
+  onVsyncChange,
   handleTrigger,
   flags,
 );
@@ -122,20 +126,10 @@ ch22System.add_static_device(addresses, readValue, oneMhz, panicOnWrite);
 ch22System.reset();
 
 /**
- * executes instructions until targetCycles is reached
+ * executes instructions until until the next field is ready for render
  * returns number of cycles
  */
-const cycleCount = ch22System.run(targetCycles);
-```
-
-### Getting current state
-
-```js
-/**
- * get video registers
- * [r0,r1,r3,r4,r5,r6,r7,r8,r9,r12,r13,ula control] packed into u128
- */
-const videoRegisters = ch22System.get_partial_video_registers();
+const cycleCount = ch22System.run_one_field();
 ```
 
 ### Snapshotting Video memory into a buffer
@@ -157,30 +151,6 @@ const memory = new Uint8Array(
   wasmMemory.buffer,
   ch22System.video_field_start(),
   ch22System.video_field_size(),
-);
-
-/**
- * clear the buffer
- */
-ch22System.video_field_clear();
-
-/**
- * increment field count (used by cursor flash)
- */
-ch22System.inc_field_counter();
-
-/**
- * add a snapshot of the current video memory and registers
- * - lineIndex: line in buffer for snapshot
- * - crtcMemoryAddress: crtc address for snapshot
- * - crtcRasterAddress: line index relative to current character row for the even field
- * - crtcRasterAddress: line index relative to current character row for the odd field
- */
-ch22System.snapshot_scanline(
-  lineIndex,
-  crtcMemoryAddress,
-  crtcRasterAddressEvenField,
-  crtcRasterAddressOddField,
 );
 ```
 

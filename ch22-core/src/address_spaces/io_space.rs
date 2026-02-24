@@ -67,6 +67,12 @@ impl IOSpace {
             self.phase_2_data = None;
         }
     }
+
+    pub fn on_vsync_change(&mut self, vsync: bool) {
+        self.devices.for_each(|device| {
+            device.on_vsync_change(vsync);
+        });
+    }
 }
 
 pub fn access<F: FnOnce(u64) -> T, T>(access_fn: F, speed: &DeviceSpeed, clock: &mut Clock) -> T {

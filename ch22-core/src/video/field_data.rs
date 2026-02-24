@@ -1,14 +1,12 @@
 use std::cmp::{max, min};
 
 use crate::video::{
-    FieldLine, VideoMemoryAccess, VideoRegisters,
+    FieldLine, MAX_LINES, VideoMemoryAccess, VideoRegisters,
     video_registers::{R8_CURSOR_DELAY_HIDDEN, R10CursorBlinkMode},
 };
 
 #[cfg(test)]
 mod tests;
-
-const MAX_LINES: usize = 320;
 
 #[repr(C, packed)]
 pub struct Field {

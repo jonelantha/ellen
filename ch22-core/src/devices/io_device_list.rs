@@ -87,6 +87,12 @@ impl IODeviceList {
             })
             .map(|(_, device)| device)
     }
+
+    pub fn for_each<F: FnMut(&mut Box<dyn IODevice>)>(&mut self, mut callback: F) {
+        for device in self.device_list.iter_mut() {
+            callback(device);
+        }
+    }
 }
 
 pub struct IODeviceConfig {

@@ -5,6 +5,7 @@ pub trait IODevice {
     fn write(&mut self, _address: Word, _value: u8, _cycles: u64) -> bool {
         false
     }
+    fn on_vsync_change(&mut self, _vsync: bool) {}
     fn phase_2(&mut self, _address: Word, _value: u8, _cycles: u64) {}
     fn get_interrupt(&mut self, _cycles: u64) -> bool {
         false
