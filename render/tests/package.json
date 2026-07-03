@@ -11,8 +11,8 @@
     "tsc": "tsc"
   },
   "devDependencies": {
-    "@playwright/test": "^1.49.1",
-    "@types/node": "^24.10.9",
-    "vite": "^7.0.6"
+    "@playwright/test": "^1.61.1",
+    "@types/node": "^24.13.2",
+    "vite": "^8.1.3"
   }
 }
