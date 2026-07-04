@@ -1,9 +1,7 @@
 {
   "extends": "../tsconfig/tsconfig.code-styles.json",
   "compilerOptions": {
-    "lib": ["ES2024", "DOM", "DOM.Iterable"],
-    "types": ["@webgpu/types"],
-    "module": "ESNext",
+    "lib": ["ES2024", "DOM"],
     "target": "ES2024",
     "moduleResolution": "bundler",
     "noEmit": true

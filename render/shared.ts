@@ -14,6 +14,7 @@ export function initCanvas(canvas: HTMLCanvasElement) {
 
 export async function getGPUContext(canvas: HTMLCanvasElement) {
   const adapter = await navigator.gpu?.requestAdapter({
+    //@ts-expect-error partial gpu types support
     featureLevel: 'compatibility',
   });
 
@@ -23,7 +24,9 @@ export async function getGPUContext(canvas: HTMLCanvasElement) {
 
   const context = canvas.getContext('webgpu');
 
-  if (!context) throw new Error('WebGPU context not available');
+  if (!(context instanceof GPUCanvasContext)) {
+    throw new Error('WebGPU context not available');
+  }
 
   context.configure({
     device,
@@ -48,6 +51,7 @@ export function createGPUBuffer(
 
   return device.createBuffer({
     size: bufferLength,
+    // @ts-expect-error partial gpu types support
     usage: GPUBufferUsage.STORAGE | (copyDst ? GPUBufferUsage.COPY_DST : 0),
   });
 }
