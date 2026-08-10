@@ -8,7 +8,7 @@ use super::{
     runner::{Runner, RunnerTrait},
 };
 use crate::address_spaces::{IOSpace, Ram, Rom};
-use crate::devices::{RomSelect, TimerDeviceList};
+use crate::devices::RomSelect;
 use crate::video::Video;
 use crate::{cpu::Cpu, devices::DeviceSpeed};
 
@@ -21,7 +21,6 @@ pub struct Core {
     pub io_space: IOSpace,
     pub ic32_latch: Rc<Cell<u8>>,
     rom_select_latch: Rc<Cell<usize>>,
-    pub timer_devices: TimerDeviceList,
     pub video: Video,
 }
 
@@ -101,7 +100,7 @@ impl Core {
     }
 
     fn with_runner(&mut self, run_fn: impl FnOnce(&mut dyn RunnerTrait)) {
-        let clock = Clock::new(&mut self.cycles, &mut self.timer_devices);
+        let clock = Clock::new(&mut self.cycles);
 
         let cpu_bus = CpuBus::new(
             clock,

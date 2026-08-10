@@ -5,9 +5,7 @@ use wasm_bindgen::prelude::*;
 
 use super::core::{Core, ROMS_LEN};
 use crate::cpu::InterruptType;
-use crate::devices::{
-    DeviceSpeed, IODeviceID, JsIODevice, JsTimerDevice, StaticDevice, TimerDeviceID,
-};
+use crate::devices::{DeviceSpeed, IODeviceID, JsIODevice, StaticDevice};
 use crate::utils;
 use crate::video::Field;
 
@@ -104,12 +102,6 @@ impl SystemFfi {
         )
     }
 
-    pub fn add_js_timer_device(&mut self, js_handle_trigger: Function) -> TimerDeviceID {
-        self.core
-            .timer_devices
-            .add_device(Box::new(JsTimerDevice::new(js_handle_trigger)))
-    }
-
     pub fn reset(&mut self) {
         self.core.reset();
     }
@@ -120,12 +112,6 @@ impl SystemFfi {
 
     pub fn set_device_interrupt(&mut self, device_id: IODeviceID, interrupt: bool) {
         self.core.io_space.set_interrupt(device_id, interrupt);
-    }
-
-    pub fn set_device_trigger(&mut self, device_id: TimerDeviceID, trigger: Option<u64>) {
-        self.core
-            .timer_devices
-            .set_device_trigger(device_id, trigger);
     }
 }
 

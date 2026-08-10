@@ -1,16 +1,10 @@
-use crate::devices::TimerDeviceList;
-
 pub struct Clock<'a> {
     cycles: &'a mut u64,
-    timer_devices: &'a mut TimerDeviceList,
 }
 
 impl<'a> Clock<'a> {
-    pub fn new(cycles: &'a mut u64, timer_devices: &'a mut TimerDeviceList) -> Self {
-        Clock {
-            cycles,
-            timer_devices,
-        }
+    pub fn new(cycles: &'a mut u64) -> Self {
+        Clock { cycles }
     }
 
     pub fn get_cycles(&self) -> u64 {
@@ -25,7 +19,5 @@ impl<'a> Clock<'a> {
 
     pub fn inc(&mut self) {
         *self.cycles += 1;
-
-        self.timer_devices.sync(*self.cycles);
     }
 }

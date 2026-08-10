@@ -58,21 +58,6 @@ const ch22System = System.new();
 ch22System.load_rom(bank, pagedRom);
 
 /**
- * register a callback to be called at certain cycles
- * - handleTrigger: (cycles: bigint) => bigint
- *   - cycles: machine cycles at time of callback
- *   - returns: the desired next value of cycles to be called encoded as a bigint
- */
-const deviceId = ch22System.add_js_timer_device(handleTrigger);
-
-/**
- * manually set the desired next value of cycles for a registered callback
- * - deviceId: id returned from `add_js_timer_device` call
- * - cycles: bigint
- */
-ch22System.set_device_trigger(deviceId, cycles);
-
-/**
  * register callbacks for an IO device
  * - addresses: UInt16Array of addresses to register device for
  * - read: (address: number, cycles: bigint) => bigint
