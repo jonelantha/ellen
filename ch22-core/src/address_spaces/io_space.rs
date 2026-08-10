@@ -30,8 +30,8 @@ impl IOSpace {
             .any(|device| device.get_interrupt(clock.get_cycles()))
     }
 
-    pub fn set_interrupt(&mut self, device_id: IODeviceID, iterrupt: bool) {
-        self.devices.get_by_id(device_id).set_interrupt(iterrupt);
+    pub fn set_interrupt(&mut self, device_id: IODeviceID, interrupt: bool) {
+        self.devices.get_by_id(device_id).set_interrupt(interrupt);
     }
 
     pub fn read(&mut self, address: Word, clock: &mut Clock) -> u8 {
