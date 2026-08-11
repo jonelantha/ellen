@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use super::*;
 use crate::cpu::InterruptType;
-use crate::devices::io_device_mock::*;
+use crate::devices::device_mock::*;
 use crate::system::Clock;
 
 use DeviceSpeed::*;
@@ -160,8 +160,8 @@ fn setup_test_device(
     speed: DeviceSpeed,
     interrupt_on: bool,
     interrupt_type: Option<InterruptType>,
-) -> Rc<RefCell<IODeviceAccesses>> {
-    let test_device = Box::new(IODeviceMock::new(
+) -> Rc<RefCell<DeviceAccesses>> {
+    let test_device = Box::new(DeviceMock::new(
         &[(TEST_ADDRESS, TEST_VALUE)],
         interrupt_on,
     ));

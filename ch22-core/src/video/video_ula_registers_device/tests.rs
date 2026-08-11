@@ -1,4 +1,4 @@
-use crate::devices::IODevice;
+use crate::devices::Device;
 use crate::video::VideoRegisters;
 use crate::video::VideoULARegistersDevice;
 use crate::word::Word;

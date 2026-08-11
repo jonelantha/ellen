@@ -2,13 +2,13 @@
 mod tests;
 
 use crate::cpu::InterruptType;
-use crate::devices::{DeviceSpeed, IODevice, IODeviceID, IODeviceList};
+use crate::devices::{DeviceSpeed, Device, DeviceID, DeviceList};
 use crate::system::Clock;
 use crate::word::Word;
 
 #[derive(Default)]
 pub struct IOSpace {
-    devices: IODeviceList,
+    devices: DeviceList,
     phase_2_data: Option<(Word, u8)>,
 }
 
@@ -16,10 +16,10 @@ impl IOSpace {
     pub fn add_device(
         &mut self,
         addresses: &[u16],
-        device: Box<dyn IODevice>,
+        device: Box<dyn Device>,
         interrupt_type: Option<InterruptType>,
         speed: DeviceSpeed,
-    ) -> IODeviceID {
+    ) -> DeviceID {
         self.devices
             .add_device(addresses, device, interrupt_type, speed)
     }
@@ -30,7 +30,7 @@ impl IOSpace {
             .any(|device| device.get_interrupt(clock.get_cycles()))
     }
 
-    pub fn set_interrupt(&mut self, device_id: IODeviceID, interrupt: bool) {
+    pub fn set_interrupt(&mut self, device_id: DeviceID, interrupt: bool) {
         self.devices.get_by_id(device_id).set_interrupt(interrupt);
     }
 

@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use crate::devices::IODevice;
+use crate::devices::Device;
 use crate::video::VideoRegisters;
 use crate::word::Word;
 
@@ -18,7 +18,7 @@ impl VideoULARegistersDevice {
     }
 }
 
-impl IODevice for VideoULARegistersDevice {
+impl Device for VideoULARegistersDevice {
     fn read(&mut self, _address: Word, _cycles: u64) -> u8 {
         0xfe
     }
