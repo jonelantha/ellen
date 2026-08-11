@@ -4,8 +4,7 @@ use std::rc::Rc;
 use super::{
     Clock,
     address_map::{AddressMap, FnAddressMap},
-    cpu_bus::CpuBus,
-    runner::{Runner, RunnerTrait},
+    runner::Runner,
 };
 use crate::address_spaces::{IOSpace, Ram, Rom};
 use crate::devices::RomSelect;
@@ -76,14 +75,14 @@ impl Core {
     }
 
     pub fn reset(&mut self) {
-        self.with_runner(|runner| {
-            runner.reset();
-        });
+        self.get_runner().reset();
     }
 
     pub fn run_one_field(&mut self) -> u64 {
         loop {
-            self.run(self.video.get_next_scanline_trigger());
+            let next_scanline_trigger = self.video.get_next_scanline_trigger();
+
+            self.get_runner().run(next_scanline_trigger);
 
             let is_field_complete = self.process_scanline();
 
@@ -93,28 +92,16 @@ impl Core {
         }
     }
 
-    fn run(&mut self, until: u64) {
-        self.with_runner(|runner| {
-            runner.run(until);
-        })
-    }
-
-    fn with_runner(&mut self, run_fn: impl FnOnce(&mut dyn RunnerTrait)) {
-        let cpu_bus = CpuBus::new(
+    fn get_runner(&mut self) -> Runner<'_, impl AddressMap> {
+        Runner::new(
             &mut self.clock,
             &mut self.ram,
             &self.roms,
             &mut self.io_space,
             &self.rom_select_latch,
             Self::address_map(),
-        );
-
-        let mut runner = Runner {
-            cpu_bus,
-            cpu: &mut self.cpu,
-        };
-
-        run_fn(&mut runner);
+            &mut self.cpu,
+        )
     }
 
     fn process_scanline(&mut self) -> bool {
