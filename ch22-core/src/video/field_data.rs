@@ -68,6 +68,16 @@ impl Field {
             );
         }
     }
+
+    #[cfg(test)]
+    pub fn get_line_raw_data(&self, line_index: usize) -> &[u8] {
+        self.lines[line_index].get_raw_data()
+    }
+
+    #[cfg(test)]
+    pub fn get_line_raw_data_mut(&mut self, line_index: usize) -> &mut [u8] {
+        self.lines[line_index].get_raw_data_mut()
+    }
 }
 
 fn snapshot_teletext_scanline_data<'a>(

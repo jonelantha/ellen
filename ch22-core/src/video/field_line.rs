@@ -87,12 +87,22 @@ impl FieldLine {
         }
     }
 
-    // Test-only method to get raw data of line in memory (available only for tests)
+    // Test-only methods to get raw data of line in memory (available only for tests)
     #[cfg(test)]
     pub fn get_raw_data(&self) -> &[u8] {
         unsafe {
             std::slice::from_raw_parts(
                 (self as *const FieldLine) as *const u8,
+                std::mem::size_of::<FieldLine>(),
+            )
+        }
+    }
+
+    #[cfg(test)]
+    pub fn get_raw_data_mut(&mut self) -> &mut [u8] {
+        unsafe {
+            std::slice::from_raw_parts_mut(
+                (self as *mut FieldLine) as *mut u8,
                 std::mem::size_of::<FieldLine>(),
             )
         }

@@ -6,6 +6,9 @@ mod video_memory_access;
 mod video_registers;
 mod video_ula_registers_device;
 
+#[cfg(test)]
+mod tests;
+
 pub const MAX_LINES: usize = 320;
 
 use std::{cell::RefCell, rc::Rc};
