@@ -14,7 +14,7 @@ use crate::{cpu::Cpu, devices::DeviceSpeed};
 
 #[derive(Default)]
 pub struct Core {
-    cycles: u64,
+    clock: Clock,
     cpu: Cpu,
     ram: Ram,
     pub roms: [Rom; ROMS_LEN],
@@ -88,7 +88,7 @@ impl Core {
             let is_field_complete = self.process_scanline();
 
             if is_field_complete {
-                return self.cycles;
+                return self.clock.get_cycles();
             }
         }
     }
@@ -100,10 +100,8 @@ impl Core {
     }
 
     fn with_runner(&mut self, run_fn: impl FnOnce(&mut dyn RunnerTrait)) {
-        let clock = Clock::new(&mut self.cycles);
-
         let cpu_bus = CpuBus::new(
-            clock,
+            &mut self.clock,
             &mut self.ram,
             &self.roms,
             &mut self.io_space,
