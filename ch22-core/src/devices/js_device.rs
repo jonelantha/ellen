@@ -128,20 +128,20 @@ impl JsDevice {
     }
 
     // Encoding format: [trig trig trig trig trig trig flags (value or ic32)]
-    // The last byte contains either a value or ic32 data, depending on the JS_IO_FLAG_VALUE_IS_IC32 flag.
+    // The last byte contains either a value or ic32 data, depending on the JS_DEVICE_FLAG_VALUE_IS_IC32 flag.
 
     fn set_js_device_params(&mut self, params_and_value: u64) -> Option<u8> {
         let [_, _, _, _, _, _, flags, value] = params_and_value.to_be_bytes();
 
-        self.interrupt = flags & JS_IO_FLAG_INTERRUPT != 0;
+        self.interrupt = flags & JS_DEVICE_FLAG_INTERRUPT != 0;
 
-        self.trigger = if flags & JS_IO_FLAG_HAS_TRIGGER != 0 {
+        self.trigger = if flags & JS_DEVICE_FLAG_HAS_TRIGGER != 0 {
             Some(params_and_value >> 16)
         } else {
             None
         };
 
-        if flags & JS_IO_FLAG_VALUE_IS_IC32 != 0 {
+        if flags & JS_DEVICE_FLAG_VALUE_IS_IC32 != 0 {
             self.ic32_latch.set(value);
 
             None
@@ -151,6 +151,6 @@ impl JsDevice {
     }
 }
 
-const JS_IO_FLAG_HAS_TRIGGER: u8 = 0x01;
-const JS_IO_FLAG_INTERRUPT: u8 = 0x02;
-const JS_IO_FLAG_VALUE_IS_IC32: u8 = 0x04;
+const JS_DEVICE_FLAG_HAS_TRIGGER: u8 = 0x01;
+const JS_DEVICE_FLAG_INTERRUPT: u8 = 0x02;
+const JS_DEVICE_FLAG_VALUE_IS_IC32: u8 = 0x04;
