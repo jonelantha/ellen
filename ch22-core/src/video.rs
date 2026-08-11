@@ -6,6 +6,9 @@ mod video_memory_access;
 mod video_registers;
 mod video_ula_registers_device;
 
+#[cfg(test)]
+mod tests;
+
 pub const MAX_LINES: usize = 320;
 
 use std::{cell::RefCell, rc::Rc};
@@ -53,7 +56,7 @@ impl Video {
         ic32_latch: u8,
         get_buffer: impl Fn(std::ops::Range<u16>) -> &'a [u8],
         mut on_vsync_change: impl FnMut(bool),
-    ) -> bool {
+    ) {
         let registers = &self.registers.borrow();
 
         let snapshot_params = self.crtc.get_snapshot_params(registers);
@@ -86,8 +89,9 @@ impl Video {
             self.vsync = new_vsync;
             on_vsync_change(new_vsync);
         }
+    }
 
-        // field is complete
+    pub fn is_field_complete(&self) -> bool {
         self.crtc.is_beam_reset()
     }
 

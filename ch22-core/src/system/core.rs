@@ -84,9 +84,13 @@ impl Core {
 
             self.get_runner().run(next_scanline_trigger);
 
-            let is_field_complete = self.process_scanline();
+            self.video.process_scanline(
+                self.ic32_latch.get(),
+                |range| self.ram.slice(range),
+                |vsync| self.io_space.on_vsync_change(vsync),
+            );
 
-            if is_field_complete {
+            if self.video.is_field_complete() {
                 return self.clock.get_cycles();
             }
         }
@@ -101,14 +105,6 @@ impl Core {
             &self.rom_select_latch,
             Self::address_map(),
             &mut self.cpu,
-        )
-    }
-
-    fn process_scanline(&mut self) -> bool {
-        self.video.process_scanline(
-            self.ic32_latch.get(),
-            |range| self.ram.slice(range),
-            |vsync| self.io_space.on_vsync_change(vsync),
         )
     }
 }
