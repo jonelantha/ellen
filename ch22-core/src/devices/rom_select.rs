@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use crate::word::Word;
 
-use super::io_device::*;
+use super::device::*;
 
 pub struct RomSelect {
     active_rom: Rc<Cell<usize>>,
@@ -15,7 +15,7 @@ impl RomSelect {
     }
 }
 
-impl IODevice for RomSelect {
+impl Device for RomSelect {
     fn read(&mut self, _address: Word, _cycles: u64) -> u8 {
         self.active_rom.get() as u8
     }

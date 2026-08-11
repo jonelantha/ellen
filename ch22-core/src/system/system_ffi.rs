@@ -5,9 +5,7 @@ use wasm_bindgen::prelude::*;
 
 use super::core::{Core, ROMS_LEN};
 use crate::cpu::InterruptType;
-use crate::devices::{
-    DeviceSpeed, IODeviceID, JsIODevice, JsTimerDevice, StaticDevice, TimerDeviceID,
-};
+use crate::devices::{DeviceSpeed, DeviceID, JsDevice, StaticDevice};
 use crate::utils;
 use crate::video::Field;
 
@@ -51,7 +49,7 @@ impl SystemFfi {
         read_value: u8,
         one_mhz: bool,
         panic_on_write: bool,
-    ) -> IODeviceID {
+    ) -> DeviceID {
         let speed = match one_mhz {
             true => DeviceSpeed::OneMhz,
             false => DeviceSpeed::TwoMhz,
@@ -68,7 +66,7 @@ impl SystemFfi {
         )
     }
 
-    pub fn add_js_io_device(
+    pub fn add_js_device(
         &mut self,
         addresses: &[u16],
         js_read: Function,
@@ -76,7 +74,7 @@ impl SystemFfi {
         js_on_vsync_change: Option<Function>,
         js_handle_trigger: Function,
         flags: u8,
-    ) -> IODeviceID {
+    ) -> DeviceID {
         let interrupt_type = match flags & (JS_DEVICE_IRQ | JS_DEVICE_NMI) {
             JS_DEVICE_IRQ => Some(InterruptType::IRQ),
             JS_DEVICE_NMI => Some(InterruptType::NMI),
@@ -91,7 +89,7 @@ impl SystemFfi {
         let ic32_latch = self.core.ic32_latch.clone();
         self.core.io_space.add_device(
             addresses,
-            Box::new(JsIODevice::new(
+            Box::new(JsDevice::new(
                 js_read,
                 js_write,
                 js_on_vsync_change,
@@ -104,12 +102,6 @@ impl SystemFfi {
         )
     }
 
-    pub fn add_js_timer_device(&mut self, js_handle_trigger: Function) -> TimerDeviceID {
-        self.core
-            .timer_devices
-            .add_device(Box::new(JsTimerDevice::new(js_handle_trigger)))
-    }
-
     pub fn reset(&mut self) {
         self.core.reset();
     }
@@ -118,14 +110,8 @@ impl SystemFfi {
         self.core.run_one_field()
     }
 
-    pub fn set_device_interrupt(&mut self, device_id: IODeviceID, interrupt: bool) {
+    pub fn set_device_interrupt(&mut self, device_id: DeviceID, interrupt: bool) {
         self.core.io_space.set_interrupt(device_id, interrupt);
-    }
-
-    pub fn set_device_trigger(&mut self, device_id: TimerDeviceID, trigger: Option<u64>) {
-        self.core
-            .timer_devices
-            .set_device_trigger(device_id, trigger);
     }
 }
 

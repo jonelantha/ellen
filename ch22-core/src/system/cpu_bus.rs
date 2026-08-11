@@ -6,7 +6,7 @@ use crate::cpu::{CpuIO, InterruptType};
 use crate::word::Word;
 
 pub struct CpuBus<'a, A: AddressMap> {
-    clock: Clock<'a>,
+    clock: &'a mut Clock,
     ram: &'a mut Ram,
     roms: &'a [Rom; ROMS_LEN],
     io_space: &'a mut IOSpace,
@@ -16,7 +16,7 @@ pub struct CpuBus<'a, A: AddressMap> {
 
 impl<'a, A: AddressMap> CpuBus<'a, A> {
     pub fn new(
-        clock: Clock<'a>,
+        clock: &'a mut Clock,
         ram: &'a mut Ram,
         roms: &'a [Rom; ROMS_LEN],
         io_space: &'a mut IOSpace,
@@ -44,7 +44,7 @@ impl<A: AddressMap> CpuIO for CpuBus<'_, A> {
 
         self.address_map.read(
             address,
-            &mut self.clock,
+            self.clock,
             self.ram,
             self.roms,
             self.io_space,
@@ -56,17 +56,17 @@ impl<A: AddressMap> CpuIO for CpuBus<'_, A> {
         self.end_previous_cycle();
 
         self.address_map
-            .write(address, value, &mut self.clock, self.ram, self.io_space);
+            .write(address, value, self.clock, self.ram, self.io_space);
     }
 
     fn get_interrupt(&mut self, interrupt_type: InterruptType) -> bool {
-        self.io_space.get_interrupt(interrupt_type, &self.clock)
+        self.io_space.get_interrupt(interrupt_type, self.clock)
     }
 }
 
 impl<A: AddressMap> CpuBus<'_, A> {
     fn end_previous_cycle(&mut self) {
-        self.io_space.phase_2(&self.clock);
+        self.io_space.phase_2(self.clock);
 
         self.clock.inc();
     }

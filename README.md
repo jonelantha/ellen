@@ -58,22 +58,7 @@ const ch22System = System.new();
 ch22System.load_rom(bank, pagedRom);
 
 /**
- * register a callback to be called at certain cycles
- * - handleTrigger: (cycles: bigint) => bigint
- *   - cycles: machine cycles at time of callback
- *   - returns: the desired next value of cycles to be called encoded as a bigint
- */
-const deviceId = ch22System.add_js_timer_device(handleTrigger);
-
-/**
- * manually set the desired next value of cycles for a registered callback
- * - deviceId: id returned from `add_js_timer_device` call
- * - cycles: bigint
- */
-ch22System.set_device_trigger(deviceId, cycles);
-
-/**
- * register callbacks for an IO device
+ * register callbacks for a device
  * - addresses: UInt16Array of addresses to register device for
  * - read: (address: number, cycles: bigint) => bigint
  *   - returns: read value, next cycle sync and interrupt encoded as bigint
@@ -91,7 +76,7 @@ ch22System.set_device_trigger(deviceId, cycles);
  *   - 0x04 = interrupt treated as IRQ
  *   - 0x10 = device writes in clock phase 2
  */
-const deviceId = ch22System.add_js_io_device(
+const deviceId = ch22System.add_js_device(
   addresses,
   read,
   write,
@@ -102,13 +87,13 @@ const deviceId = ch22System.add_js_io_device(
 
 /**
  * manually set the interrupt of a device
- * - deviceId: id returned from `add_js_io_device` call
+ * - deviceId: id returned from `add_js_device` call
  * - interrupt: whether interrupt is set
  */
 ch22System.set_device_interrupt(deviceId, interrupt);
 
 /**
- * register an io device which returns a fixed value
+ * register a device which returns a fixed value
  * - addresses: UInt16Array of address to register device for
  * - readValue: 8 bit value to return for all reads
  * - oneMhz: bool for one mhz reads

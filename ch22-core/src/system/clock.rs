@@ -1,31 +1,29 @@
-use crate::devices::TimerDeviceList;
-
-pub struct Clock<'a> {
-    cycles: &'a mut u64,
-    timer_devices: &'a mut TimerDeviceList,
+pub struct Clock {
+    cycles: u64,
 }
 
-impl<'a> Clock<'a> {
-    pub fn new(cycles: &'a mut u64, timer_devices: &'a mut TimerDeviceList) -> Self {
-        Clock {
-            cycles,
-            timer_devices,
-        }
+impl Default for Clock {
+    fn default() -> Self {
+        Self::new(0)
+    }
+}
+
+impl Clock {
+    pub fn new(cycles: u64) -> Self {
+        Self { cycles }
     }
 
     pub fn get_cycles(&self) -> u64 {
-        *self.cycles
+        self.cycles
     }
 
     pub fn one_mhz_sync(&mut self) {
-        if *self.cycles & 1 != 0 {
+        if self.cycles & 1 != 0 {
             self.inc();
         }
     }
 
     pub fn inc(&mut self) {
-        *self.cycles += 1;
-
-        self.timer_devices.sync(*self.cycles);
+        self.cycles += 1;
     }
 }

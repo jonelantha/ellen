@@ -2,16 +2,16 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use crate::word::Word;
 
-use super::io_device::IODevice;
+use super::device::Device;
 
 #[derive(Default)]
-pub struct IODeviceMock {
+pub struct DeviceMock {
     memory: HashMap<u16, u8>,
     interrupt_on: bool,
-    accesses: Rc<RefCell<IODeviceAccesses>>,
+    accesses: Rc<RefCell<DeviceAccesses>>,
 }
 
-impl IODeviceMock {
+impl DeviceMock {
     pub fn new(initial_ram: &[(u16, u8)], interrupt_on: bool) -> Self {
         let mut memory = HashMap::new();
 
@@ -19,14 +19,14 @@ impl IODeviceMock {
             memory.insert(ram_location.0, ram_location.1);
         }
 
-        IODeviceMock {
+        DeviceMock {
             memory,
             interrupt_on,
-            ..IODeviceMock::default()
+            ..DeviceMock::default()
         }
     }
 
-    pub fn get_accesses(&self) -> Rc<RefCell<IODeviceAccesses>> {
+    pub fn get_accesses(&self) -> Rc<RefCell<DeviceAccesses>> {
         self.accesses.clone()
     }
 
@@ -35,7 +35,7 @@ impl IODeviceMock {
     }
 }
 
-impl IODevice for IODeviceMock {
+impl Device for DeviceMock {
     fn read(&mut self, address: Word, cycles: u64) -> u8 {
         let address: u16 = address.into();
 
@@ -71,7 +71,7 @@ pub enum MemoryAccess {
 }
 
 #[derive(Default)]
-pub struct IODeviceAccesses {
+pub struct DeviceAccesses {
     pub memory: Vec<MemoryAccess>,
     pub interrupt: Vec<u64>,
 }

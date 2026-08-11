@@ -3,7 +3,7 @@ mod test_video_crtc_registers_device {
     use std::cell::RefCell;
     use std::rc::Rc;
 
-    use crate::devices::IODevice;
+    use crate::devices::Device;
     use crate::video::VideoCRTCRegistersDevice;
     use crate::video::VideoRegisters;
     use crate::word::Word;

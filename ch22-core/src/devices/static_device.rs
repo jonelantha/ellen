@@ -1,4 +1,4 @@
-use super::io_device::IODevice;
+use super::device::Device;
 use crate::word::Word;
 
 pub struct StaticDevice {
@@ -6,7 +6,7 @@ pub struct StaticDevice {
     pub panic_on_write: bool,
 }
 
-impl IODevice for StaticDevice {
+impl Device for StaticDevice {
     fn read(&mut self, _address: Word, _cycles: u64) -> u8 {
         self.read_value
     }

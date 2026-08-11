@@ -5,9 +5,9 @@ use wasm_bindgen::JsValue;
 
 use crate::word::Word;
 
-use super::io_device::IODevice;
+use super::device::Device;
 
-pub struct JsIODevice {
+pub struct JsDevice {
     read: Box<dyn Fn(u16, u64) -> u64>,
     write: Box<dyn Fn(u16, u8, u64) -> u64>,
     on_vsync_change: Option<Box<dyn Fn(bool) -> u64>>,
@@ -18,7 +18,7 @@ pub struct JsIODevice {
     phase_2_write: bool,
 }
 
-impl JsIODevice {
+impl JsDevice {
     pub fn new(
         js_read: Function,
         js_write: Function,
@@ -66,7 +66,7 @@ impl JsIODevice {
                 .expect("js_handle_trigger error")
         });
 
-        JsIODevice {
+        JsDevice {
             read,
             write,
             on_vsync_change,
@@ -79,7 +79,7 @@ impl JsIODevice {
     }
 }
 
-impl IODevice for JsIODevice {
+impl Device for JsDevice {
     fn read(&mut self, address: Word, cycles: u64) -> u8 {
         self.set_js_device_params((self.read)(address.into(), cycles))
             .unwrap()
@@ -118,7 +118,7 @@ impl IODevice for JsIODevice {
     }
 }
 
-impl JsIODevice {
+impl JsDevice {
     fn sync(&mut self, cycles: u64) {
         if let Some(trigger) = self.trigger
             && trigger <= cycles
@@ -128,20 +128,20 @@ impl JsIODevice {
     }
 
     // Encoding format: [trig trig trig trig trig trig flags (value or ic32)]
-    // The last byte contains either a value or ic32 data, depending on the JS_IO_FLAG_VALUE_IS_IC32 flag.
+    // The last byte contains either a value or ic32 data, depending on the JS_DEVICE_FLAG_VALUE_IS_IC32 flag.
 
     fn set_js_device_params(&mut self, params_and_value: u64) -> Option<u8> {
         let [_, _, _, _, _, _, flags, value] = params_and_value.to_be_bytes();
 
-        self.interrupt = flags & JS_IO_FLAG_INTERRUPT != 0;
+        self.interrupt = flags & JS_DEVICE_FLAG_INTERRUPT != 0;
 
-        self.trigger = if flags & JS_IO_FLAG_HAS_TRIGGER != 0 {
+        self.trigger = if flags & JS_DEVICE_FLAG_HAS_TRIGGER != 0 {
             Some(params_and_value >> 16)
         } else {
             None
         };
 
-        if flags & JS_IO_FLAG_VALUE_IS_IC32 != 0 {
+        if flags & JS_DEVICE_FLAG_VALUE_IS_IC32 != 0 {
             self.ic32_latch.set(value);
 
             None
@@ -151,6 +151,6 @@ impl JsIODevice {
     }
 }
 
-const JS_IO_FLAG_HAS_TRIGGER: u8 = 0x01;
-const JS_IO_FLAG_INTERRUPT: u8 = 0x02;
-const JS_IO_FLAG_VALUE_IS_IC32: u8 = 0x04;
+const JS_DEVICE_FLAG_HAS_TRIGGER: u8 = 0x01;
+const JS_DEVICE_FLAG_INTERRUPT: u8 = 0x02;
+const JS_DEVICE_FLAG_VALUE_IS_IC32: u8 = 0x04;

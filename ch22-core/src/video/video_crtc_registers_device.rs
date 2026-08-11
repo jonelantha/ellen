@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use crate::devices::IODevice;
+use crate::devices::Device;
 use crate::video::VideoRegisters;
 use crate::word::Word;
 
@@ -22,7 +22,7 @@ impl VideoCRTCRegistersDevice {
     }
 }
 
-impl IODevice for VideoCRTCRegistersDevice {
+impl Device for VideoCRTCRegistersDevice {
     fn read(&mut self, address: Word, _cycles: u64) -> u8 {
         if address.0 & 0x07 == 0x01 {
             let registers = self.video_crtc_registers.borrow_mut();
