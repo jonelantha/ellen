@@ -71,7 +71,6 @@ impl SystemFfi {
         addresses: &[u16],
         js_read: Function,
         js_write: Function,
-        js_on_vsync_change: Option<Function>,
         js_handle_trigger: Function,
         flags: u8,
     ) -> DeviceID {
@@ -86,16 +85,13 @@ impl SystemFfi {
             _ => DeviceSpeed::TwoMhz,
         };
 
-        let ic32_latch = self.core.ic32_latch.clone();
         self.core.io_space.add_device(
             addresses,
             Box::new(JsDevice::new(
                 js_read,
                 js_write,
-                js_on_vsync_change,
                 js_handle_trigger,
                 flags & JS_DEVICE_PHASE_2_WRITE != 0,
-                ic32_latch,
             )),
             interrupt_type,
             speed,

@@ -1,5 +1,3 @@
-use std::{cell::Cell, rc::Rc};
-
 use js_sys::Function;
 use wasm_bindgen::JsValue;
 
@@ -10,11 +8,9 @@ use super::device::Device;
 pub struct JsDevice {
     read: Box<dyn Fn(u16, u64) -> u64>,
     write: Box<dyn Fn(u16, u8, u64) -> u64>,
-    on_vsync_change: Option<Box<dyn Fn(bool) -> u64>>,
     handle_trigger: Box<dyn Fn(u64) -> u64>,
     trigger: Option<u64>,
     interrupt: bool,
-    ic32_latch: Rc<Cell<u8>>,
     phase_2_write: bool,
 }
 
@@ -22,10 +18,8 @@ impl JsDevice {
     pub fn new(
         js_read: Function,
         js_write: Function,
-        js_on_vsync_change: Option<Function>,
         js_handle_trigger: Function,
         phase_2_write: bool,
-        ic32_latch: Rc<Cell<u8>>,
     ) -> Self {
         let read = Box::new(move |address: u16, cycles: u64| {
             js_read
@@ -48,16 +42,6 @@ impl JsDevice {
                 .expect("js_write error")
         });
 
-        let on_vsync_change = js_on_vsync_change.map(|js_on_vsync_change| {
-            Box::new(move |vsync: bool| {
-                js_on_vsync_change
-                    .call1(&JsValue::NULL, &vsync.into())
-                    .expect("js_on_vsync_change error")
-                    .try_into()
-                    .expect("js_on_vsync_change error")
-            }) as Box<dyn Fn(bool) -> u64>
-        });
-
         let handle_trigger = Box::new(move |cycles: u64| {
             js_handle_trigger
                 .call1(&JsValue::NULL, &cycles.into())
@@ -69,12 +53,10 @@ impl JsDevice {
         JsDevice {
             read,
             write,
-            on_vsync_change,
             handle_trigger,
             trigger: None,
             interrupt: false,
             phase_2_write,
-            ic32_latch,
         }
     }
 }
@@ -82,7 +64,6 @@ impl JsDevice {
 impl Device for JsDevice {
     fn read(&mut self, address: Word, cycles: u64) -> u8 {
         self.set_js_device_params((self.read)(address.into(), cycles))
-            .unwrap()
     }
 
     fn write(&mut self, address: Word, value: u8, cycles: u64) -> bool {
@@ -110,12 +91,6 @@ impl Device for JsDevice {
     fn set_interrupt(&mut self, interrupt: bool) {
         self.interrupt = interrupt;
     }
-
-    fn on_vsync_change(&mut self, vsync: bool) {
-        if let Some(on_vsync_change) = &self.on_vsync_change {
-            self.set_js_device_params((on_vsync_change)(vsync));
-        }
-    }
 }
 
 impl JsDevice {
@@ -127,10 +102,9 @@ impl JsDevice {
         }
     }
 
-    // Encoding format: [trig trig trig trig trig trig flags (value or ic32)]
-    // The last byte contains either a value or ic32 data, depending on the JS_DEVICE_FLAG_VALUE_IS_IC32 flag.
+    // Encoding format: [trig trig trig trig trig trig flags value]
 
-    fn set_js_device_params(&mut self, params_and_value: u64) -> Option<u8> {
+    fn set_js_device_params(&mut self, params_and_value: u64) -> u8 {
         let [_, _, _, _, _, _, flags, value] = params_and_value.to_be_bytes();
 
         self.interrupt = flags & JS_DEVICE_FLAG_INTERRUPT != 0;
@@ -141,16 +115,9 @@ impl JsDevice {
             None
         };
 
-        if flags & JS_DEVICE_FLAG_VALUE_IS_IC32 != 0 {
-            self.ic32_latch.set(value);
-
-            None
-        } else {
-            Some(value)
-        }
+        value
     }
 }
 
 const JS_DEVICE_FLAG_HAS_TRIGGER: u8 = 0x01;
 const JS_DEVICE_FLAG_INTERRUPT: u8 = 0x02;
-const JS_DEVICE_FLAG_VALUE_IS_IC32: u8 = 0x04;
