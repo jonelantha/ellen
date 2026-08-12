@@ -9,12 +9,13 @@ use super::device::Device;
 
 pub struct SysViaStub {
     read: Box<dyn Fn(u16, u64) -> u64>,
-    write: Box<dyn Fn(u16, u8, u64) -> u64>,
+    write: Box<dyn Fn(u16, u8, u8, u64) -> u64>,
     on_vsync_change: Box<dyn Fn(bool) -> u64>,
     handle_trigger: Box<dyn Fn(u64) -> u64>,
     trigger: Option<u64>,
     interrupt: bool,
     ic32_latch: Rc<Cell<u8>>,
+    ddrb: u8,
 }
 
 impl SysViaStub {
@@ -33,12 +34,13 @@ impl SysViaStub {
                 .expect("js_read error")
         });
 
-        let write = Box::new(move |address: u16, value: u8, cycles: u64| {
+        let write = Box::new(move |address: u16, value: u8, ic32: u8, cycles: u64| {
             js_write
-                .call3(
+                .call4(
                     &JsValue::NULL,
                     &address.into(),
                     &value.into(),
+                    &ic32.into(),
                     &cycles.into(),
                 )
                 .expect("js_write error")
@@ -70,14 +72,14 @@ impl SysViaStub {
             trigger: None,
             interrupt: false,
             ic32_latch,
+            ddrb: 0,
         }
     }
 }
 
 impl Device for SysViaStub {
     fn read(&mut self, address: Word, cycles: u64) -> u8 {
-        self.set_sys_via_stub_params((self.read)(address.into(), cycles))
-            .unwrap()
+        self.set_params((self.read)(address.into(), cycles))
     }
 
     fn write(&mut self, _address: Word, _value: u8, _cycles: u64) -> bool {
@@ -85,7 +87,28 @@ impl Device for SysViaStub {
     }
 
     fn phase_2(&mut self, address: Word, value: u8, cycles: u64) {
-        self.set_sys_via_stub_params((self.write)(address.into(), value, cycles));
+        match address.0 & 0x0f {
+            0 => {
+                if (self.ddrb & 0x0f) != 0x0f {
+                    panic!(
+                        "SysViaStub: Attempt to write to IC32 latch when DDRB is not set to output for all bits. DDRB: {:02x}",
+                        self.ddrb
+                    );
+                }
+                self.ic32_write(value);
+            }
+            2 => {
+                self.ddrb = value;
+            }
+            _ => {}
+        }
+
+        self.set_params((self.write)(
+            address.into(),
+            value,
+            self.ic32_latch.get(),
+            cycles,
+        ));
     }
 
     fn get_interrupt(&mut self, cycles: u64) -> bool {
@@ -99,7 +122,7 @@ impl Device for SysViaStub {
     }
 
     fn on_vsync_change(&mut self, vsync: bool) {
-        self.set_sys_via_stub_params((self.on_vsync_change)(vsync));
+        self.set_params((self.on_vsync_change)(vsync));
     }
 }
 
@@ -108,13 +131,13 @@ impl SysViaStub {
         if let Some(trigger) = self.trigger
             && trigger <= cycles
         {
-            self.set_sys_via_stub_params((self.handle_trigger)(cycles));
+            self.set_params((self.handle_trigger)(cycles));
         }
     }
 
     // Encoding format: [trig trig trig trig trig trig flags (value or ic32)]
     // The last byte contains either a value or ic32 data, depending on the JS_DEVICE_FLAG_VALUE_IS_IC32 flag.
-    fn set_sys_via_stub_params(&mut self, params_and_value: u64) -> Option<u8> {
+    fn set_params(&mut self, params_and_value: u64) -> u8 {
         let [_, _, _, _, _, _, flags, value] = params_and_value.to_be_bytes();
 
         self.interrupt = flags & SYS_VIA_STUB_FLAG_INTERRUPT != 0;
@@ -125,16 +148,19 @@ impl SysViaStub {
             None
         };
 
-        if flags & SYS_VIA_STUB_FLAG_VALUE_IS_IC32 != 0 {
-            self.ic32_latch.set(value);
+        value
+    }
 
-            None
+    fn ic32_write(&mut self, value: u8) {
+        let bit = value & 0x07;
+        let old_value = self.ic32_latch.get();
+        if value & 0x08 != 0 {
+            self.ic32_latch.set(old_value | (1 << bit));
         } else {
-            Some(value)
+            self.ic32_latch.set(old_value & !(1 << bit));
         }
     }
 }
 
 const SYS_VIA_STUB_FLAG_HAS_TRIGGER: u8 = 0x01;
 const SYS_VIA_STUB_FLAG_INTERRUPT: u8 = 0x02;
-const SYS_VIA_STUB_FLAG_VALUE_IS_IC32: u8 = 0x04;
