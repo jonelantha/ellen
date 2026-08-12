@@ -5,7 +5,7 @@ use wasm_bindgen::prelude::*;
 
 use super::core::{Core, ROMS_LEN};
 use crate::cpu::InterruptType;
-use crate::devices::{DeviceSpeed, DeviceID, JsDevice, StaticDevice};
+use crate::devices::{DeviceID, DeviceSpeed, JsDevice, StaticDevice, SysViaStub};
 use crate::utils;
 use crate::video::Field;
 
@@ -99,6 +99,29 @@ impl SystemFfi {
             )),
             interrupt_type,
             speed,
+        )
+    }
+
+    pub fn add_sys_via_stub(
+        &mut self,
+        addresses: &[u16],
+        js_read: Function,
+        js_write: Function,
+        js_on_vsync_change: Function,
+        js_handle_trigger: Function,
+    ) -> DeviceID {
+        let ic32_latch = self.core.ic32_latch.clone();
+        self.core.io_space.add_device(
+            addresses,
+            Box::new(SysViaStub::new(
+                js_read,
+                js_write,
+                js_on_vsync_change,
+                js_handle_trigger,
+                ic32_latch,
+            )),
+            Some(InterruptType::IRQ),
+            DeviceSpeed::OneMhz,
         )
     }
 
