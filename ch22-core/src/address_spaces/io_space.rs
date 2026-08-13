@@ -2,7 +2,7 @@
 mod tests;
 
 use crate::cpu::InterruptType;
-use crate::devices::{DeviceSpeed, Device, DeviceID, DeviceList};
+use crate::devices::{Device, DeviceID, DeviceList, DeviceSpeed};
 use crate::system::Clock;
 use crate::word::Word;
 

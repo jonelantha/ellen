@@ -161,10 +161,7 @@ fn setup_test_device(
     interrupt_on: bool,
     interrupt_type: Option<InterruptType>,
 ) -> Rc<RefCell<DeviceAccesses>> {
-    let test_device = Box::new(DeviceMock::new(
-        &[(TEST_ADDRESS, TEST_VALUE)],
-        interrupt_on,
-    ));
+    let test_device = Box::new(DeviceMock::new(&[(TEST_ADDRESS, TEST_VALUE)], interrupt_on));
     let test_device_accesses = test_device.get_accesses();
 
     io_space.add_device(&[TEST_ADDRESS], test_device, interrupt_type, speed);
