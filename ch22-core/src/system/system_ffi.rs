@@ -6,6 +6,7 @@ use wasm_bindgen::prelude::*;
 use super::core::{Core, ROMS_LEN};
 use crate::cpu::InterruptType;
 use crate::devices::{DeviceID, DeviceSpeed, JsDevice, StaticDevice, SysViaStub};
+use crate::sound_register_writes::SoundRegisterWrites;
 use crate::utils;
 use crate::video::Field;
 
@@ -33,6 +34,14 @@ impl SystemFfi {
 
     pub fn video_field_size(&self) -> usize {
         size_of::<Field>()
+    }
+
+    pub fn sound_register_writes_start(&mut self) -> *const SoundRegisterWrites {
+        self.core.get_sound_register_writes_start()
+    }
+
+    pub fn sound_register_writes_size(&self) -> usize {
+        size_of::<SoundRegisterWrites>()
     }
 
     pub fn load_rom(&mut self, bank: usize, data: &[u8]) {
@@ -107,6 +116,7 @@ impl SystemFfi {
         js_handle_trigger: Function,
     ) -> DeviceID {
         let ic32_latch = self.core.ic32_latch.clone();
+        let sound_register_writes = self.core.get_sound_register_writes();
         self.core.io_space.add_device(
             addresses,
             Box::new(SysViaStub::new(
@@ -115,6 +125,9 @@ impl SystemFfi {
                 js_on_vsync_change,
                 js_handle_trigger,
                 ic32_latch,
+                move |cycles, data| {
+                    sound_register_writes.borrow_mut().push(cycles, data);
+                },
             )),
             Some(InterruptType::IRQ),
             DeviceSpeed::OneMhz,

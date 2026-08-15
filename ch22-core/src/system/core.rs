@@ -1,4 +1,4 @@
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 use super::{
@@ -8,6 +8,7 @@ use super::{
 };
 use crate::address_spaces::{IOSpace, Ram, Rom};
 use crate::devices::RomSelect;
+use crate::sound_register_writes::SoundRegisterWrites;
 use crate::video::Video;
 use crate::{cpu::Cpu, devices::DeviceSpeed};
 
@@ -21,6 +22,7 @@ pub struct Core {
     pub ic32_latch: Rc<Cell<u8>>,
     rom_select_latch: Rc<Cell<usize>>,
     pub video: Video,
+    sound_register_writes: Rc<RefCell<SoundRegisterWrites>>,
 }
 
 impl Core {
@@ -79,6 +81,10 @@ impl Core {
     }
 
     pub fn run_one_field(&mut self) -> u64 {
+        self.sound_register_writes
+            .borrow_mut()
+            .reset(self.clock.get_cycles());
+
         loop {
             let next_scanline_trigger = self.video.get_next_scanline_trigger();
 
@@ -106,6 +112,14 @@ impl Core {
             Self::address_map(),
             &mut self.cpu,
         )
+    }
+
+    pub fn get_sound_register_writes_start(&self) -> *const SoundRegisterWrites {
+        self.sound_register_writes.as_ptr()
+    }
+
+    pub fn get_sound_register_writes(&self) -> Rc<RefCell<SoundRegisterWrites>> {
+        self.sound_register_writes.clone()
     }
 }
 

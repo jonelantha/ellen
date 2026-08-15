@@ -7,24 +7,30 @@ use crate::word::Word;
 
 use super::device::Device;
 
-pub struct SysViaStub {
+pub struct SysViaStub<OnSoundRegisterWrite> {
     read: Box<dyn Fn(u16, u64) -> u64>,
     write: Box<dyn Fn(u16, u8, u8, u64) -> u64>,
+    on_sound_register_write: OnSoundRegisterWrite,
     on_vsync_change: Box<dyn Fn(bool) -> u64>,
     handle_trigger: Box<dyn Fn(u64) -> u64>,
     trigger: Option<u64>,
     interrupt: bool,
     ic32_latch: Rc<Cell<u8>>,
+    ora: u8,
     ddrb: u8,
 }
 
-impl SysViaStub {
+impl<OnSoundRegisterWrite> SysViaStub<OnSoundRegisterWrite>
+where
+    OnSoundRegisterWrite: Fn(u64, u8),
+{
     pub fn new(
         js_read: Function,
         js_write: Function,
         js_on_vsync_change: Function,
         js_handle_trigger: Function,
         ic32_latch: Rc<Cell<u8>>,
+        on_sound_register_write: OnSoundRegisterWrite,
     ) -> Self {
         let read = Box::new(move |address: u16, cycles: u64| {
             js_read
@@ -67,17 +73,22 @@ impl SysViaStub {
         SysViaStub {
             read,
             write,
+            on_sound_register_write,
             on_vsync_change,
             handle_trigger,
             trigger: None,
             interrupt: false,
             ic32_latch,
+            ora: 0,
             ddrb: 0,
         }
     }
 }
 
-impl Device for SysViaStub {
+impl<OnSoundRegisterWrite> Device for SysViaStub<OnSoundRegisterWrite>
+where
+    OnSoundRegisterWrite: Fn(u64, u8),
+{
     fn read(&mut self, address: Word, cycles: u64) -> u8 {
         self.set_params((self.read)(address.into(), cycles))
     }
@@ -87,7 +98,7 @@ impl Device for SysViaStub {
     }
 
     fn phase_2(&mut self, address: Word, value: u8, cycles: u64) {
-        match address.0 & 0x0f {
+        let sound_reg = match address.0 & 0x0f {
             0 => {
                 if (self.ddrb & 0x0f) != 0x0f {
                     panic!(
@@ -95,12 +106,26 @@ impl Device for SysViaStub {
                         self.ddrb
                     );
                 }
-                self.ic32_write(value);
+
+                self.ic32_write(value)
+            }
+            1 | 15 => {
+                self.ora = value;
+                if self.ic32_latch.get() & 0x01 == 0 {
+                    Some(value)
+                } else {
+                    None
+                }
             }
             2 => {
                 self.ddrb = value;
+                None
             }
-            _ => {}
+            _ => None,
+        };
+
+        if let Some(sound_reg) = sound_reg {
+            (self.on_sound_register_write)(cycles, sound_reg);
         }
 
         self.set_params((self.write)(
@@ -126,7 +151,10 @@ impl Device for SysViaStub {
     }
 }
 
-impl SysViaStub {
+impl<OnSoundRegisterWrite> SysViaStub<OnSoundRegisterWrite>
+where
+    OnSoundRegisterWrite: Fn(u64, u8),
+{
     fn sync(&mut self, cycles: u64) {
         if let Some(trigger) = self.trigger
             && trigger <= cycles
@@ -151,13 +179,19 @@ impl SysViaStub {
         value
     }
 
-    fn ic32_write(&mut self, value: u8) {
+    fn ic32_write(&mut self, value: u8) -> Option<u8> {
         let bit = value & 0x07;
         let old_value = self.ic32_latch.get();
         if value & 0x08 != 0 {
             self.ic32_latch.set(old_value | (1 << bit));
         } else {
             self.ic32_latch.set(old_value & !(1 << bit));
+        }
+
+        if old_value & 0x01 != 0 && self.ic32_latch.get() & 0x01 == 0 {
+            Some(self.ora)
+        } else {
+            None
         }
     }
 }
