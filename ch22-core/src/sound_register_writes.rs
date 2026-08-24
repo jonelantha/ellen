@@ -1,4 +1,4 @@
-pub const MAX_SOUND_REG_WRITES: usize = 450;
+pub const MAX_SOUND_REG_WRITES: usize = 500;
 
 #[repr(C, packed)]
 #[derive(Default)]
