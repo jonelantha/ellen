@@ -4,6 +4,9 @@ use crate::word::Word;
 
 use super::device::Device;
 
+#[cfg(test)]
+mod tests;
+
 pub struct SysViaStub<OnSoundRegisterWrite> {
     read: Box<dyn Fn(u16, u64) -> u64>,
     write: Box<dyn Fn(u16, u8, u8, u64) -> u64>,
