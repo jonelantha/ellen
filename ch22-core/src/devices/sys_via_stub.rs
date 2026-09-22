@@ -1,8 +1,5 @@
 use std::{cell::Cell, rc::Rc};
 
-use js_sys::Function;
-use wasm_bindgen::JsValue;
-
 use crate::word::Word;
 
 use super::device::Device;
@@ -25,51 +22,13 @@ where
     OnSoundRegisterWrite: Fn(u64, u8),
 {
     pub fn new(
-        js_read: Function,
-        js_write: Function,
-        js_on_vsync_change: Function,
-        js_handle_trigger: Function,
+        read: Box<dyn Fn(u16, u64) -> u64>,
+        write: Box<dyn Fn(u16, u8, u8, u64) -> u64>,
+        on_vsync_change: Box<dyn Fn(bool) -> u64>,
+        handle_trigger: Box<dyn Fn(u64) -> u64>,
         ic32_latch: Rc<Cell<u8>>,
         on_sound_register_write: OnSoundRegisterWrite,
     ) -> Self {
-        let read = Box::new(move |address: u16, cycles: u64| {
-            js_read
-                .call2(&JsValue::NULL, &address.into(), &cycles.into())
-                .expect("js_read error")
-                .try_into()
-                .expect("js_read error")
-        });
-
-        let write = Box::new(move |address: u16, value: u8, ic32: u8, cycles: u64| {
-            js_write
-                .call4(
-                    &JsValue::NULL,
-                    &address.into(),
-                    &value.into(),
-                    &ic32.into(),
-                    &cycles.into(),
-                )
-                .expect("js_write error")
-                .try_into()
-                .expect("js_write error")
-        });
-
-        let on_vsync_change = Box::new(move |vsync: bool| {
-            js_on_vsync_change
-                .call1(&JsValue::NULL, &vsync.into())
-                .expect("js_on_vsync_change error")
-                .try_into()
-                .expect("js_on_vsync_change error")
-        });
-
-        let handle_trigger = Box::new(move |cycles: u64| {
-            js_handle_trigger
-                .call1(&JsValue::NULL, &cycles.into())
-                .expect("js_handle_trigger error")
-                .try_into()
-                .expect("js_handle_trigger error")
-        });
-
         SysViaStub {
             read,
             write,
