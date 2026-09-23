@@ -40,7 +40,7 @@ fn it_clears_an_ic32_latch_bit_without_triggering_a_sound_register_write() {
 }
 
 #[test]
-#[should_panic(expected = "DDRB is not set to output for all bits")]
+#[should_panic(expected = "IC32 write when DDRB != 0x0f")]
 fn it_panics_when_writing_ic32_latch_while_ddrb_is_not_fully_output() {
     let (mut stub, _ic32_latch, _sound_writes) = make_stub(0x00);
 
