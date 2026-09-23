@@ -6,17 +6,19 @@ use super::*;
 const ADDR_ORB: u16 = 0x0000;
 const ADDR_ORA: u16 = 0x0001;
 const ADDR_DDRB: u16 = 0x0002;
+const ADDR_DDRA: u16 = 0x0003;
 const ADDR_ORA_NO_HANDSHAKE: u16 = 0x000f;
 const ADDR_OTHER: u16 = 0x0003;
 
-// DDRB value with all bits configured as output, required before an IC32 write
+const DDRA_ALL_OUTPUT: u8 = 0xff;
 const DDRB_ALL_OUTPUT: u8 = 0x0f;
 
 #[test]
 fn it_sets_an_ic32_latch_bit_without_triggering_a_sound_register_write() {
     let (mut stub, ic32_latch, sound_writes) = make_stub(0x00);
 
-    // set ORB to output
+    // set ORA & ORB to output
+    stub.phase_2(ADDR_DDRA.into(), DDRA_ALL_OUTPUT, 0);
     stub.phase_2(ADDR_DDRB.into(), DDRB_ALL_OUTPUT, 0);
 
     // ORB write -> ic32 bit 3 set (0x08 | 0x03)
@@ -29,7 +31,8 @@ fn it_sets_an_ic32_latch_bit_without_triggering_a_sound_register_write() {
 #[test]
 fn it_clears_an_ic32_latch_bit_without_triggering_a_sound_register_write() {
     let (mut stub, ic32_latch, sound_writes) = make_stub(0xff);
-    // set ORB to output
+    // set ORA & ORB to output
+    stub.phase_2(ADDR_DDRA.into(), DDRA_ALL_OUTPUT, 0);
     stub.phase_2(ADDR_DDRB.into(), DDRB_ALL_OUTPUT, 0);
 
     // ORB write -> ic32 bit 3 clear
@@ -60,7 +63,8 @@ fn it_triggers_a_sound_register_write_on_the_sound_select_bit_falling() {
 
     for (initial_bit0, written_value, expected_latch, expected_writes) in test_cases {
         let (mut stub, ic32_latch, sound_writes) = make_stub(initial_bit0);
-        // set ORB to output
+        // set ORA & ORB to output
+        stub.phase_2(ADDR_DDRA.into(), DDRA_ALL_OUTPUT, 0);
         stub.phase_2(ADDR_DDRB.into(), DDRB_ALL_OUTPUT, 0);
 
         // latch the ORA value that a trigger should report
@@ -87,6 +91,9 @@ fn it_triggers_a_sound_register_write_on_the_sound_select_bit_falling() {
 fn it_forwards_an_ora_write_to_the_sound_register_when_the_sound_chip_is_selected() {
     let (mut stub, _ic32_latch, sound_writes) = make_stub(0x00);
 
+    // set ORA  to output
+    stub.phase_2(ADDR_DDRA.into(), DDRA_ALL_OUTPUT, 0);
+
     stub.phase_2(ADDR_ORA.into(), 0x9c, 500);
 
     assert_eq!(*sound_writes.borrow(), [(500, 0x9c)]);
@@ -102,8 +109,11 @@ fn it_does_not_forward_an_ora_write_to_the_sound_register_when_the_sound_chip_is
 }
 
 #[test]
-fn it_treats_the_mirrored_ora_address_the_same_as_the_primary_one() {
+fn it_treats_the_no_handshake_ora_address_the_same_as_the_primary_one() {
     let (mut stub, _ic32_latch, sound_writes) = make_stub(0x00);
+
+    // set ORA  to output
+    stub.phase_2(ADDR_DDRA.into(), DDRA_ALL_OUTPUT, 0);
 
     stub.phase_2(ADDR_ORA_NO_HANDSHAKE.into(), 0x77, 700);
 

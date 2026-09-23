@@ -18,6 +18,7 @@ pub struct SysViaStub<OnSoundRegisterWrite> {
     ic32_latch: Rc<Cell<u8>>,
     ora: u8,
     ddrb: u8,
+    ddra: u8,
 }
 
 impl<OnSoundRegisterWrite> SysViaStub<OnSoundRegisterWrite>
@@ -42,6 +43,7 @@ where
             interrupt: false,
             ic32_latch,
             ora: 0,
+            ddra: 0,
             ddrb: 0,
         }
     }
@@ -71,6 +73,9 @@ where
             1 | 15 => {
                 self.ora = value;
                 if self.ic32_latch.get() & 0x01 == 0 {
+                    if self.ddra != 0xff {
+                        panic!("sound when ddra != 0xff {:02x}", self.ddra);
+                    }
                     Some(value)
                 } else {
                     None
@@ -78,6 +83,11 @@ where
             }
             2 => {
                 self.ddrb = value;
+                None
+            }
+            3 => {
+                self.ddra = value;
+                //web_sys::console::log_1(&format!("ddra = {:02x}", value).into());
                 None
             }
             _ => None,
@@ -148,6 +158,9 @@ where
         }
 
         if old_value & 0x01 != 0 && self.ic32_latch.get() & 0x01 == 0 {
+            if self.ddra != 0xff {
+                panic!("sound when ddra != 0xff {:02x}", self.ddra);
+            }
             Some(self.ora)
         } else {
             None
