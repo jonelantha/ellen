@@ -63,10 +63,7 @@ where
         let sound_reg = match address.0 & 0x0f {
             0 => {
                 if (self.ddrb & 0x0f) != 0x0f {
-                    panic!(
-                        "SysViaStub: Attempt to write to IC32 latch when DDRB is not set to output for all bits. DDRB: {:02x}",
-                        self.ddrb
-                    );
+                    panic!("IC32 write when DDRB != 0x0f: {:02x}", self.ddrb);
                 }
 
                 self.ic32_write(value)
