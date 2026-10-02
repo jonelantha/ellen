@@ -2,6 +2,7 @@ use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 use super::*;
+use crate::devices::{SN76496Stub, SysViaBus};
 
 const ADDR_ORB: u16 = 0x0000;
 const ADDR_ORA: u16 = 0x0001;
@@ -177,7 +178,7 @@ fn it_ignores_addresses_that_are_not_ic32_ora_or_ddrb() {
 }
 
 struct Harness {
-    stub: SysViaStub<SN76496Stub<Box<dyn Fn(u64, u8)>>>,
+    stub: SysViaStub<SysViaBus<SN76496Stub<Box<dyn Fn(u64, u8)>>>>,
     ic32_latch: Rc<Cell<u8>>,
     sound_writes: Rc<RefCell<Vec<(u64, u8)>>>,
 }
@@ -191,13 +192,15 @@ impl Harness {
         let recorder: Box<dyn Fn(u64, u8)> =
             Box::new(move |cycles, value| recorder.borrow_mut().push((cycles, value)));
 
+        let bus = SysViaBus::new(SN76496Stub::new(recorder), ic32_latch.clone());
+
         let stub = SysViaStub::new(
             Box::new(|_, _| 0),
             Box::new(|_, _, _, _| 0),
             Box::new(|_| 0),
             Box::new(|_| 0),
             ic32_latch.clone(),
-            recorder,
+            bus,
         );
 
         Harness {

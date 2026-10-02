@@ -5,7 +5,9 @@ use wasm_bindgen::prelude::*;
 
 use super::core::{Core, ROMS_LEN};
 use crate::cpu::InterruptType;
-use crate::devices::{DeviceID, DeviceSpeed, JsDevice, StaticDevice, new_sys_via_stub};
+use crate::devices::{
+    DeviceID, DeviceSpeed, JsDevice, SN76496Stub, StaticDevice, SysViaBus, new_sys_via_stub,
+};
 use crate::sound_register_writes::SoundRegisterWrites;
 use crate::utils;
 use crate::video::Field;
@@ -117,6 +119,12 @@ impl SystemFfi {
     ) -> DeviceID {
         let ic32_latch = self.core.ic32_latch.clone();
         let sound_register_writes = self.core.get_sound_register_writes();
+
+        let sound = SN76496Stub::new(move |cycles, data| {
+            sound_register_writes.borrow_mut().push(cycles, data);
+        });
+        let sys_via_bus = SysViaBus::new(sound, ic32_latch.clone());
+
         self.core.io_space.add_device(
             addresses,
             Box::new(new_sys_via_stub(
@@ -125,9 +133,7 @@ impl SystemFfi {
                 js_on_vsync_change,
                 js_handle_trigger,
                 ic32_latch,
-                move |cycles, data| {
-                    sound_register_writes.borrow_mut().push(cycles, data);
-                },
+                sys_via_bus,
             )),
             Some(InterruptType::IRQ),
             DeviceSpeed::OneMhz,

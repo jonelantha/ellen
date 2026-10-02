@@ -3,12 +3,14 @@ use std::{cell::Cell, rc::Rc};
 use crate::word::Word;
 
 use super::device::Device;
+use super::via_port_connections::{ViaPortConnections, ViaPortState};
 
 #[cfg(test)]
 mod tests;
 
-pub struct SysViaStub<Sound> {
-    bus: SysViaBus<Sound>,
+pub struct SysViaStub<PortConnections> {
+    port_connections: PortConnections,
+    ic32_latch: Rc<Cell<u8>>,
     read: Box<dyn Fn(u16, u64) -> u64>,
     write: Box<dyn Fn(u16, u8, u8, u64) -> u64>,
     on_vsync_change: Box<dyn Fn(bool) -> u64>,
@@ -18,22 +20,18 @@ pub struct SysViaStub<Sound> {
     data_registers: ViaDataRegisters,
 }
 
-impl<OnSoundRegisterWrite> SysViaStub<SN76496Stub<OnSoundRegisterWrite>>
-where
-    OnSoundRegisterWrite: Fn(u64, u8),
-{
+impl<PortConnections: ViaPortConnections> SysViaStub<PortConnections> {
     pub fn new(
         read: Box<dyn Fn(u16, u64) -> u64>,
         write: Box<dyn Fn(u16, u8, u8, u64) -> u64>,
         on_vsync_change: Box<dyn Fn(bool) -> u64>,
         handle_trigger: Box<dyn Fn(u64) -> u64>,
         ic32_latch: Rc<Cell<u8>>,
-        on_sound_register_write: OnSoundRegisterWrite,
+        port_connections: PortConnections,
     ) -> Self {
-        let bus = SysViaBus::new(SN76496Stub::new(on_sound_register_write), ic32_latch);
-
         SysViaStub {
-            bus,
+            port_connections,
+            ic32_latch,
             read,
             write,
             on_vsync_change,
@@ -45,7 +43,7 @@ where
     }
 }
 
-impl<Sound: SoundChip> Device for SysViaStub<Sound> {
+impl<PortConnections: ViaPortConnections> Device for SysViaStub<PortConnections> {
     fn read(&mut self, address: Word, cycles: u64) -> u8 {
         self.set_params((self.read)(address.into(), cycles))
     }
@@ -78,7 +76,7 @@ impl<Sound: SoundChip> Device for SysViaStub<Sound> {
         self.set_params((self.write)(
             address.into(),
             value,
-            self.bus.ic32_latch.get(),
+            self.ic32_latch.get(),
             cycles,
         ));
     }
@@ -98,7 +96,7 @@ impl<Sound: SoundChip> Device for SysViaStub<Sound> {
     }
 }
 
-impl<Sound: SoundChip> SysViaStub<Sound> {
+impl<PortConnections: ViaPortConnections> SysViaStub<PortConnections> {
     fn sync(&mut self, cycles: u64) {
         if let Some(trigger) = self.trigger
             && trigger <= cycles
@@ -124,7 +122,7 @@ impl<Sound: SoundChip> SysViaStub<Sound> {
     }
 
     fn update_bus(&mut self, cycles: u64) {
-        self.bus.update(
+        self.port_connections.update(
             ViaPortState {
                 value: self.data_registers.ora,
                 output_mask: self.data_registers.ddra,
@@ -147,135 +145,4 @@ struct ViaDataRegisters {
     ddra: u8,
     orb: u8,
     ddrb: u8,
-}
-
-struct ViaPortState {
-    value: u8,
-    output_mask: u8,
-}
-
-impl ViaPortState {
-    fn resolve_floating(&self) -> u8 {
-        // floating lines treated as high
-        (self.value & self.output_mask) | !self.output_mask
-    }
-}
-
-struct SysViaBus<Sound> {
-    sound: Sound,
-    ic32_latch: IC32Latch,
-}
-
-impl<Sound: SoundChip> SysViaBus<Sound> {
-    pub fn new(sound: Sound, ic32_latch: Rc<Cell<u8>>) -> Self {
-        SysViaBus {
-            sound,
-            ic32_latch: IC32Latch::new(ic32_latch),
-        }
-    }
-
-    fn update(&mut self, port_a: ViaPortState, port_b: ViaPortState, cycles: u64) {
-        let port_a_data = port_a.resolve_floating();
-        let port_b_data = port_b.resolve_floating();
-
-        let latch_output = self.ic32_latch.update(port_b_data & 0x0f);
-
-        let latch_output_line_0 = latch_output & 0x01 == 0x01;
-
-        let sound_written = self.sound.update(latch_output_line_0, port_a_data, cycles);
-
-        if sound_written {
-            self.debug_check_sound_mask(port_a.output_mask, cycles);
-        }
-    }
-
-    fn debug_check_sound_mask(&self, output_mask: u8, cycles: u64) {
-        if output_mask != 0xff {
-            #[cfg(target_arch = "wasm32")]
-            web_sys::console::log_1(
-                &format!(
-                    "sound write output_mask == {:#04x} {:?}",
-                    output_mask, cycles
-                )
-                .into(),
-            );
-        }
-    }
-}
-
-pub struct IC32Latch {
-    latch: Rc<Cell<u8>>,
-}
-
-impl IC32Latch {
-    fn new(latch: Rc<Cell<u8>>) -> Self {
-        IC32Latch { latch }
-    }
-
-    fn get(&self) -> u8 {
-        self.latch.get()
-    }
-
-    fn update(&mut self, data: u8) -> u8 {
-        let bit = 1 << (data & 0x07);
-
-        if data & 0x08 != 0 {
-            self.latch.set(self.latch.get() | bit);
-        } else {
-            self.latch.set(self.latch.get() & !bit);
-        };
-
-        self.latch.get()
-    }
-}
-
-pub trait SoundChip {
-    /// Called with the current level of the chip's inputs whenever anything
-    /// upstream may have changed them, so most calls change nothing.
-    ///
-    /// The chip only sees input levels, and right now only logs writes when
-    /// enabled and something changes - in the future we move to a full event
-    /// logging model (logging disabled events) and let the renderer decide
-    /// when a write occured or reoccured
-    ///
-    /// Returns true if this update latched a register write.
-    fn update(&mut self, write_enable_active_low: bool, data: u8, cycles: u64) -> bool;
-}
-
-pub struct SN76496Stub<OnSoundRegisterWrite> {
-    on_sound_register_write: OnSoundRegisterWrite,
-    previous_data: Option<u8>,
-}
-
-impl<OnSoundRegisterWrite> SN76496Stub<OnSoundRegisterWrite> {
-    fn new(on_sound_register_write: OnSoundRegisterWrite) -> Self {
-        SN76496Stub {
-            on_sound_register_write,
-            previous_data: None,
-        }
-    }
-}
-
-impl<OnSoundRegisterWrite> SoundChip for SN76496Stub<OnSoundRegisterWrite>
-where
-    OnSoundRegisterWrite: Fn(u64, u8),
-{
-    fn update(&mut self, write_enable_active_low: bool, data: u8, cycles: u64) -> bool {
-        if !write_enable_active_low {
-            if self
-                .previous_data
-                .is_none_or(|previous_data| previous_data != data)
-            {
-                (self.on_sound_register_write)(cycles, data);
-
-                self.previous_data = Some(data);
-
-                return true;
-            }
-        } else {
-            self.previous_data = None;
-        }
-
-        false
-    }
 }
