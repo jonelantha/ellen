@@ -3,7 +3,7 @@ use std::{cell::Cell, rc::Rc};
 use js_sys::Function;
 use wasm_bindgen::JsValue;
 
-use super::sys_via_stub::SysViaStub;
+use super::sys_via_stub::{SN76496Stub, SysViaStub};
 
 pub fn new_sys_via_stub(
     js_read: Function,
@@ -12,7 +12,7 @@ pub fn new_sys_via_stub(
     js_handle_trigger: Function,
     ic32_latch: Rc<Cell<u8>>,
     on_sound_register_write: impl Fn(u64, u8) + 'static,
-) -> SysViaStub<impl Fn(u64, u8)> {
+) -> SysViaStub<SN76496Stub<impl Fn(u64, u8)>> {
     let read = Box::new(move |address: u16, cycles: u64| {
         js_read
             .call2(&JsValue::NULL, &address.into(), &cycles.into())
