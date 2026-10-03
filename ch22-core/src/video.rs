@@ -17,6 +17,7 @@ use crtc::Crtc;
 pub use field_data::Field;
 use field_line::FieldLine;
 use video_crtc_registers_device::VideoCRTCRegistersDevice;
+pub use video_memory_access::VideoBase;
 use video_memory_access::VideoMemoryAccess;
 use video_registers::VideoRegisters;
 use video_ula_registers_device::VideoULARegistersDevice;
@@ -53,7 +54,7 @@ impl Video {
 
     pub fn process_scanline<'a>(
         &mut self,
-        ic32_latch: u8,
+        video_base: VideoBase,
         get_buffer: impl Fn(std::ops::Range<u16>) -> &'a [u8],
         mut on_vsync_change: impl FnMut(bool),
     ) {
@@ -73,7 +74,7 @@ impl Video {
                 snapshot_params.address,
                 snapshot_params.raster_address_even,
                 snapshot_params.raster_address_odd,
-                ic32_latch,
+                video_base,
                 self.field_counter,
                 registers,
                 get_buffer,

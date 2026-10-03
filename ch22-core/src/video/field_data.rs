@@ -1,7 +1,7 @@
 use std::cmp::{max, min};
 
 use crate::video::{
-    FieldLine, MAX_LINES, VideoMemoryAccess, VideoRegisters,
+    FieldLine, MAX_LINES, VideoBase, VideoMemoryAccess, VideoRegisters,
     video_registers::{R8_CURSOR_DELAY_HIDDEN, R10CursorBlinkMode},
 };
 
@@ -35,7 +35,7 @@ impl Field {
         crtc_memory_address: u16,
         crtc_raster_address_even: u8,
         crtc_raster_address_odd: u8,
-        ic32_latch: u8,
+        video_base: VideoBase,
         field_counter: u8,
         video_registers: &VideoRegisters,
         get_buffer: impl Fn(std::ops::Range<u16>) -> &'a [u8],
@@ -62,7 +62,7 @@ impl Field {
                 line,
                 crtc_memory_address,
                 crtc_raster_address_even,
-                ic32_latch,
+                video_base,
                 video_registers,
                 get_buffer,
             );
@@ -102,7 +102,7 @@ fn snapshot_hires_scanline_raster_data<'a>(
     field_line: &mut FieldLine,
     crtc_memory_address: u16,
     crtc_raster_address_even: u8,
-    ic32_latch: u8,
+    video_base: VideoBase,
     video_registers: &VideoRegisters,
     get_buffer: impl Fn(std::ops::Range<u16>) -> &'a [u8],
 ) {
@@ -118,7 +118,7 @@ fn snapshot_hires_scanline_raster_data<'a>(
     match VideoMemoryAccess::translate_crtc_hires_range(
         crtc_memory_address,
         crtc_length,
-        ic32_latch,
+        video_base,
     ) {
         None => field_line.set_invalid_range(),
         Some(ranges) => field_line.set_char_data_for_raster(

@@ -9,7 +9,7 @@ use super::{
 use crate::address_spaces::{IOSpace, Ram, Rom};
 use crate::devices::{RomSelect, SysViaBus};
 use crate::sound_register_writes::SoundRegisterWrites;
-use crate::video::Video;
+use crate::video::{Video, VideoBase};
 use crate::{cpu::Cpu, devices::DeviceSpeed};
 
 #[derive(Default)]
@@ -90,10 +90,10 @@ impl Core {
 
             self.get_runner().run(next_scanline_trigger);
 
-            let ic32_latch = self.sys_via_bus.borrow().ic32();
+            let video_base = VideoBase::from_bits(self.sys_via_bus.borrow().video_base_bits());
 
             self.video.process_scanline(
-                ic32_latch,
+                video_base,
                 |range| self.ram.slice(range),
                 |vsync| self.io_space.on_vsync_change(vsync),
             );

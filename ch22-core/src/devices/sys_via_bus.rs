@@ -8,6 +8,13 @@ pub struct SysViaBus {
 }
 
 impl SysViaBus {
+    /// IC32 outputs 4 and 5 are wired to the video address translation: bit 0
+    /// of the result is output 4, bit 1 is output 5.
+    pub fn video_base_bits(&self) -> u8 {
+        (self.ic32_latch.get() >> 4) & 0b11
+    }
+
+    #[cfg(test)]
     pub fn ic32(&self) -> u8 {
         self.ic32_latch.get()
     }
@@ -38,7 +45,7 @@ impl ViaPortConnections for SysViaBus {
     }
 
     fn ic32_latch(&self) -> u8 {
-        self.ic32()
+        self.ic32_latch.get()
     }
 }
 
