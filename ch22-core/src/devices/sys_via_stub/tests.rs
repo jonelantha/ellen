@@ -3,6 +3,7 @@ use std::rc::Rc;
 
 use super::*;
 use crate::devices::{SN76496Stub, SysViaBus};
+use crate::sound_register_writes::SoundRegisterWrites;
 
 const ADDR_ORB: u16 = 0x0000;
 const ADDR_ORA: u16 = 0x0001;
@@ -178,21 +179,17 @@ fn it_ignores_addresses_that_are_not_ic32_ora_or_ddrb() {
 }
 
 struct Harness {
-    stub: SysViaStub<SysViaBus<SN76496Stub<Box<dyn Fn(u64, u8)>>>>,
+    stub: SysViaStub<SysViaBus<SN76496Stub>>,
     ic32_latch: Rc<Cell<u8>>,
-    sound_writes: Rc<RefCell<Vec<(u64, u8)>>>,
+    sound_writes: Rc<RefCell<SoundRegisterWrites>>,
 }
 
 impl Harness {
     fn new() -> Self {
         let ic32_latch = Rc::new(Cell::new(0x00));
-        let sound_writes = Rc::new(RefCell::new(Vec::new()));
-        let recorder = sound_writes.clone();
+        let sound_writes = Rc::new(RefCell::new(SoundRegisterWrites::default()));
 
-        let recorder: Box<dyn Fn(u64, u8)> =
-            Box::new(move |cycles, value| recorder.borrow_mut().push((cycles, value)));
-
-        let bus = SysViaBus::new(SN76496Stub::new(recorder), ic32_latch.clone());
+        let bus = SysViaBus::new(SN76496Stub::new(sound_writes.clone()), ic32_latch.clone());
 
         let stub = SysViaStub::new(
             Box::new(|_, _| 0),
@@ -240,11 +237,17 @@ impl Harness {
     }
 
     fn get_sound_writes(&self) -> Vec<(u64, u8)> {
-        self.sound_writes.borrow().clone()
+        let writes = self.sound_writes.borrow();
+        let base_cycle_count = writes.base_cycle_count;
+
+        writes.entries[..writes.num_entries]
+            .iter()
+            .map(|entry| (base_cycle_count + u64::from(entry.cycle_offset), entry.data))
+            .collect()
     }
 
     fn clear_sound_writes(self) -> Self {
-        self.sound_writes.borrow_mut().clear();
+        self.sound_writes.borrow_mut().reset(0);
 
         return self;
     }

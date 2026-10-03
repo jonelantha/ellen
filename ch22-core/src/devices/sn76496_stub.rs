@@ -1,3 +1,7 @@
+use std::{cell::RefCell, rc::Rc};
+
+use crate::sound_register_writes::SoundRegisterWrites;
+
 pub trait SoundChip {
     /// Called with the current level of the chip's inputs whenever anything
     /// upstream may have changed them, so most calls change nothing.
@@ -11,31 +15,28 @@ pub trait SoundChip {
     fn update(&mut self, write_enable_active_low: bool, data: u8, cycles: u64) -> bool;
 }
 
-pub struct SN76496Stub<OnSoundRegisterWrite> {
-    on_sound_register_write: OnSoundRegisterWrite,
+pub struct SN76496Stub {
+    sound_register_writes: Rc<RefCell<SoundRegisterWrites>>,
     previous_data: Option<u8>,
 }
 
-impl<OnSoundRegisterWrite> SN76496Stub<OnSoundRegisterWrite> {
-    pub fn new(on_sound_register_write: OnSoundRegisterWrite) -> Self {
+impl SN76496Stub {
+    pub fn new(sound_register_writes: Rc<RefCell<SoundRegisterWrites>>) -> Self {
         SN76496Stub {
-            on_sound_register_write,
+            sound_register_writes,
             previous_data: None,
         }
     }
 }
 
-impl<OnSoundRegisterWrite> SoundChip for SN76496Stub<OnSoundRegisterWrite>
-where
-    OnSoundRegisterWrite: Fn(u64, u8),
-{
+impl SoundChip for SN76496Stub {
     fn update(&mut self, write_enable_active_low: bool, data: u8, cycles: u64) -> bool {
         if !write_enable_active_low {
             if self
                 .previous_data
                 .is_none_or(|previous_data| previous_data != data)
             {
-                (self.on_sound_register_write)(cycles, data);
+                self.sound_register_writes.borrow_mut().push(cycles, data);
 
                 self.previous_data = Some(data);
 

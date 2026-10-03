@@ -120,9 +120,7 @@ impl SystemFfi {
         let ic32_latch = self.core.ic32_latch.clone();
         let sound_register_writes = self.core.get_sound_register_writes();
 
-        let sound = SN76496Stub::new(move |cycles, data| {
-            sound_register_writes.borrow_mut().push(cycles, data);
-        });
+        let sound = SN76496Stub::new(sound_register_writes);
         let sys_via_bus = SysViaBus::new(sound, ic32_latch.clone());
 
         self.core.io_space.add_device(
