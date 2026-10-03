@@ -17,7 +17,7 @@ pub struct SysViaStub<PortConnections> {
     handle_trigger: Box<dyn Fn(u64) -> u64>,
     trigger: Option<u64>,
     interrupt: bool,
-    data_registers: ViaDataRegisters,
+    registers: ViaRegisters,
 }
 
 impl<PortConnections: ViaPortConnections> SysViaStub<PortConnections> {
@@ -38,7 +38,7 @@ impl<PortConnections: ViaPortConnections> SysViaStub<PortConnections> {
             handle_trigger,
             trigger: None,
             interrupt: false,
-            data_registers: ViaDataRegisters::default(),
+            registers: ViaRegisters::default(),
         }
     }
 }
@@ -55,19 +55,19 @@ impl<PortConnections: ViaPortConnections> Device for SysViaStub<PortConnections>
     fn phase_2(&mut self, address: Word, value: u8, cycles: u64) {
         match address.0 & 0x0f {
             0 => {
-                self.data_registers.orb = value;
+                self.registers.orb = value;
                 self.update_bus(cycles);
             }
             1 | 15 => {
-                self.data_registers.ora = value;
+                self.registers.ora = value;
                 self.update_bus(cycles);
             }
             2 => {
-                self.data_registers.ddrb = value;
+                self.registers.ddrb = value;
                 self.update_bus(cycles);
             }
             3 => {
-                self.data_registers.ddra = value;
+                self.registers.ddra = value;
                 self.update_bus(cycles);
             }
             _ => (),
@@ -124,12 +124,12 @@ impl<PortConnections: ViaPortConnections> SysViaStub<PortConnections> {
     fn update_bus(&mut self, cycles: u64) {
         self.port_connections.update(
             ViaPortState {
-                value: self.data_registers.ora,
-                output_mask: self.data_registers.ddra,
+                value: self.registers.ora,
+                output_mask: self.registers.ddra,
             },
             ViaPortState {
-                value: self.data_registers.orb,
-                output_mask: self.data_registers.ddrb,
+                value: self.registers.orb,
+                output_mask: self.registers.ddrb,
             },
             cycles,
         );
@@ -140,7 +140,7 @@ const SYS_VIA_STUB_FLAG_HAS_TRIGGER: u8 = 0x01;
 const SYS_VIA_STUB_FLAG_INTERRUPT: u8 = 0x02;
 
 #[derive(Default)]
-struct ViaDataRegisters {
+struct ViaRegisters {
     ora: u8,
     ddra: u8,
     orb: u8,
