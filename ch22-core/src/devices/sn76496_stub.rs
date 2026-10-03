@@ -26,10 +26,15 @@ impl SN76496Stub {
     /// Called with the current level of the chip's inputs whenever anything
     /// upstream may have changed them, so most calls change nothing.
     ///
-    /// The chip only sees input levels, and right now only logs writes when
-    /// enabled and something changes - in the future we move to a full event
-    /// logging model (logging disabled events) and let the renderer decide
-    /// when a write occurred or recurred.
+    /// Records one write per /WE fall, plus one for each later change of the
+    /// data while /WE is low. /WE rising is not recorded.
+    ///
+    /// The real chip samples the bus about 32 chip clocks (16 cycles) after
+    /// /WE falls. These cases are not modelled right now:
+    /// - /WE falling again inside the window
+    /// - data changing in the 32 cycle window after /WE is high
+    /// - /WE held low for long periods with the possibility of repeated writes
+    /// These cases have not yet (significanly) been observed in real code
     ///
     /// Returns true if this update latched a register write.
     pub fn update(&mut self, write_enable_active_low: bool, data: u8, cycles: u64) -> bool {
