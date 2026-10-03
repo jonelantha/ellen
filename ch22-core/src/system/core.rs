@@ -7,12 +7,11 @@ use super::{
     runner::Runner,
 };
 use crate::address_spaces::{IOSpace, Ram, Rom};
-use crate::devices::RomSelect;
+use crate::devices::{RomSelect, SN76496Stub, SysViaBus};
 use crate::sound_register_writes::SoundRegisterWrites;
 use crate::video::Video;
 use crate::{cpu::Cpu, devices::DeviceSpeed};
 
-#[derive(Default)]
 pub struct Core {
     clock: Clock,
     cpu: Cpu,
@@ -23,6 +22,30 @@ pub struct Core {
     rom_select_latch: Rc<Cell<usize>>,
     pub video: Video,
     sound_register_writes: Rc<RefCell<SoundRegisterWrites>>,
+    sys_via_bus: Rc<RefCell<SysViaBus<SN76496Stub>>>,
+}
+
+impl Default for Core {
+    fn default() -> Self {
+        let ic32_latch = Rc::<Cell<u8>>::default();
+        let sound_register_writes = Rc::<RefCell<SoundRegisterWrites>>::default();
+
+        let sound = SN76496Stub::new(sound_register_writes.clone());
+        let sys_via_bus = Rc::new(RefCell::new(SysViaBus::new(sound, ic32_latch.clone())));
+
+        Core {
+            clock: Default::default(),
+            cpu: Default::default(),
+            ram: Default::default(),
+            roms: Default::default(),
+            io_space: Default::default(),
+            ic32_latch,
+            rom_select_latch: Default::default(),
+            video: Default::default(),
+            sound_register_writes,
+            sys_via_bus,
+        }
+    }
 }
 
 impl Core {
@@ -118,8 +141,8 @@ impl Core {
         self.sound_register_writes.as_ptr()
     }
 
-    pub fn get_sound_register_writes(&self) -> Rc<RefCell<SoundRegisterWrites>> {
-        self.sound_register_writes.clone()
+    pub fn get_sys_via_bus(&self) -> Rc<RefCell<SysViaBus<SN76496Stub>>> {
+        self.sys_via_bus.clone()
     }
 }
 

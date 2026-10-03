@@ -179,7 +179,7 @@ fn it_ignores_addresses_that_are_not_ic32_ora_or_ddrb() {
 }
 
 struct Harness {
-    stub: SysViaStub<SysViaBus<SN76496Stub>>,
+    stub: SysViaStub<Rc<RefCell<SysViaBus<SN76496Stub>>>>,
     ic32_latch: Rc<Cell<u8>>,
     sound_writes: Rc<RefCell<SoundRegisterWrites>>,
 }
@@ -189,7 +189,10 @@ impl Harness {
         let ic32_latch = Rc::new(Cell::new(0x00));
         let sound_writes = Rc::new(RefCell::new(SoundRegisterWrites::default()));
 
-        let bus = SysViaBus::new(SN76496Stub::new(sound_writes.clone()), ic32_latch.clone());
+        let bus = Rc::new(RefCell::new(SysViaBus::new(
+            SN76496Stub::new(sound_writes.clone()),
+            ic32_latch.clone(),
+        )));
 
         let stub = SysViaStub::new(
             Box::new(|_, _| 0),
