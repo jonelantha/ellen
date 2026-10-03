@@ -34,7 +34,8 @@ impl SN76496Stub {
     /// - /WE falling again inside the window
     /// - data changing in the 32 cycle window after /WE is high
     /// - /WE held low for long periods with the possibility of repeated writes
-    /// These cases have not yet (significanly) been observed in real code
+    ///
+    /// These cases have not yet (significantly) been observed in real code
     ///
     /// Returns true if this update latched a register write.
     pub fn update(&mut self, write_enable_active_low: bool, data: u8, cycles: u64) -> bool {

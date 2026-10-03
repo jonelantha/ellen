@@ -207,20 +207,20 @@ impl Harness {
     fn ddrb(mut self, value: u8) -> Self {
         self.stub.phase_2(ADDR_DDRB.into(), value, 0);
 
-        return self;
+        self
     }
 
     fn ddra_ddrb_output(mut self) -> Self {
         self.stub.phase_2(ADDR_DDRA.into(), DDRA_ALL_OUTPUT, 0);
         self.stub.phase_2(ADDR_DDRB.into(), DDRB_ALL_OUTPUT, 0);
 
-        return self;
+        self
     }
 
     fn ora(mut self, value: u8) -> Self {
         self.stub.phase_2(ADDR_ORA.into(), value, 0);
 
-        return self;
+        self
     }
 
     fn latch_and_orb(mut self, latch: u8, orb: u8) -> Self {
@@ -230,7 +230,7 @@ impl Harness {
         }
         self.stub.phase_2(ADDR_ORB.into(), orb, 0);
 
-        return self;
+        self
     }
 
     fn get_sound_writes(&self) -> Vec<(u64, u8)> {
@@ -247,6 +247,6 @@ impl Harness {
     fn clear_sound_writes(self) -> Self {
         self.bus.borrow_mut().sound_mut().start_field(0);
 
-        return self;
+        self
     }
 }
