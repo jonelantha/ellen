@@ -7,7 +7,7 @@ use super::{
     runner::Runner,
 };
 use crate::address_spaces::{IOSpace, Ram, Rom};
-use crate::devices::{RomSelect, SN76496Stub, SysViaBus};
+use crate::devices::{RomSelect, SysViaBus};
 use crate::sound_register_writes::SoundRegisterWrites;
 use crate::video::Video;
 use crate::{cpu::Cpu, devices::DeviceSpeed};
@@ -21,7 +21,7 @@ pub struct Core {
     pub ic32_latch: Rc<Cell<u8>>,
     rom_select_latch: Rc<Cell<usize>>,
     pub video: Video,
-    sys_via_bus: Rc<RefCell<SysViaBus<SN76496Stub>>>,
+    sys_via_bus: Rc<RefCell<SysViaBus>>,
 }
 
 impl Default for Core {
@@ -138,7 +138,7 @@ impl Core {
         self.sys_via_bus.borrow().sound().register_writes_ptr()
     }
 
-    pub fn get_sys_via_bus(&self) -> Rc<RefCell<SysViaBus<SN76496Stub>>> {
+    pub fn get_sys_via_bus(&self) -> Rc<RefCell<SysViaBus>> {
         self.sys_via_bus.clone()
     }
 }

@@ -2,7 +2,7 @@ use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 use super::*;
-use crate::devices::{SN76496Stub, SysViaBus};
+use crate::devices::SysViaBus;
 
 const ADDR_ORB: u16 = 0x0000;
 const ADDR_ORA: u16 = 0x0001;
@@ -178,8 +178,8 @@ fn it_ignores_addresses_that_are_not_ic32_ora_or_ddrb() {
 }
 
 struct Harness {
-    stub: SysViaStub<Rc<RefCell<SysViaBus<SN76496Stub>>>>,
-    bus: Rc<RefCell<SysViaBus<SN76496Stub>>>,
+    stub: SysViaStub<Rc<RefCell<SysViaBus>>>,
+    bus: Rc<RefCell<SysViaBus>>,
     ic32_latch: Rc<Cell<u8>>,
 }
 
