@@ -115,7 +115,6 @@ impl SystemFfi {
         js_on_vsync_change: Function,
         js_handle_trigger: Function,
     ) -> DeviceID {
-        let ic32_latch = self.core.ic32_latch.clone();
         let sys_via_bus = self.core.get_sys_via_bus();
 
         self.core.io_space.add_device(
@@ -125,7 +124,6 @@ impl SystemFfi {
                 js_write,
                 js_on_vsync_change,
                 js_handle_trigger,
-                ic32_latch,
                 sys_via_bus,
             )),
             Some(InterruptType::IRQ),

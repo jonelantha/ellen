@@ -1,5 +1,3 @@
-use std::{cell::Cell, rc::Rc};
-
 use js_sys::Function;
 use wasm_bindgen::JsValue;
 
@@ -11,7 +9,6 @@ pub fn new_sys_via_stub<PortConnections: ViaPortConnections>(
     js_write: Function,
     js_on_vsync_change: Function,
     js_handle_trigger: Function,
-    ic32_latch: Rc<Cell<u8>>,
     port_connections: PortConnections,
 ) -> SysViaStub<PortConnections> {
     let read = Box::new(move |address: u16, cycles: u64| {
@@ -57,7 +54,6 @@ pub fn new_sys_via_stub<PortConnections: ViaPortConnections>(
         write,
         on_vsync_change,
         handle_trigger,
-        ic32_latch,
         port_connections,
     )
 }

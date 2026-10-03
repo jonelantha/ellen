@@ -194,7 +194,6 @@ impl Harness {
             Box::new(|_, _, _, _| 0),
             Box::new(|_| 0),
             Box::new(|_| 0),
-            ic32_latch.clone(),
             bus.clone(),
         );
 

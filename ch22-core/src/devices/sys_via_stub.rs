@@ -1,5 +1,3 @@
-use std::{cell::Cell, rc::Rc};
-
 use crate::word::Word;
 
 use super::device::Device;
@@ -10,7 +8,6 @@ mod tests;
 
 pub struct SysViaStub<PortConnections> {
     port_connections: PortConnections,
-    ic32_latch: Rc<Cell<u8>>,
     read: Box<dyn Fn(u16, u64) -> u64>,
     write: Box<dyn Fn(u16, u8, u8, u64) -> u64>,
     on_vsync_change: Box<dyn Fn(bool) -> u64>,
@@ -26,12 +23,10 @@ impl<PortConnections: ViaPortConnections> SysViaStub<PortConnections> {
         write: Box<dyn Fn(u16, u8, u8, u64) -> u64>,
         on_vsync_change: Box<dyn Fn(bool) -> u64>,
         handle_trigger: Box<dyn Fn(u64) -> u64>,
-        ic32_latch: Rc<Cell<u8>>,
         port_connections: PortConnections,
     ) -> Self {
         SysViaStub {
             port_connections,
-            ic32_latch,
             read,
             write,
             on_vsync_change,
@@ -76,7 +71,7 @@ impl<PortConnections: ViaPortConnections> Device for SysViaStub<PortConnections>
         self.set_params((self.write)(
             address.into(),
             value,
-            self.ic32_latch.get(),
+            self.port_connections.ic32_latch(),
             cycles,
         ));
     }

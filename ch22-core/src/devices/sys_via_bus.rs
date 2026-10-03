@@ -40,6 +40,10 @@ impl ViaPortConnections for SysViaBus {
             debug_check_sound_mask(port_a.output_mask, cycles);
         }
     }
+
+    fn ic32_latch(&self) -> u8 {
+        self.ic32_latch.get()
+    }
 }
 
 #[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables))]
@@ -63,6 +67,10 @@ struct IC32Latch {
 impl IC32Latch {
     fn new(latch: Rc<Cell<u8>>) -> Self {
         IC32Latch { latch }
+    }
+
+    fn get(&self) -> u8 {
+        self.latch.get()
     }
 
     fn update(&mut self, data: u8) -> u8 {
