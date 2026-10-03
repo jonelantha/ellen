@@ -1,5 +1,3 @@
-use std::{cell::RefCell, rc::Rc};
-
 use crate::sound_register_writes::SoundRegisterWrites;
 
 pub trait SoundChip {
@@ -15,17 +13,27 @@ pub trait SoundChip {
     fn update(&mut self, write_enable_active_low: bool, data: u8, cycles: u64) -> bool;
 }
 
+/// Records the chip's register writes for the field in progress into a buffer
+/// that is read from outside (see `SoundRegisterWrites`).
+#[derive(Default)]
 pub struct SN76496Stub {
-    sound_register_writes: Rc<RefCell<SoundRegisterWrites>>,
+    sound_register_writes: SoundRegisterWrites,
     previous_data: Option<u8>,
 }
 
 impl SN76496Stub {
-    pub fn new(sound_register_writes: Rc<RefCell<SoundRegisterWrites>>) -> Self {
-        SN76496Stub {
-            sound_register_writes,
-            previous_data: None,
-        }
+    /// Empties the buffer; recorded cycle offsets are relative to `base_cycle_count`.
+    pub fn start_field(&mut self, base_cycle_count: u64) {
+        self.sound_register_writes.reset(base_cycle_count);
+    }
+
+    pub fn register_writes_ptr(&self) -> *const SoundRegisterWrites {
+        &raw const self.sound_register_writes
+    }
+
+    #[cfg(test)]
+    pub fn register_writes(&self) -> &SoundRegisterWrites {
+        &self.sound_register_writes
     }
 }
 
@@ -36,7 +44,7 @@ impl SoundChip for SN76496Stub {
                 .previous_data
                 .is_none_or(|previous_data| previous_data != data)
             {
-                self.sound_register_writes.borrow_mut().push(cycles, data);
+                self.sound_register_writes.push(cycles, data);
 
                 self.previous_data = Some(data);
 

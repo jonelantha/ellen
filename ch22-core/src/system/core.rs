@@ -21,17 +21,14 @@ pub struct Core {
     pub ic32_latch: Rc<Cell<u8>>,
     rom_select_latch: Rc<Cell<usize>>,
     pub video: Video,
-    sound_register_writes: Rc<RefCell<SoundRegisterWrites>>,
     sys_via_bus: Rc<RefCell<SysViaBus<SN76496Stub>>>,
 }
 
 impl Default for Core {
     fn default() -> Self {
         let ic32_latch = Rc::<Cell<u8>>::default();
-        let sound_register_writes = Rc::<RefCell<SoundRegisterWrites>>::default();
 
-        let sound = SN76496Stub::new(sound_register_writes.clone());
-        let sys_via_bus = Rc::new(RefCell::new(SysViaBus::new(sound, ic32_latch.clone())));
+        let sys_via_bus = Rc::new(RefCell::new(SysViaBus::new(ic32_latch.clone())));
 
         Core {
             clock: Default::default(),
@@ -42,7 +39,6 @@ impl Default for Core {
             ic32_latch,
             rom_select_latch: Default::default(),
             video: Default::default(),
-            sound_register_writes,
             sys_via_bus,
         }
     }
@@ -104,9 +100,10 @@ impl Core {
     }
 
     pub fn run_one_field(&mut self) -> u64 {
-        self.sound_register_writes
+        self.sys_via_bus
             .borrow_mut()
-            .reset(self.clock.get_cycles());
+            .sound_mut()
+            .start_field(self.clock.get_cycles());
 
         loop {
             let next_scanline_trigger = self.video.get_next_scanline_trigger();
@@ -138,7 +135,7 @@ impl Core {
     }
 
     pub fn get_sound_register_writes_start(&self) -> *const SoundRegisterWrites {
-        self.sound_register_writes.as_ptr()
+        self.sys_via_bus.borrow().sound().register_writes_ptr()
     }
 
     pub fn get_sys_via_bus(&self) -> Rc<RefCell<SysViaBus<SN76496Stub>>> {

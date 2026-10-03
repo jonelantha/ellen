@@ -3,7 +3,6 @@ use std::rc::Rc;
 
 use super::*;
 use crate::devices::{SN76496Stub, SysViaBus};
-use crate::sound_register_writes::SoundRegisterWrites;
 
 const ADDR_ORB: u16 = 0x0000;
 const ADDR_ORA: u16 = 0x0001;
@@ -180,19 +179,15 @@ fn it_ignores_addresses_that_are_not_ic32_ora_or_ddrb() {
 
 struct Harness {
     stub: SysViaStub<Rc<RefCell<SysViaBus<SN76496Stub>>>>,
+    bus: Rc<RefCell<SysViaBus<SN76496Stub>>>,
     ic32_latch: Rc<Cell<u8>>,
-    sound_writes: Rc<RefCell<SoundRegisterWrites>>,
 }
 
 impl Harness {
     fn new() -> Self {
         let ic32_latch = Rc::new(Cell::new(0x00));
-        let sound_writes = Rc::new(RefCell::new(SoundRegisterWrites::default()));
 
-        let bus = Rc::new(RefCell::new(SysViaBus::new(
-            SN76496Stub::new(sound_writes.clone()),
-            ic32_latch.clone(),
-        )));
+        let bus = Rc::new(RefCell::new(SysViaBus::new(ic32_latch.clone())));
 
         let stub = SysViaStub::new(
             Box::new(|_, _| 0),
@@ -200,13 +195,13 @@ impl Harness {
             Box::new(|_| 0),
             Box::new(|_| 0),
             ic32_latch.clone(),
-            bus,
+            bus.clone(),
         );
 
         Harness {
             stub,
+            bus,
             ic32_latch,
-            sound_writes,
         }
     }
 
@@ -240,7 +235,8 @@ impl Harness {
     }
 
     fn get_sound_writes(&self) -> Vec<(u64, u8)> {
-        let writes = self.sound_writes.borrow();
+        let bus = self.bus.borrow();
+        let writes = bus.sound().register_writes();
         let base_cycle_count = writes.base_cycle_count;
 
         writes.entries[..writes.num_entries]
@@ -250,7 +246,7 @@ impl Harness {
     }
 
     fn clear_sound_writes(self) -> Self {
-        self.sound_writes.borrow_mut().reset(0);
+        self.bus.borrow_mut().sound_mut().start_field(0);
 
         return self;
     }

@@ -8,12 +8,22 @@ pub struct SysViaBus<Sound> {
     ic32_latch: IC32Latch,
 }
 
-impl<Sound: SoundChip> SysViaBus<Sound> {
-    pub fn new(sound: Sound, ic32_latch: Rc<Cell<u8>>) -> Self {
+impl<Sound: SoundChip + Default> SysViaBus<Sound> {
+    pub fn new(ic32_latch: Rc<Cell<u8>>) -> Self {
         SysViaBus {
-            sound,
+            sound: Sound::default(),
             ic32_latch: IC32Latch::new(ic32_latch),
         }
+    }
+}
+
+impl<Sound: SoundChip> SysViaBus<Sound> {
+    pub fn sound(&self) -> &Sound {
+        &self.sound
+    }
+
+    pub fn sound_mut(&mut self) -> &mut Sound {
+        &mut self.sound
     }
 
     fn debug_check_sound_mask(&self, output_mask: u8, cycles: u64) {
