@@ -1,19 +1,15 @@
-use std::{cell::Cell, rc::Rc};
-
 use super::sn76496_stub::SN76496Stub;
 use super::via_port_connections::{ViaPortConnections, ViaPortState};
 
+#[derive(Default)]
 pub struct SysViaBus {
     sound: SN76496Stub,
     ic32_latch: IC32Latch,
 }
 
 impl SysViaBus {
-    pub fn new(ic32_latch: Rc<Cell<u8>>) -> Self {
-        SysViaBus {
-            sound: SN76496Stub::default(),
-            ic32_latch: IC32Latch::new(ic32_latch),
-        }
+    pub fn ic32(&self) -> u8 {
+        self.ic32_latch.get()
     }
 
     pub fn sound(&self) -> &SN76496Stub {
@@ -42,7 +38,7 @@ impl ViaPortConnections for SysViaBus {
     }
 
     fn ic32_latch(&self) -> u8 {
-        self.ic32_latch.get()
+        self.ic32()
     }
 }
 
@@ -60,28 +56,25 @@ fn debug_check_sound_mask(output_mask: u8, cycles: u64) {
     }
 }
 
+#[derive(Default)]
 struct IC32Latch {
-    latch: Rc<Cell<u8>>,
+    latch: u8,
 }
 
 impl IC32Latch {
-    fn new(latch: Rc<Cell<u8>>) -> Self {
-        IC32Latch { latch }
-    }
-
     fn get(&self) -> u8 {
-        self.latch.get()
+        self.latch
     }
 
     fn update(&mut self, data: u8) -> u8 {
         let bit = 1 << (data & 0x07);
 
         if data & 0x08 != 0 {
-            self.latch.set(self.latch.get() | bit);
+            self.latch |= bit;
         } else {
-            self.latch.set(self.latch.get() & !bit);
-        };
+            self.latch &= !bit;
+        }
 
-        self.latch.get()
+        self.latch
     }
 }

@@ -12,36 +12,16 @@ use crate::sound_register_writes::SoundRegisterWrites;
 use crate::video::Video;
 use crate::{cpu::Cpu, devices::DeviceSpeed};
 
+#[derive(Default)]
 pub struct Core {
     clock: Clock,
     cpu: Cpu,
     ram: Ram,
     pub roms: [Rom; ROMS_LEN],
     pub io_space: IOSpace,
-    pub ic32_latch: Rc<Cell<u8>>,
     rom_select_latch: Rc<Cell<usize>>,
     pub video: Video,
     sys_via_bus: Rc<RefCell<SysViaBus>>,
-}
-
-impl Default for Core {
-    fn default() -> Self {
-        let ic32_latch = Rc::<Cell<u8>>::default();
-
-        let sys_via_bus = Rc::new(RefCell::new(SysViaBus::new(ic32_latch.clone())));
-
-        Core {
-            clock: Default::default(),
-            cpu: Default::default(),
-            ram: Default::default(),
-            roms: Default::default(),
-            io_space: Default::default(),
-            ic32_latch,
-            rom_select_latch: Default::default(),
-            video: Default::default(),
-            sys_via_bus,
-        }
-    }
 }
 
 impl Core {
@@ -110,8 +90,10 @@ impl Core {
 
             self.get_runner().run(next_scanline_trigger);
 
+            let ic32_latch = self.sys_via_bus.borrow().ic32();
+
             self.video.process_scanline(
-                self.ic32_latch.get(),
+                ic32_latch,
                 |range| self.ram.slice(range),
                 |vsync| self.io_space.on_vsync_change(vsync),
             );

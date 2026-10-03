@@ -1,4 +1,4 @@
-use std::cell::{Cell, RefCell};
+use std::cell::RefCell;
 use std::rc::Rc;
 
 use super::*;
@@ -24,7 +24,7 @@ fn it_sets_an_ic32_latch_bit_without_triggering_a_sound_register_write() {
     // ORB write -> ic32 bit 3 set (0x08 | 0x03)
     harness.stub.phase_2(ADDR_ORB.into(), 0x0b, 100);
 
-    assert_eq!(harness.ic32_latch.get(), 0x08);
+    assert_eq!(harness.ic32_latch(), 0x08);
     assert_eq!(harness.get_sound_writes(), []);
 }
 
@@ -38,7 +38,7 @@ fn it_clears_an_ic32_latch_bit_without_triggering_a_sound_register_write() {
     // ORB write -> ic32 bit 3 clear
     harness.stub.phase_2(ADDR_ORB.into(), 0x03, 100);
 
-    assert_eq!(harness.ic32_latch.get(), 0xf7);
+    assert_eq!(harness.ic32_latch(), 0xf7);
     assert_eq!(harness.get_sound_writes(), []);
 }
 
@@ -51,7 +51,7 @@ fn it_reads_an_undriven_ic32_address_pin_as_high() {
     // ORB write -> ic32 bit 1 set (pins 0x09), not bit 0
     harness.stub.phase_2(ADDR_ORB.into(), 0x08, 100);
 
-    assert_eq!(harness.ic32_latch.get(), 0x02);
+    assert_eq!(harness.ic32_latch(), 0x02);
 }
 
 #[test]
@@ -66,7 +66,7 @@ fn it_reads_an_undriven_ic32_data_pin_as_high() {
     // ORB write -> ic32 bit 2 set (pins 0x0a), not cleared
     harness.stub.phase_2(ADDR_ORB.into(), 0x02, 100);
 
-    assert_eq!(harness.ic32_latch.get(), 0x05);
+    assert_eq!(harness.ic32_latch(), 0x05);
 }
 
 #[test]
@@ -76,7 +76,7 @@ fn it_updates_the_ic32_latch_when_a_ddrb_write_changes_the_pin_levels() {
     // DDRB write -> PB0-3 all inputs -> ic32 bit 7 set (pins 0x0f)
     harness.stub.phase_2(ADDR_DDRB.into(), 0x00, 100);
 
-    assert_eq!(harness.ic32_latch.get(), 0x80);
+    assert_eq!(harness.ic32_latch(), 0x80);
 }
 
 #[test]
@@ -99,7 +99,7 @@ fn it_triggers_a_sound_register_write_on_the_sound_select_bit_falling() {
         harness.stub.phase_2(ADDR_ORB.into(), new_orb, 200);
 
         assert_eq!(
-            harness.ic32_latch.get(),
+            harness.ic32_latch(),
             expected_ic32,
             "latch mismatch for initial_ic32={initial_ic32:#x}, new_orb={new_orb:#x}"
         );
@@ -173,21 +173,18 @@ fn it_ignores_addresses_that_are_not_ic32_ora_or_ddrb() {
 
     harness.stub.phase_2(ADDR_OTHER.into(), 0x55, 900);
 
-    assert_eq!(harness.ic32_latch.get(), 0xff);
+    assert_eq!(harness.ic32_latch(), 0xff);
     assert_eq!(harness.get_sound_writes(), []);
 }
 
 struct Harness {
     stub: SysViaStub<Rc<RefCell<SysViaBus>>>,
     bus: Rc<RefCell<SysViaBus>>,
-    ic32_latch: Rc<Cell<u8>>,
 }
 
 impl Harness {
     fn new() -> Self {
-        let ic32_latch = Rc::new(Cell::new(0x00));
-
-        let bus = Rc::new(RefCell::new(SysViaBus::new(ic32_latch.clone())));
+        let bus = Rc::new(RefCell::new(SysViaBus::default()));
 
         let stub = SysViaStub::new(
             Box::new(|_, _| 0),
@@ -197,11 +194,11 @@ impl Harness {
             bus.clone(),
         );
 
-        Harness {
-            stub,
-            bus,
-            ic32_latch,
-        }
+        Harness { stub, bus }
+    }
+
+    fn ic32_latch(&self) -> u8 {
+        self.bus.borrow().ic32()
     }
 
     fn ddrb(mut self, value: u8) -> Self {
