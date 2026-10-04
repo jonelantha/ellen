@@ -22,6 +22,7 @@ pub struct Core {
     rom_select_latch: Rc<Cell<usize>>,
     pub video: Video,
     sys_via_bus: Rc<RefCell<SysViaBus>>,
+    reset_pending: bool,
 }
 
 impl Core {
@@ -76,6 +77,8 @@ impl Core {
     }
 
     pub fn reset(&mut self) {
+        self.reset_pending = true;
+
         self.get_runner().reset();
     }
 
@@ -84,6 +87,12 @@ impl Core {
             .borrow_mut()
             .sound_mut()
             .start_field(self.clock.get_cycles());
+
+        if self.reset_pending {
+            self.reset_pending = false;
+
+            self.io_space.reset(&self.clock);
+        }
 
         loop {
             let next_scanline_trigger = self.video.get_next_scanline_trigger();

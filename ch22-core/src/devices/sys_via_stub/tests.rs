@@ -95,6 +95,17 @@ fn it_exposes_ic32_bits_4_and_5_as_the_video_base_bits() {
 }
 
 #[test]
+fn it_records_a_sound_register_write_of_ff_on_reset() {
+    let mut harness = Harness::new().clear_sound_writes();
+
+    harness.stub.reset(100);
+
+    // ports undriven: IC32 selects the sound chip (output 0 low), data lines float high
+    assert_eq!(harness.get_sound_writes(), [(100, 0xff)]);
+    assert_eq!(harness.ic32_latch(), 0x80);
+}
+
+#[test]
 fn it_updates_the_ic32_latch_when_a_ddrb_write_changes_the_pin_levels() {
     let mut harness = Harness::new().ddra_ddrb_output();
 

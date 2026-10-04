@@ -86,6 +86,10 @@ impl<PortConnections: ViaPortConnections> Device for SysViaStub<PortConnections>
         self.interrupt = interrupt;
     }
 
+    fn reset(&mut self, cycles: u64) {
+        self.update_bus(cycles);
+    }
+
     fn on_vsync_change(&mut self, vsync: bool) {
         self.set_params((self.on_vsync_change)(vsync));
     }

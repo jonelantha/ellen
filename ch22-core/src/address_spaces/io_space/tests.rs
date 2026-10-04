@@ -155,6 +155,20 @@ fn it_keeps_reading_interrupts_from_devices_until_interrupt_found() {
     assert_eq!(*third_test_device_accesses.borrow().interrupt, []);
 }
 
+#[test]
+fn it_resets_every_device_at_the_current_cycle() {
+    let mut io_space = IOSpace::default();
+    let clock = Clock::new(1000);
+
+    let first_test_device_accesses = setup_test_device(&mut io_space, TwoMhz, false, None);
+    let second_test_device_accesses = setup_test_device(&mut io_space, OneMhz, false, Some(IRQ));
+
+    io_space.reset(&clock);
+
+    assert_eq!(first_test_device_accesses.borrow().resets, [1000]);
+    assert_eq!(second_test_device_accesses.borrow().resets, [1000]);
+}
+
 fn setup_test_device(
     io_space: &mut IOSpace,
     speed: DeviceSpeed,

@@ -68,6 +68,12 @@ impl IOSpace {
         }
     }
 
+    pub fn reset(&mut self, clock: &Clock) {
+        self.devices.for_each(|device| {
+            device.reset(clock.get_cycles());
+        });
+    }
+
     pub fn on_vsync_change(&mut self, vsync: bool) {
         self.devices.for_each(|device| {
             device.on_vsync_change(vsync);
