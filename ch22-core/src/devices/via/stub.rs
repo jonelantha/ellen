@@ -1,12 +1,19 @@
 use crate::word::Word;
 
-use super::device::Device;
-use super::via_port_connections::{ViaPortConnections, ViaPortState};
+use super::port_connections::{ViaPortConnections, ViaPortState};
+use crate::devices::Device;
 
 #[cfg(test)]
 mod tests;
 
-pub struct SysViaStub<PortConnections> {
+/// Stands in for a 6522 VIA whose real implementation is in JS. It mirrors the
+/// port registers to report port state to `PortConnections`, and forwards
+/// everything else to JS.
+///
+/// Not yet independent of the sys VIA: the JS write callback is handed the IC32
+/// latch (`ViaPortConnections::ic32_latch`), which only the sys VIA's JS device
+/// cross-checks, and `on_vsync_change` only has a meaning for the sys VIA.
+pub struct ViaStub<PortConnections> {
     port_connections: PortConnections,
     read: Box<dyn Fn(u16, u64) -> u64>,
     write: Box<dyn Fn(u16, u8, u8, u64) -> u64>,
@@ -17,7 +24,7 @@ pub struct SysViaStub<PortConnections> {
     registers: ViaRegisters,
 }
 
-impl<PortConnections: ViaPortConnections> SysViaStub<PortConnections> {
+impl<PortConnections: ViaPortConnections> ViaStub<PortConnections> {
     pub fn new(
         read: Box<dyn Fn(u16, u64) -> u64>,
         write: Box<dyn Fn(u16, u8, u8, u64) -> u64>,
@@ -25,7 +32,7 @@ impl<PortConnections: ViaPortConnections> SysViaStub<PortConnections> {
         handle_trigger: Box<dyn Fn(u64) -> u64>,
         port_connections: PortConnections,
     ) -> Self {
-        SysViaStub {
+        ViaStub {
             port_connections,
             read,
             write,
@@ -38,7 +45,7 @@ impl<PortConnections: ViaPortConnections> SysViaStub<PortConnections> {
     }
 }
 
-impl<PortConnections: ViaPortConnections> Device for SysViaStub<PortConnections> {
+impl<PortConnections: ViaPortConnections> Device for ViaStub<PortConnections> {
     fn read(&mut self, address: Word, cycles: u64) -> u8 {
         self.set_params((self.read)(address.into(), cycles))
     }
@@ -95,7 +102,7 @@ impl<PortConnections: ViaPortConnections> Device for SysViaStub<PortConnections>
     }
 }
 
-impl<PortConnections: ViaPortConnections> SysViaStub<PortConnections> {
+impl<PortConnections: ViaPortConnections> ViaStub<PortConnections> {
     fn sync(&mut self, cycles: u64) {
         if let Some(trigger) = self.trigger
             && trigger <= cycles

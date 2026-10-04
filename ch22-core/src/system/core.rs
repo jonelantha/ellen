@@ -8,7 +8,7 @@ use super::{
 };
 use crate::address_spaces::{IOSpace, Ram, Rom};
 use crate::devices::{RomSelect, SysViaBus};
-use crate::sound_register_writes::SoundRegisterWrites;
+use crate::sound::SoundRegisterWrites;
 use crate::video::{Video, VideoBase};
 use crate::{cpu::Cpu, devices::DeviceSpeed};
 

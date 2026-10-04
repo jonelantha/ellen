@@ -1,16 +1,16 @@
 use js_sys::Function;
 use wasm_bindgen::JsValue;
 
-use super::sys_via_stub::SysViaStub;
-use super::via_port_connections::ViaPortConnections;
+use super::port_connections::ViaPortConnections;
+use super::stub::ViaStub;
 
-pub fn new_sys_via_stub<PortConnections: ViaPortConnections>(
+pub fn new_via_stub<PortConnections: ViaPortConnections>(
     js_read: Function,
     js_write: Function,
     js_on_vsync_change: Function,
     js_handle_trigger: Function,
     port_connections: PortConnections,
-) -> SysViaStub<PortConnections> {
+) -> ViaStub<PortConnections> {
     let read = Box::new(move |address: u16, cycles: u64| {
         js_read
             .call2(&JsValue::NULL, &address.into(), &cycles.into())
@@ -49,7 +49,7 @@ pub fn new_sys_via_stub<PortConnections: ViaPortConnections>(
             .expect("js_handle_trigger error")
     });
 
-    SysViaStub::new(
+    ViaStub::new(
         read,
         write,
         on_vsync_change,

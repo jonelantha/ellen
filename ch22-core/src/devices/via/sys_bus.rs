@@ -1,5 +1,5 @@
-use super::sound_register_write_recorder::SoundRegisterWriteRecorder;
-use super::via_port_connections::{ViaPortConnections, ViaPortState};
+use super::port_connections::{ViaPortConnections, ViaPortState};
+use crate::sound::SoundRegisterWriteRecorder;
 
 #[derive(Default)]
 pub struct SysViaBus {

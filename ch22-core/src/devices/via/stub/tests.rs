@@ -214,7 +214,7 @@ fn it_ignores_addresses_that_are_not_ic32_ora_or_ddrb() {
 }
 
 struct Harness {
-    stub: SysViaStub<Rc<RefCell<SysViaBus>>>,
+    stub: ViaStub<Rc<RefCell<SysViaBus>>>,
     bus: Rc<RefCell<SysViaBus>>,
 }
 
@@ -222,7 +222,7 @@ impl Harness {
     fn new() -> Self {
         let bus = Rc::new(RefCell::new(SysViaBus::default()));
 
-        let stub = SysViaStub::new(
+        let stub = ViaStub::new(
             Box::new(|_, _| 0),
             Box::new(|_, _, _, _| 0),
             Box::new(|_| 0),

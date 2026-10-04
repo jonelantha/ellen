@@ -2,20 +2,15 @@ mod device;
 mod device_list;
 mod js_device;
 mod rom_select;
-mod sound_register_write_recorder;
 mod static_device;
-mod sys_via_bus;
-mod sys_via_stub;
-mod sys_via_stub_ffi;
-mod via_port_connections;
+mod via;
 
 pub use device::Device;
 pub use device_list::{DeviceID, DeviceList, DeviceSpeed};
 pub use js_device::JsDevice;
 pub use rom_select::RomSelect;
 pub use static_device::StaticDevice;
-pub use sys_via_bus::SysViaBus;
-pub use sys_via_stub_ffi::new_sys_via_stub;
+pub use via::{SysViaBus, new_via_stub};
 
 #[cfg(test)]
 pub mod device_mock;

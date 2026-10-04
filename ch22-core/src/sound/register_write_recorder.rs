@@ -1,4 +1,4 @@
-use crate::sound_register_writes::SoundRegisterWrites;
+use super::register_writes::SoundRegisterWrites;
 
 /// Turns the levels on a sound chip's /WE and 8 bit data inputs into register
 /// writes, recorded for the field in progress into a buffer that is read from
