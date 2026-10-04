@@ -2,7 +2,7 @@ mod device;
 mod device_list;
 mod js_device;
 mod rom_select;
-mod sn76496_stub;
+mod sound_register_write_recorder;
 mod static_device;
 mod sys_via_bus;
 mod sys_via_stub;

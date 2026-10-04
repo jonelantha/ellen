@@ -1,9 +1,9 @@
-use super::sn76496_stub::SN76496Stub;
+use super::sound_register_write_recorder::SoundRegisterWriteRecorder;
 use super::via_port_connections::{ViaPortConnections, ViaPortState};
 
 #[derive(Default)]
 pub struct SysViaBus {
-    sound: SN76496Stub,
+    sound: SoundRegisterWriteRecorder,
     ic32_latch: IC32Latch,
 }
 
@@ -19,11 +19,11 @@ impl SysViaBus {
         self.ic32_latch.get()
     }
 
-    pub fn sound(&self) -> &SN76496Stub {
+    pub fn sound(&self) -> &SoundRegisterWriteRecorder {
         &self.sound
     }
 
-    pub fn sound_mut(&mut self) -> &mut SN76496Stub {
+    pub fn sound_mut(&mut self) -> &mut SoundRegisterWriteRecorder {
         &mut self.sound
     }
 }

@@ -1,14 +1,16 @@
 use crate::sound_register_writes::SoundRegisterWrites;
 
-/// Records the chip's register writes for the field in progress into a buffer
-/// that is read from outside (see `SoundRegisterWrites`).
+/// Turns the levels on a sound chip's /WE and 8 bit data inputs into register
+/// writes, recorded for the field in progress into a buffer that is read from
+/// outside (see `SoundRegisterWrites`). Nothing here depends on which chip is
+/// attached, other than the timing assumptions noted on `update`.
 #[derive(Default)]
-pub struct SN76496Stub {
+pub struct SoundRegisterWriteRecorder {
     sound_register_writes: SoundRegisterWrites,
     previous_data: Option<u8>,
 }
 
-impl SN76496Stub {
+impl SoundRegisterWriteRecorder {
     /// Empties the buffer; recorded cycle offsets are relative to `base_cycle_count`.
     pub fn start_field(&mut self, base_cycle_count: u64) {
         self.sound_register_writes.reset(base_cycle_count);
@@ -29,7 +31,7 @@ impl SN76496Stub {
     /// Records one write per /WE fall, plus one for each later change of the
     /// data while /WE is low. /WE rising is not recorded.
     ///
-    /// The real chip samples the bus about 32 chip clocks (16 cycles) after
+    /// An SN76489 samples the bus about 32 chip clocks (16 cycles) after
     /// /WE falls. These cases are not modelled right now:
     /// - /WE falling again inside the window
     /// - data changing in the 32 cycle window after /WE is high
