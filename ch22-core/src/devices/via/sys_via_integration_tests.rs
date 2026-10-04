@@ -115,12 +115,43 @@ fn it_records_a_sound_register_write_of_ff_on_init_cycle() {
 
 #[test]
 fn it_updates_the_ic32_latch_when_a_ddrb_write_changes_the_pin_levels() {
-    let mut harness = SysViaHarness::new().ddra_ddrb_output();
+    let mut harness = SysViaHarness::new()
+        .ddra_ddrb_output()
+        .latch_and_orb(0x00, 0x03);
+
+    assert_eq!(harness.ic32_latch(), 0x00);
 
     // DDRB write -> PB0-3 all inputs -> ic32 bit 7 set (pins 0x0f)
     harness.stub.phase_2(ADDR_DDRB.into(), 0x00, 100);
 
     assert_eq!(harness.ic32_latch(), 0x80);
+}
+
+#[test]
+fn it_records_a_sound_register_write_when_a_ddra_write_changes_the_data_lines() {
+    let test_cases = [
+        // (new ddra, expected writes) with ORA = 0x12, which the data lines
+        // show for the driven bits only; undriven bits float high
+        (0x00, vec![(100, 0xff)]),
+        (0xf0, vec![(100, 0x1f)]),
+        (0x0f, vec![(100, 0xf2)]),
+        (0xff, vec![]), // no change: still driven as 0x12
+    ];
+
+    for (ddra, expected_writes) in test_cases {
+        let mut harness = SysViaHarness::new()
+            .ddra_ddrb_output()
+            .ora(0x12)
+            .clear_sound_writes();
+
+        harness.stub.phase_2(ADDR_DDRA.into(), ddra, 100);
+
+        assert_eq!(
+            harness.get_sound_writes(),
+            expected_writes,
+            "ddra={ddra:#04x}"
+        );
+    }
 }
 
 #[test]
@@ -186,6 +217,30 @@ fn it_does_not_forward_an_ora_write_to_the_sound_register_when_the_sound_chip_is
     harness.stub.phase_2(ADDR_ORA.into(), 0x9c, 600);
 
     assert_eq!(harness.get_sound_writes(), []);
+}
+
+#[test]
+fn it_repeats_the_registers_every_16_addresses_across_the_whole_via_range() {
+    // the sys VIA occupies 0xfe40-0xfe5f and decodes only 4 address lines
+    for base in [0xfe40, 0xfe50] {
+        let mut harness = SysViaHarness::new();
+
+        harness.stub.phase_2((base + 3).into(), 0xff, 0); // DDRA
+        harness.stub.phase_2((base + 2).into(), 0x0f, 0); // DDRB
+        harness.stub.phase_2((base + 1).into(), 0x9c, 0); // ORA
+
+        let mut harness = harness.clear_sound_writes();
+
+        harness.stub.phase_2(base.into(), 0x08, 100); // ORB: deselect the sound chip
+        harness.stub.phase_2((base + 1).into(), 0x5a, 110); // ORA: not forwarded
+        harness.stub.phase_2(base.into(), 0x00, 120); // ORB: select, forwards ORA
+
+        assert_eq!(
+            harness.get_sound_writes(),
+            [(120, 0x5a)],
+            "base={base:#06x}"
+        );
+    }
 }
 
 #[test]
@@ -280,7 +335,7 @@ impl SysViaHarness {
         let writes = bus.sound().register_writes();
         let base_cycle_count = writes.base_cycle_count;
 
-        writes.entries[..writes.num_entries]
+        writes.entries[..writes.num_entries as usize]
             .iter()
             .map(|entry| (base_cycle_count + u64::from(entry.cycle_offset), entry.data))
             .collect()

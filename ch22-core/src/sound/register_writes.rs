@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod tests;
+
 pub const MAX_SOUND_REG_WRITES: usize = 500;
 
 #[repr(C, packed)]
@@ -10,7 +13,7 @@ pub struct SoundRegWrite {
 #[repr(C, packed)]
 pub struct SoundRegisterWrites {
     pub base_cycle_count: u64,
-    pub num_entries: usize,
+    pub num_entries: u32,
     pub entries: [SoundRegWrite; MAX_SOUND_REG_WRITES],
 }
 
@@ -36,11 +39,13 @@ impl SoundRegisterWrites {
             .and_then(|offset| u16::try_from(offset).ok())
             .expect("Sound register write cycle offset is too large");
 
-        if self.num_entries >= MAX_SOUND_REG_WRITES {
+        let index = self.num_entries as usize;
+
+        if index >= MAX_SOUND_REG_WRITES {
             panic!("Sound register write buffer is full");
         }
 
-        self.entries[self.num_entries] = SoundRegWrite { cycle_offset, data };
+        self.entries[index] = SoundRegWrite { cycle_offset, data };
         self.num_entries += 1;
     }
 }
