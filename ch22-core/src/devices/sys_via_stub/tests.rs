@@ -95,10 +95,10 @@ fn it_exposes_ic32_bits_4_and_5_as_the_video_base_bits() {
 }
 
 #[test]
-fn it_records_a_sound_register_write_of_ff_on_reset() {
+fn it_records_a_sound_register_write_of_ff_on_init_cycle() {
     let mut harness = Harness::new().clear_sound_writes();
 
-    harness.stub.reset(100);
+    harness.stub.on_init_cycle(100);
 
     // ports undriven: IC32 selects the sound chip (output 0 low), data lines float high
     assert_eq!(harness.get_sound_writes(), [(100, 0xff)]);

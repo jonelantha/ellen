@@ -86,8 +86,7 @@ impl<PortConnections: ViaPortConnections> Device for SysViaStub<PortConnections>
         self.interrupt = interrupt;
     }
 
-    // TODO: reset registers
-    fn reset(&mut self, cycles: u64) {
+    fn on_init_cycle(&mut self, cycles: u64) {
         self.update_bus(cycles);
     }
 

@@ -131,10 +131,6 @@ impl SystemFfi {
         )
     }
 
-    pub fn reset(&mut self) {
-        self.core.reset();
-    }
-
     pub fn run_one_field(&mut self) -> u64 {
         self.core.run_one_field()
     }

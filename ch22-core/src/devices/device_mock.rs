@@ -57,8 +57,8 @@ impl Device for DeviceMock {
         false
     }
 
-    fn reset(&mut self, cycles: u64) {
-        self.accesses.borrow_mut().resets.push(cycles);
+    fn on_init_cycle(&mut self, cycles: u64) {
+        self.accesses.borrow_mut().init_cycle.push(cycles);
     }
 
     fn get_interrupt(&mut self, cycles: u64) -> bool {
@@ -78,5 +78,5 @@ pub enum MemoryAccess {
 pub struct DeviceAccesses {
     pub memory: Vec<MemoryAccess>,
     pub interrupt: Vec<u64>,
-    pub resets: Vec<u64>,
+    pub init_cycle: Vec<u64>,
 }

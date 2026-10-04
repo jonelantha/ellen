@@ -22,7 +22,6 @@ pub struct Core {
     rom_select_latch: Rc<Cell<usize>>,
     pub video: Video,
     sys_via_bus: Rc<RefCell<SysViaBus>>,
-    reset_pending: bool,
 }
 
 impl Core {
@@ -76,22 +75,14 @@ impl Core {
         }
     }
 
-    pub fn reset(&mut self) {
-        self.reset_pending = true;
-
-        self.get_runner().reset();
-    }
-
     pub fn run_one_field(&mut self) -> u64 {
         self.sys_via_bus
             .borrow_mut()
             .sound_mut()
             .start_field(self.clock.get_cycles());
 
-        if self.reset_pending {
-            self.reset_pending = false;
-
-            self.io_space.reset(&self.clock);
+        if self.clock.get_cycles() == 0 {
+            self.get_runner().power_on();
         }
 
         loop {

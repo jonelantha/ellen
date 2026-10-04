@@ -71,6 +71,10 @@ impl<A: AddressMap> CpuBus<'_, A> {
         self.clock.inc();
     }
 
+    pub fn init_cycle(&mut self) {
+        self.io_space.on_init_cycle(self.clock);
+    }
+
     pub fn get_cycles(&self) -> u64 {
         self.clock.get_cycles()
     }

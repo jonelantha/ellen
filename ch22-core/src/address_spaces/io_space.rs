@@ -68,9 +68,9 @@ impl IOSpace {
         }
     }
 
-    pub fn reset(&mut self, clock: &Clock) {
+    pub fn on_init_cycle(&mut self, clock: &Clock) {
         self.devices.for_each(|device| {
-            device.reset(clock.get_cycles());
+            device.on_init_cycle(clock.get_cycles());
         });
     }
 

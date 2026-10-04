@@ -25,7 +25,9 @@ impl<'a, A: AddressMap> Runner<'a, A> {
         }
     }
 
-    pub fn reset(&mut self) {
+    pub fn power_on(&mut self) {
+        self.cpu_bus.init_cycle();
+
         self.cpu.reset(&mut self.cpu_bus);
     }
 
