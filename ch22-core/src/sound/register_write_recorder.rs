@@ -1,5 +1,8 @@
 use super::register_writes::SoundRegisterWrites;
 
+#[cfg(test)]
+mod tests;
+
 /// Turns the levels on a sound chip's /WE and 8 bit data inputs into register
 /// writes, recorded for the field in progress into a buffer that is read from
 /// outside (see `SoundRegisterWrites`). Nothing here depends on which chip is
