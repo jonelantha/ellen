@@ -3,9 +3,6 @@ use crate::word::Word;
 use super::port_connections::{ViaPortConnections, ViaPortState};
 use crate::devices::Device;
 
-#[cfg(test)]
-mod tests;
-
 /// Stands in for a 6522 VIA whose real implementation is in JS. It mirrors the
 /// port registers to report port state to `PortConnections`, and forwards
 /// everything else to JS.

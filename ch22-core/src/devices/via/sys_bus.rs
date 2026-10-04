@@ -14,6 +14,9 @@ impl SysViaBus {
         (self.ic32_latch.get() >> 4) & 0b11
     }
 
+    /// The raw latch. IC32 bits 1 to 3, 6 and 7 drive nothing yet, so tests of
+    /// the latch have no output to observe them through; once they do, those
+    /// tests should assert on the outputs instead.
     #[cfg(test)]
     pub fn ic32(&self) -> u8 {
         self.ic32_latch.get()

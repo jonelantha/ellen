@@ -1,8 +1,14 @@
+//! Drives `ViaStub`, `SysViaBus` and the sound recorder together, the way the
+//! CPU does: through VIA register writes. Observes what the rest of the
+//! machine consumes (recorded sound writes, the video base bits), plus the raw
+//! IC32 latch where no output exists yet.
+
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use super::*;
-use crate::devices::SysViaBus;
+use super::stub::ViaStub;
+use super::sys_bus::SysViaBus;
+use crate::devices::Device;
 
 const ADDR_ORB: u16 = 0x0000;
 const ADDR_ORA: u16 = 0x0001;
@@ -16,7 +22,7 @@ const DDRB_ALL_OUTPUT: u8 = 0x0f;
 
 #[test]
 fn it_sets_an_ic32_latch_bit_without_triggering_a_sound_register_write() {
-    let mut harness = Harness::new()
+    let mut harness = SysViaHarness::new()
         .ddra_ddrb_output()
         .latch_and_orb(0x00, 0x00)
         .clear_sound_writes();
@@ -30,7 +36,7 @@ fn it_sets_an_ic32_latch_bit_without_triggering_a_sound_register_write() {
 
 #[test]
 fn it_clears_an_ic32_latch_bit_without_triggering_a_sound_register_write() {
-    let mut harness = Harness::new()
+    let mut harness = SysViaHarness::new()
         .ddra_ddrb_output()
         .latch_and_orb(0xff, 0x08)
         .clear_sound_writes();
@@ -46,7 +52,7 @@ fn it_clears_an_ic32_latch_bit_without_triggering_a_sound_register_write() {
 fn it_reads_an_undriven_ic32_address_pin_as_high() {
     // "address pin": PB0-2 select which IC32 latch bit is written
     // PB0 input -> ic32 bit 1 clear (pins 0x01, already clear)
-    let mut harness = Harness::new().ddrb(0x0e).clear_sound_writes();
+    let mut harness = SysViaHarness::new().ddrb(0x0e).clear_sound_writes();
 
     // ORB write -> ic32 bit 1 set (pins 0x09), not bit 0
     harness.stub.phase_2(ADDR_ORB.into(), 0x08, 100);
@@ -58,7 +64,7 @@ fn it_reads_an_undriven_ic32_address_pin_as_high() {
 fn it_reads_an_undriven_ic32_data_pin_as_high() {
     // "data pin": PB3 is the value (set or clear) written to the selected IC32 latch bit
     // PB3 input -> ic32 bit 0 set (pins 0x08, already set)
-    let mut harness = Harness::new()
+    let mut harness = SysViaHarness::new()
         .ddra_ddrb_output()
         .latch_and_orb(0x01, 0x08)
         .ddrb(0x07);
@@ -84,7 +90,9 @@ fn it_exposes_ic32_bits_4_and_5_as_the_video_base_bits() {
     ];
 
     for (ic32, expected) in test_cases {
-        let harness = Harness::new().ddra_ddrb_output().latch_and_orb(ic32, 0x08);
+        let harness = SysViaHarness::new()
+            .ddra_ddrb_output()
+            .latch_and_orb(ic32, 0x08);
 
         assert_eq!(
             harness.bus.borrow().video_base_bits(),
@@ -96,7 +104,7 @@ fn it_exposes_ic32_bits_4_and_5_as_the_video_base_bits() {
 
 #[test]
 fn it_records_a_sound_register_write_of_ff_on_init_cycle() {
-    let mut harness = Harness::new().clear_sound_writes();
+    let mut harness = SysViaHarness::new().clear_sound_writes();
 
     harness.stub.on_init_cycle(100);
 
@@ -107,7 +115,7 @@ fn it_records_a_sound_register_write_of_ff_on_init_cycle() {
 
 #[test]
 fn it_updates_the_ic32_latch_when_a_ddrb_write_changes_the_pin_levels() {
-    let mut harness = Harness::new().ddra_ddrb_output();
+    let mut harness = SysViaHarness::new().ddra_ddrb_output();
 
     // DDRB write -> PB0-3 all inputs -> ic32 bit 7 set (pins 0x0f)
     harness.stub.phase_2(ADDR_DDRB.into(), 0x00, 100);
@@ -126,7 +134,7 @@ fn it_triggers_a_sound_register_write_on_the_sound_select_bit_falling() {
     ];
 
     for (initial_ic32, new_orb, expected_ic32, expected_writes) in test_cases {
-        let mut harness = Harness::new()
+        let mut harness = SysViaHarness::new()
             .ddra_ddrb_output()
             .ora(0xab)
             .latch_and_orb(initial_ic32, 0x03)
@@ -150,7 +158,7 @@ fn it_triggers_a_sound_register_write_on_the_sound_select_bit_falling() {
 
 #[test]
 fn it_forwards_an_ora_write_to_the_sound_register_when_the_sound_chip_is_selected() {
-    let mut harness = Harness::new().ddra_ddrb_output().clear_sound_writes();
+    let mut harness = SysViaHarness::new().ddra_ddrb_output().clear_sound_writes();
 
     harness.stub.phase_2(ADDR_ORA.into(), 0x9c, 500);
 
@@ -159,7 +167,7 @@ fn it_forwards_an_ora_write_to_the_sound_register_when_the_sound_chip_is_selecte
 
 #[test]
 fn it_does_not_forward_an_ora_write_that_leaves_the_sound_chip_input_unchanged() {
-    let mut harness = Harness::new().ddra_ddrb_output().clear_sound_writes();
+    let mut harness = SysViaHarness::new().ddra_ddrb_output().clear_sound_writes();
 
     harness.stub.phase_2(ADDR_ORA.into(), 0x9c, 500);
     harness.stub.phase_2(ADDR_ORA.into(), 0x9c, 510); // same data, chip still selected
@@ -170,7 +178,7 @@ fn it_does_not_forward_an_ora_write_that_leaves_the_sound_chip_input_unchanged()
 
 #[test]
 fn it_does_not_forward_an_ora_write_to_the_sound_register_when_the_sound_chip_is_not_selected() {
-    let mut harness = Harness::new()
+    let mut harness = SysViaHarness::new()
         .ddra_ddrb_output()
         .latch_and_orb(0x01, 0x08)
         .clear_sound_writes();
@@ -182,7 +190,7 @@ fn it_does_not_forward_an_ora_write_to_the_sound_register_when_the_sound_chip_is
 
 #[test]
 fn it_treats_the_no_handshake_ora_address_the_same_as_the_primary_one() {
-    let mut harness = Harness::new().ddra_ddrb_output().clear_sound_writes();
+    let mut harness = SysViaHarness::new().ddra_ddrb_output().clear_sound_writes();
 
     harness
         .stub
@@ -193,7 +201,7 @@ fn it_treats_the_no_handshake_ora_address_the_same_as_the_primary_one() {
 
 #[test]
 fn it_never_triggers_a_sound_register_write_for_ddrb_writes() {
-    let mut harness = Harness::new().ddra_ddrb_output().clear_sound_writes();
+    let mut harness = SysViaHarness::new().ddra_ddrb_output().clear_sound_writes();
 
     harness.stub.phase_2(ADDR_DDRB.into(), 0xaa, 800);
 
@@ -202,7 +210,7 @@ fn it_never_triggers_a_sound_register_write_for_ddrb_writes() {
 
 #[test]
 fn it_ignores_addresses_that_are_not_ic32_ora_or_ddrb() {
-    let mut harness = Harness::new()
+    let mut harness = SysViaHarness::new()
         .ddra_ddrb_output()
         .latch_and_orb(0xff, 0x08)
         .clear_sound_writes();
@@ -213,12 +221,12 @@ fn it_ignores_addresses_that_are_not_ic32_ora_or_ddrb() {
     assert_eq!(harness.get_sound_writes(), []);
 }
 
-struct Harness {
+struct SysViaHarness {
     stub: ViaStub<Rc<RefCell<SysViaBus>>>,
     bus: Rc<RefCell<SysViaBus>>,
 }
 
-impl Harness {
+impl SysViaHarness {
     fn new() -> Self {
         let bus = Rc::new(RefCell::new(SysViaBus::default()));
 
@@ -230,9 +238,10 @@ impl Harness {
             bus.clone(),
         );
 
-        Harness { stub, bus }
+        SysViaHarness { stub, bus }
     }
 
+    // Internal state, not an output: see `SysViaBus::ic32`.
     fn ic32_latch(&self) -> u8 {
         self.bus.borrow().ic32()
     }
