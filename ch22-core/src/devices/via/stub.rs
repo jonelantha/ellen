@@ -108,8 +108,7 @@ impl<PortConnections: ViaPortConnections> ViaStub<PortConnections> {
         }
     }
 
-    // Encoding format: [trig trig trig trig trig trig flags (value or ic32)]
-    // The last byte contains either a value or ic32 data, depending on the JS_DEVICE_FLAG_VALUE_IS_IC32 flag.
+    // Encoding format: [trig trig trig trig trig trig flags value]
     fn set_params(&mut self, params_and_value: u64) -> u8 {
         let [_, _, _, _, _, _, flags, value] = params_and_value.to_be_bytes();
 

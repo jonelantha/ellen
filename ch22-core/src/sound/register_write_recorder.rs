@@ -31,6 +31,9 @@ impl SoundRegisterWriteRecorder {
     /// Called with the current level of the chip's inputs whenever anything
     /// upstream may have changed them, so most calls change nothing.
     ///
+    /// `write_enable_n` is the level of the /WE pin. The `_n` suffix (and the
+    /// slash) mark a signal that is active low
+    ///
     /// Records one write per /WE fall, plus one for each later change of the
     /// data while /WE is low. /WE rising is not recorded.
     ///
@@ -43,8 +46,8 @@ impl SoundRegisterWriteRecorder {
     /// These cases have not yet (significantly) been observed in real code
     ///
     /// Returns true if this update latched a register write.
-    pub fn update(&mut self, write_enable_active_low: bool, data: u8, cycles: u64) -> bool {
-        if write_enable_active_low {
+    pub fn update(&mut self, write_enable_n: bool, data: u8, cycles: u64) -> bool {
+        if write_enable_n {
             self.previous_data = None;
             return false;
         }

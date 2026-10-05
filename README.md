@@ -105,7 +105,7 @@ const sysViaDeviceId = ch22System.add_sys_via_stub(
 
 /**
  * manually set the interrupt of a device
- * - deviceId: id returned from `add_js_device` call
+ * - deviceId: id returned from the `add_js_device` or `add_sys_via_stub` call
  * - interrupt: whether interrupt is set
  */
 ch22System.set_device_interrupt(deviceId, interrupt);
@@ -126,6 +126,8 @@ ch22System.add_static_device(addresses, readValue, oneMhz, panicOnWrite);
 /**
  * executes instructions until until the next field is ready for render
  * returns number of cycles
+ *
+ * the first call also powers on the machine, which can't be reset again yet
  */
 const cycleCount = ch22System.run_one_field();
 ```
@@ -163,7 +165,7 @@ const memory = new Uint8Array(
  * - 3 bytes per entry, up to 500:
  *   - 2 bytes  - cycle offset from the base cycle count
  *   - 1 byte   - data
- * the buffer is emptied at the start of each field
+ * the buffer is emptied at the start of each field, and a write that doesn't fit is dropped
  */
 const memory = new Uint8Array(
   wasmMemory.buffer,
