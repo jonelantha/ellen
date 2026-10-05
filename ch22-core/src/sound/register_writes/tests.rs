@@ -76,6 +76,42 @@ fn it_holds_exactly_the_maximum_number_of_writes() {
 }
 
 #[test]
+fn it_ignores_a_write_when_the_buffer_is_full_if_told_to() {
+    let mut writes = SoundRegisterWrites::default();
+
+    for index in 0..MAX_SOUND_REG_WRITES {
+        writes.push(0, index as u8);
+    }
+
+    writes.push_no_panic(0, 0xee);
+
+    assert_eq!({ writes.num_entries } as usize, MAX_SOUND_REG_WRITES);
+    assert_eq!(writes.cycles_and_data().last(), Some(&(0, 0xf3)));
+}
+
+#[test]
+fn it_ignores_a_write_whose_offset_does_not_fit_in_16_bits_if_told_to() {
+    let mut writes = SoundRegisterWrites::default();
+    writes.reset(1000);
+
+    writes.push_no_panic(1000 + u64::from(u16::MAX) + 1, 0);
+
+    assert_eq!({ writes.num_entries }, 0);
+}
+
+#[test]
+fn it_keeps_recording_after_an_ignored_write() {
+    let mut writes = SoundRegisterWrites::default();
+    writes.reset(1000);
+
+    writes.push_no_panic(1000 + u64::from(u16::MAX) + 1, 1);
+    writes.push(1010, 2);
+
+    assert_eq!(writes.cycles_and_data(), [(1010, 2)]);
+}
+
+#[cfg(debug_assertions)]
+#[test]
 #[should_panic(expected = "buffer is full")]
 fn it_panics_when_the_buffer_is_full() {
     let mut writes = SoundRegisterWrites::default();
@@ -85,6 +121,7 @@ fn it_panics_when_the_buffer_is_full() {
     }
 }
 
+#[cfg(debug_assertions)]
 #[test]
 #[should_panic(expected = "offset is too large")]
 fn it_panics_when_the_offset_does_not_fit_in_16_bits() {
@@ -92,13 +129,4 @@ fn it_panics_when_the_offset_does_not_fit_in_16_bits() {
     writes.reset(1000);
 
     writes.push(1000 + u64::from(u16::MAX) + 1, 0);
-}
-
-#[test]
-#[should_panic(expected = "offset is too large")]
-fn it_panics_when_a_write_is_before_the_base_cycle_count() {
-    let mut writes = SoundRegisterWrites::default();
-    writes.reset(1000);
-
-    writes.push(999, 0);
 }

@@ -52,10 +52,15 @@ impl ViaPortConnections for SysViaBus {
     }
 }
 
-#[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables))]
+/// Logs sound writes made while port A is not fully driven, in debug wasm
+/// builds only.
+#[cfg_attr(
+    not(all(target_arch = "wasm32", debug_assertions)),
+    allow(unused_variables)
+)]
 fn debug_check_sound_mask(output_mask: u8, cycles: u64) {
     if output_mask != 0xff {
-        #[cfg(target_arch = "wasm32")]
+        #[cfg(all(target_arch = "wasm32", debug_assertions))]
         web_sys::console::log_1(
             &format!(
                 "sound write output_mask == {:#04x} {:?}",

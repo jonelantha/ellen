@@ -11,7 +11,7 @@
     "build-dev": "npm run build-release -- --features console_error_panic_hook",
     "clippy": "cd ch22-core && cargo clippy && cargo clippy --tests",
     "test": "npm run test-core && npm run test-render",
-    "test-core": "cd ch22-core && cargo test",
+    "test-core": "cd ch22-core && cargo test --profile release-checked",
     "test-render": "cd render/tests && npm test",
     "tsc": "tsc --build",
     "lint": "eslint .",
