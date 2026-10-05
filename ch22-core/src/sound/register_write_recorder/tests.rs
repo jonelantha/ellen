@@ -97,11 +97,5 @@ fn it_empties_the_buffer_and_rebases_offsets_when_a_field_starts() {
 }
 
 fn recorded_writes(recorder: &SoundRegisterWriteRecorder) -> Vec<(u64, u8)> {
-    let writes = recorder.register_writes();
-    let base_cycle_count = writes.base_cycle_count;
-
-    writes.entries[..writes.num_entries as usize]
-        .iter()
-        .map(|entry| (base_cycle_count + u64::from(entry.cycle_offset), entry.data))
-        .collect()
+    recorder.register_writes().cycles_and_data()
 }

@@ -331,14 +331,11 @@ impl SysViaHarness {
     }
 
     fn get_sound_writes(&self) -> Vec<(u64, u8)> {
-        let bus = self.bus.borrow();
-        let writes = bus.sound().register_writes();
-        let base_cycle_count = writes.base_cycle_count;
-
-        writes.entries[..writes.num_entries as usize]
-            .iter()
-            .map(|entry| (base_cycle_count + u64::from(entry.cycle_offset), entry.data))
-            .collect()
+        self.bus
+            .borrow()
+            .sound()
+            .register_writes()
+            .cycles_and_data()
     }
 
     fn clear_sound_writes(self) -> Self {
