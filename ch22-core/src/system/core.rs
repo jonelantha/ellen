@@ -12,6 +12,9 @@ use crate::sound::SoundRegisterWrites;
 use crate::video::{Video, VideoBase};
 use crate::{cpu::Cpu, devices::DeviceSpeed};
 
+#[cfg(test)]
+mod tests;
+
 #[derive(Default)]
 pub struct Core {
     clock: Clock,
