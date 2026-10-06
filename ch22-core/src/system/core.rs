@@ -9,7 +9,7 @@ use super::{
 use crate::address_spaces::{IOSpace, Ram, Rom};
 use crate::devices::{RomSelect, SysViaBus};
 use crate::sound::SoundRegisterWrites;
-use crate::video::{Video, VideoBase};
+use crate::video::Video;
 use crate::{cpu::Cpu, devices::DeviceSpeed};
 
 #[cfg(test)]
@@ -93,7 +93,7 @@ impl Core {
 
             self.get_runner().run(next_scanline_trigger);
 
-            let video_base = VideoBase::from_bits(self.sys_via_bus.borrow().video_base_bits());
+            let video_base = self.sys_via_bus.borrow().video_base();
 
             self.video.process_scanline(
                 video_base,

@@ -9,6 +9,7 @@ use std::rc::Rc;
 use super::stub::ViaStub;
 use super::sys_bus::SysViaBus;
 use crate::devices::Device;
+use crate::video::VideoBase::*;
 
 const ADDR_ORB: u16 = 0x0000;
 const ADDR_ORA: u16 = 0x0001;
@@ -76,17 +77,17 @@ fn it_reads_an_undriven_ic32_data_pin_as_high() {
 }
 
 #[test]
-fn it_exposes_ic32_bits_4_and_5_as_the_video_base_bits() {
+fn it_selects_the_video_base_from_ic32_bits_4_and_5() {
     let test_cases = [
-        // (ic32, expected bits: bit 0 from ic32 bit 4, bit 1 from ic32 bit 5)
-        (0x00, 0b00),
-        (0x10, 0b01),
-        (0x20, 0b10),
-        (0x30, 0b11),
-        (0xcf, 0b00), // other bits set, bits 4 and 5 clear
-        (0xff, 0b11),
-        (0xdf, 0b01), // bit 5 clear, bit 4 set
-        (0xef, 0b10), // bit 5 set, bit 4 clear
+        // (ic32, expected base: ic32 bit 4 is the low bit of the code, bit 5 the high bit)
+        (0x00, Base4000),
+        (0x10, Base6000),
+        (0x20, Base3000),
+        (0x30, Base5800),
+        (0xcf, Base4000), // other bits set, bits 4 and 5 clear
+        (0xff, Base5800),
+        (0xdf, Base6000), // bit 5 clear, bit 4 set
+        (0xef, Base3000), // bit 5 set, bit 4 clear
     ];
 
     for (ic32, expected) in test_cases {
@@ -95,7 +96,7 @@ fn it_exposes_ic32_bits_4_and_5_as_the_video_base_bits() {
             .latch_and_orb(ic32, 0x08);
 
         assert_eq!(
-            harness.bus.borrow().video_base_bits(),
+            harness.bus.borrow().video_base(),
             expected,
             "ic32={ic32:#04x}"
         );

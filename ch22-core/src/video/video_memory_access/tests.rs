@@ -7,10 +7,10 @@ mod test_video_base {
 
     #[test]
     fn from_bits_maps_each_code_to_its_base() {
-        assert_eq!(VideoBase::from_bits(0b00), Base4000);
-        assert_eq!(VideoBase::from_bits(0b01), Base6000);
-        assert_eq!(VideoBase::from_bits(0b10), Base3000);
-        assert_eq!(VideoBase::from_bits(0b11), Base5800);
+        assert_eq!(VideoBase::from_bits((false, false)), Base4000);
+        assert_eq!(VideoBase::from_bits((false, true)), Base6000);
+        assert_eq!(VideoBase::from_bits((true, false)), Base3000);
+        assert_eq!(VideoBase::from_bits((true, true)), Base5800);
     }
 }
 

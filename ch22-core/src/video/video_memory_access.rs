@@ -14,13 +14,11 @@ pub enum VideoBase {
 
 impl VideoBase {
     /// `bits` is the two-bit code, 0 to 3.
-    pub fn from_bits(bits: u8) -> Self {
-        debug_assert!(bits <= 0b11);
-
+    pub fn from_bits(bits: (bool, bool)) -> Self {
         match bits {
-            0b00 => VideoBase::Base4000,
-            0b01 => VideoBase::Base6000,
-            0b10 => VideoBase::Base3000,
+            (false, false) => VideoBase::Base4000,
+            (false, true) => VideoBase::Base6000,
+            (true, false) => VideoBase::Base3000,
             _ => VideoBase::Base5800,
         }
     }

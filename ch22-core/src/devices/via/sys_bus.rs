@@ -1,5 +1,6 @@
 use super::port_connections::{ViaPortConnections, ViaPortState};
 use crate::sound::SoundRegisterWriteRecorder;
+use crate::video::VideoBase;
 
 #[derive(Default)]
 pub struct SysViaBus {
@@ -8,10 +9,11 @@ pub struct SysViaBus {
 }
 
 impl SysViaBus {
-    /// IC32 outputs 4 and 5 are wired to the video address translation: bit 0
-    /// of the result is output 4, bit 1 is output 5.
-    pub fn video_base_bits(&self) -> u8 {
-        (self.ic32_latch.get() >> 4) & 0b11
+    /// IC32 outputs 5 and 4 are wired to the video address translation.
+    pub fn video_base(&self) -> VideoBase {
+        let latch = self.ic32_latch.get();
+
+        VideoBase::from_bits((latch & 0b0010_0000 != 0, latch & 0b0001_0000 != 0))
     }
 
     /// The raw latch. IC32 bits 1 to 3, 6 and 7 drive nothing yet, so tests of
@@ -53,13 +55,14 @@ impl ViaPortConnections for SysViaBus {
 }
 
 /// Logs sound writes made while port A is not fully driven, in debug wasm
-/// builds only.
+/// builds only. The write at cycle 0 is skipped: it is the power-on one, made
+/// with the ports undriven.
 #[cfg_attr(
     not(all(target_arch = "wasm32", debug_assertions)),
     allow(unused_variables)
 )]
 fn debug_check_sound_mask(output_mask: u8, cycles: u64) {
-    if output_mask != 0xff {
+    if output_mask != 0xff && cycles != 0 {
         #[cfg(all(target_arch = "wasm32", debug_assertions))]
         web_sys::console::log_1(
             &format!(
