@@ -20,8 +20,12 @@ crate-type = ["cdylib", "lib"]
 serde = { version = "1.0.104", features = ["derive"] }
 serde_json = "1.0.135"
 
-# Optimised like release, but with the debug assertions and overflow checks of
-# a debug build, so tests run fast and still trip on unintended wrapping.
+# Optimised so the tests run fast. Debug assertions and overflow checks stay on.
+[profile.test]
+opt-level = 3
+
+# Optimised like release, with the debug assertions and overflow checks of a
+# debug build.
 [profile.release-checked]
 inherits = "release"
 debug-assertions = true
