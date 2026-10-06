@@ -39,7 +39,7 @@ Targeting web assembly in the browser
 
 ```bash
 npm run build-release
-# or `build-dev` to include panic! stack traces
+# or `build-dev` to include panic! stack traces, debug assertions and overflow checks
 ```
 
 ## 🛠️ Usage from JavaScript (TypeScript)
@@ -162,10 +162,11 @@ const memory = new Uint8Array(
  * all values are little endian
  * - 8 bytes    - base cycle count (the cycle the field started on)
  * - 4 bytes    - number of entries
+ * - 1 byte     - dropped write flags: 0x01 => buffer full, 0x02 => cycle offset beyond 65535
  * - 3 bytes per entry, up to 500:
  *   - 2 bytes  - cycle offset from the base cycle count
  *   - 1 byte   - data
- * the buffer is emptied at the start of each field, and a write that doesn't fit is dropped
+ * the buffer is emptied at the start of each field; a write that doesn't fit is ignored and flagged
  */
 const memory = new Uint8Array(
   wasmMemory.buffer,

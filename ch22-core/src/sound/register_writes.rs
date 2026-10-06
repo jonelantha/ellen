@@ -3,6 +3,10 @@ mod tests;
 
 pub const MAX_SOUND_REG_WRITES: usize = 500;
 
+/// `SoundRegisterWrites::dropped` bits, set when a write did not fit.
+pub const DROPPED_BUFFER_FULL: u8 = 0b01;
+pub const DROPPED_OFFSET_TOO_LARGE: u8 = 0b10;
+
 #[repr(C, packed)]
 #[derive(Default)]
 pub struct SoundRegWrite {
@@ -14,6 +18,7 @@ pub struct SoundRegWrite {
 pub struct SoundRegisterWrites {
     pub base_cycle_count: u64,
     pub num_entries: u32,
+    pub dropped: u8,
     pub entries: [SoundRegWrite; MAX_SOUND_REG_WRITES],
 }
 
@@ -22,6 +27,7 @@ impl Default for SoundRegisterWrites {
         Self {
             base_cycle_count: 0,
             num_entries: 0,
+            dropped: 0,
             entries: std::array::from_fn(|_| SoundRegWrite::default()),
         }
     }
@@ -31,6 +37,7 @@ impl SoundRegisterWrites {
     pub fn reset(&mut self, base_cycle_count: u64) {
         self.base_cycle_count = base_cycle_count;
         self.num_entries = 0;
+        self.dropped = 0;
     }
 
     /// The recorded writes as (cycle, data).
@@ -45,38 +52,25 @@ impl SoundRegisterWrites {
     }
 
     /// Records a write. One that doesn't fit (the buffer is full, or the cycle
-    /// is beyond the 16 bit offset from the base) is ignored: the audio
-    /// glitches for the rest of the field, then recovers. Builds with debug
-    /// assertions panic instead, so it isn't missed.
+    /// is beyond the 16 bit offset from the base) is ignored and flagged in
+    /// `dropped`. Later writes in the field may still be recorded, but a
+    /// channel keeps whatever its last recorded write set until it is
+    /// written again.
     pub fn push(&mut self, cycles: u64, data: u8) {
-        self.push_with(cycles, data, cfg!(debug_assertions));
-    }
-
-    /// `push`, but ignoring a write that doesn't fit in every build.
-    #[cfg(test)]
-    pub fn push_no_panic(&mut self, cycles: u64, data: u8) {
-        self.push_with(cycles, data, false);
-    }
-
-    fn push_with(&mut self, cycles: u64, data: u8, panic_on_out_of_bounds: bool) {
         debug_assert!(
             self.base_cycle_count <= cycles,
             "Sound register write is before the base cycle count",
         );
 
         let Ok(cycle_offset) = u16::try_from(cycles - self.base_cycle_count) else {
-            if panic_on_out_of_bounds {
-                panic!("Sound register write cycle offset is too large");
-            }
+            self.dropped |= DROPPED_OFFSET_TOO_LARGE;
             return;
         };
 
         let index = self.num_entries as usize;
 
         if index >= MAX_SOUND_REG_WRITES {
-            if panic_on_out_of_bounds {
-                panic!("Sound register write buffer is full");
-            }
+            self.dropped |= DROPPED_BUFFER_FULL;
             return;
         }
 
