@@ -2,17 +2,38 @@ use std::ops::Range;
 #[cfg(test)]
 mod tests;
 
+/// Where hires screen memory starts, selected by a two-bit code from the board.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u8)]
+pub enum VideoBase {
+    Base4000 = 0b00,
+    Base6000 = 0b01,
+    Base3000 = 0b10,
+    Base5800 = 0b11,
+}
+
+impl VideoBase {
+    /// `bits` is the two-bit code, 0 to 3.
+    pub fn from_bits(bits: (bool, bool)) -> Self {
+        match bits {
+            (false, false) => VideoBase::Base4000,
+            (false, true) => VideoBase::Base6000,
+            (true, false) => VideoBase::Base3000,
+            _ => VideoBase::Base5800,
+        }
+    }
+}
+
 pub struct VideoMemoryAccess {}
 
 impl VideoMemoryAccess {
     pub fn translate_crtc_hires_range(
         crtc_start: u16,
         crtc_length: u8,
-        ic32_latch_value: u8,
+        video_base: VideoBase,
     ) -> Option<VideoMemoryRanges> {
-        let start = Self::translate_crtc_hires_address(crtc_start, ic32_latch_value)?;
-        let end =
-            Self::translate_crtc_hires_address_end(crtc_start, crtc_length, ic32_latch_value)?;
+        let start = Self::translate_crtc_hires_address(crtc_start, video_base)?;
+        let end = Self::translate_crtc_hires_address_end(crtc_start, crtc_length, video_base)?;
 
         // hires ranges will always have a different region if a wrap has occured
         if start.region == end.region {
@@ -30,41 +51,38 @@ impl VideoMemoryAccess {
     fn translate_crtc_hires_address_end(
         crtc_address: u16,
         crtc_length: u8,
-        ic32_latch_value: u8,
+        video_base: VideoBase,
     ) -> Option<TranslatedAddressAndRegion> {
         debug_assert!(crtc_length > 0);
 
         Some(
-            Self::translate_crtc_hires_address(
-                crtc_address + crtc_length as u16 - 1,
-                ic32_latch_value,
-            )?
-            .offsetted(8),
+            Self::translate_crtc_hires_address(crtc_address + crtc_length as u16 - 1, video_base)?
+                .offsetted(8),
         )
     }
 
     fn translate_crtc_hires_address(
         crtc_address: u16,
-        ic32_latch_value: u8,
+        video_base: VideoBase,
     ) -> Option<TranslatedAddressAndRegion> {
         // https://beebwiki.mdfs.net/Address_translation
 
         // for hires wrap cases:
-        // example when video starts at 0x3000 (ic32_latch_value & 0x30 == 0b0010_0000)
+        // example when video starts at 0x3000 (VideoBase::Base3000)
         // screen size is 0x5000 = 0x8000 - 0x3000
         // when address gets to wrap point (0x1000), subtract off adjustment 0x0a00 = 0x5000 / 8
         // at second wrap point 0x1a00 = adjustment + 0x1000 to wrap from 0x8000 to 0
 
-        let (region, address) = match (ic32_latch_value >> 4 & 0x03, crtc_address & 0x3fff) {
+        let (region, address) = match (video_base, crtc_address & 0x3fff) {
             (_, 0x0000..0x1000) => (0x0000..0x8000, (crtc_address << 3)),
-            (0b10, 0x1000..0x1a00) => (0x3000..0x8000, (crtc_address - 0x0a00) << 3),
-            (0b10, 0x1a00..0x2000) => (0x0000..0x3000, (crtc_address - 0x1a00) << 3),
-            (0b00, 0x1000..0x1800) => (0x4000..0x8000, (crtc_address - 0x0800) << 3),
-            (0b00, 0x1800..0x2000) => (0x0000..0x4000, (crtc_address - 0x1800) << 3),
-            (0b11, 0x1000..0x1500) => (0x5800..0x8000, (crtc_address - 0x0500) << 3),
-            (0b11, 0x1500..0x2000) => (0x0000..0x5800, (crtc_address - 0x1500) << 3),
-            (0b01, 0x1000..0x1400) => (0x6000..0x8000, (crtc_address - 0x0400) << 3),
-            (0b01, 0x1400..0x2000) => (0x0000..0x6000, (crtc_address - 0x1400) << 3),
+            (VideoBase::Base3000, 0x1000..0x1a00) => (0x3000..0x8000, (crtc_address - 0x0a00) << 3),
+            (VideoBase::Base3000, 0x1a00..0x2000) => (0x0000..0x3000, (crtc_address - 0x1a00) << 3),
+            (VideoBase::Base4000, 0x1000..0x1800) => (0x4000..0x8000, (crtc_address - 0x0800) << 3),
+            (VideoBase::Base4000, 0x1800..0x2000) => (0x0000..0x4000, (crtc_address - 0x1800) << 3),
+            (VideoBase::Base5800, 0x1000..0x1500) => (0x5800..0x8000, (crtc_address - 0x0500) << 3),
+            (VideoBase::Base5800, 0x1500..0x2000) => (0x0000..0x5800, (crtc_address - 0x1500) << 3),
+            (VideoBase::Base6000, 0x1000..0x1400) => (0x6000..0x8000, (crtc_address - 0x0400) << 3),
+            (VideoBase::Base6000, 0x1400..0x2000) => (0x0000..0x6000, (crtc_address - 0x1400) << 3),
             _ => return None,
         };
 

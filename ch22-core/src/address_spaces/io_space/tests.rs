@@ -155,16 +155,27 @@ fn it_keeps_reading_interrupts_from_devices_until_interrupt_found() {
     assert_eq!(*third_test_device_accesses.borrow().interrupt, []);
 }
 
+#[test]
+fn it_notifies_every_device_of_the_init_cycle_at_the_current_cycle() {
+    let mut io_space = IOSpace::default();
+    let clock = Clock::new(1000);
+
+    let first_test_device_accesses = setup_test_device(&mut io_space, TwoMhz, false, None);
+    let second_test_device_accesses = setup_test_device(&mut io_space, OneMhz, false, Some(IRQ));
+
+    io_space.on_init_cycle(&clock);
+
+    assert_eq!(first_test_device_accesses.borrow().init_cycle, [1000]);
+    assert_eq!(second_test_device_accesses.borrow().init_cycle, [1000]);
+}
+
 fn setup_test_device(
     io_space: &mut IOSpace,
     speed: DeviceSpeed,
     interrupt_on: bool,
     interrupt_type: Option<InterruptType>,
 ) -> Rc<RefCell<DeviceAccesses>> {
-    let test_device = Box::new(DeviceMock::new(
-        &[(TEST_ADDRESS, TEST_VALUE)],
-        interrupt_on,
-    ));
+    let test_device = Box::new(DeviceMock::new(&[(TEST_ADDRESS, TEST_VALUE)], interrupt_on));
     let test_device_accesses = test_device.get_accesses();
 
     io_space.add_device(&[TEST_ADDRESS], test_device, interrupt_type, speed);

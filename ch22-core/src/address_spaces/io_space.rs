@@ -2,7 +2,7 @@
 mod tests;
 
 use crate::cpu::InterruptType;
-use crate::devices::{DeviceSpeed, Device, DeviceID, DeviceList};
+use crate::devices::{Device, DeviceID, DeviceList, DeviceSpeed};
 use crate::system::Clock;
 use crate::word::Word;
 
@@ -66,6 +66,12 @@ impl IOSpace {
 
             self.phase_2_data = None;
         }
+    }
+
+    pub fn on_init_cycle(&mut self, clock: &Clock) {
+        self.devices.for_each(|device| {
+            device.on_init_cycle(clock.get_cycles());
+        });
     }
 
     pub fn on_vsync_change(&mut self, vsync: bool) {

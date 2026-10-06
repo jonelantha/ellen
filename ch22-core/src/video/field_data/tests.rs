@@ -1,5 +1,5 @@
 use super::Field;
-use crate::video::{FieldLine, VideoRegisters, field_line_flags::*};
+use crate::video::{FieldLine, VideoBase, VideoRegisters, field_line_flags::*};
 
 struct LineDataSlices<'a> {
     flags: u8,
@@ -50,7 +50,7 @@ mod field_data_tests {
             crtc_start,
             raster,
             raster,
-            0,
+            VideoBase::Base4000,
             0,
             &video_registers,
             |_| &[],
@@ -106,8 +106,8 @@ mod field_data_tests {
                 crtc_start,
                 raster_even,
                 raster_odd,
-                0, // ic32 latch value
-                0, // field counter
+                VideoBase::Base4000, // video base
+                0,                   // field counter
                 &video_registers,
                 |_| &[],
             );
@@ -142,11 +142,11 @@ mod field_data_tests {
 
             field.snapshot_scanline(
                 line_index,
-                0x1000, // crtc start
-                0,      // raster_even
-                0,      // raster_odd
-                0,      // ic32 latch value
-                0,      // field counter
+                0x1000,              // crtc start
+                0,                   // raster_even
+                0,                   // raster_odd
+                VideoBase::Base4000, // video base
+                0,                   // field counter
                 &video_registers,
                 |_| &[],
             );
@@ -208,8 +208,8 @@ mod field_data_tests {
                 0x1000, // crtc start
                 raster,
                 raster + 1,
-                0, // ic32 latch value
-                0, // field counter
+                VideoBase::Base4000, // video base
+                0,                   // field counter
                 &video_registers,
                 |_| &[],
             );
@@ -271,10 +271,10 @@ mod field_data_tests {
 
                 field.snapshot_scanline(
                     line_index,
-                    0x1000, // crtc start
-                    5,      // raster even
-                    6,      // raster odd
-                    0,      // ic32 latch value
+                    0x1000,              // crtc start
+                    5,                   // raster even
+                    6,                   // raster odd
+                    VideoBase::Base4000, // video base
                     field_counter,
                     &video_registers,
                     |_| &[],
@@ -347,11 +347,11 @@ mod field_data_tests {
 
             field.snapshot_scanline(
                 line_index,
-                0x1000, // crtc start
-                0,      // raster_even
-                0,      // raster_odd
-                0,      // ic32 latch value
-                0,      // field counter
+                0x1000,              // crtc start
+                0,                   // raster_even
+                0,                   // raster_odd
+                VideoBase::Base4000, // video base
+                0,                   // field counter
                 &video_registers,
                 |_| &[],
             );
@@ -372,12 +372,12 @@ mod field_data_tests {
         let char_data: Vec<u8> = (0..20).collect();
 
         field.snapshot_scanline(
-            12,     // line index
-            0x2000, // crtc start
-            0,      // raster line even
-            0,      // raster line odd
-            0,      // ic32 latch value
-            0,      // field counter
+            12,                  // line index
+            0x2000,              // crtc start
+            0,                   // raster line even
+            0,                   // raster line odd
+            VideoBase::Base4000, // video base
+            0,                   // field counter
             &VideoRegisters {
                 ula_control: 0x02,
                 crtc_r1_horizontal_displayed: 0x10,
@@ -401,12 +401,12 @@ mod field_data_tests {
         let char_data_region_2: Vec<u8> = (50..60).collect();
 
         field.snapshot_scanline(
-            12,     // line index
-            0x27F0, // crtc start
-            0,      // raster line even
-            0,      // raster line odd
-            0,      // ic32 latch value
-            0,      // field counter
+            12,                  // line index
+            0x27F0,              // crtc start
+            0,                   // raster line even
+            0,                   // raster line odd
+            VideoBase::Base4000, // video base
+            0,                   // field counter
             &VideoRegisters {
                 ula_control: 0x02,
                 crtc_r1_horizontal_displayed: 0x50,
@@ -431,12 +431,12 @@ mod field_data_tests {
         let char_data: Vec<u8> = (0..0x40).collect();
 
         field.snapshot_scanline(
-            12,     // line index
-            0x1000, // crtc start
-            3,      // raster line even
-            3,      // raster line odd
-            0,      // ic32 latch value
-            0,      // field counter
+            12,                  // line index
+            0x1000,              // crtc start
+            3,                   // raster line even
+            3,                   // raster line odd
+            VideoBase::Base4000, // video base
+            0,                   // field counter
             &VideoRegisters {
                 crtc_r1_horizontal_displayed: 0x10,
                 ..VideoRegisters::default()
@@ -462,12 +462,12 @@ mod field_data_tests {
         let char_data_region_2: Vec<u8> = (0x60..0x80).collect();
 
         field.snapshot_scanline(
-            12,     // line index
-            0x17F0, // crtc start
-            5,      // raster odd line
-            5,      // raster even line
-            0,      // ic32 latch value
-            0,      // field counter
+            12,                  // line index
+            0x17F0,              // crtc start
+            5,                   // raster odd line
+            5,                   // raster even line
+            VideoBase::Base4000, // video base
+            0,                   // field counter
             &VideoRegisters {
                 crtc_r1_horizontal_displayed: 0x20,
                 ..VideoRegisters::default()

@@ -6,6 +6,7 @@ pub trait Device {
         false
     }
     fn on_vsync_change(&mut self, _vsync: bool) {}
+    fn on_init_cycle(&mut self, _cycles: u64) {}
     fn phase_2(&mut self, _address: Word, _value: u8, _cycles: u64) {}
     fn get_interrupt(&mut self, _cycles: u64) -> bool {
         false

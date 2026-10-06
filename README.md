@@ -26,6 +26,9 @@ Targeting web assembly in the browser
   - ULA, CRTC and 'IC32' register addressing
   - Video memory and state snapshotting
   - Canvas rendering (hires only)
+- Sound:
+  - Records the writes made to a sound chip's register bus (write enable and 8 bit data) for each field
+  - Rendering the chip is left to the caller
 
 ## ✔️ Requirements
 
@@ -36,7 +39,7 @@ Targeting web assembly in the browser
 
 ```bash
 npm run build-release
-# or `build-dev` to include panic! stack traces
+# or `build-dev` to include panic! stack traces, debug assertions and overflow checks
 ```
 
 ## 🛠️ Usage from JavaScript (TypeScript)
@@ -63,11 +66,8 @@ ch22System.load_rom(bank, pagedRom);
  * - read: (address: number, cycles: bigint) => bigint
  *   - returns: read value, next cycle sync and interrupt encoded as bigint
  * - write: (address: number, value: number, cycles: bigint) => bigint
- *   - returns: next cycle sync and interrupt and optionally ic32_latch encoded as bigint
- * - onVsyncChange: ((vsync: boolean) => bigint) | null
- *  - optional callback if device needs to know about vsync state changes
- *  - returns: next cycle sync and interrupt encoded as bigint
- * - handleTrigger: (address: number, value: number, cycles: bigint) => bigint
+ *   - returns: next cycle sync and interrupt encoded as bigint
+ * - handleTrigger: (cycles: bigint) => bigint
  *   - callback if sync is required
  *   - returns: next cycle sync and interrupt encoded as bigint
  * - flags:
@@ -80,14 +80,32 @@ const deviceId = ch22System.add_js_device(
   addresses,
   read,
   write,
-  onVsyncChange,
   handleTrigger,
   flags,
 );
 
 /**
+ * register the system VIA, which is wired to the sound chip and the video
+ * address latch (IC32). Takes the same callbacks as `add_js_device`, with
+ * these differences:
+ * - no flags
+ * - write: (address: number, value: number, ic32: number, cycles: bigint) => bigint
+ *   - ic32: the latch value
+ * - onVsyncChange: (vsync: boolean) => bigint
+ *   - called when vsync changes
+ *   - returns: next cycle sync and interrupt encoded as bigint
+ */
+const sysViaDeviceId = ch22System.add_sys_via_stub(
+  addresses,
+  read,
+  write,
+  onVsyncChange,
+  handleTrigger,
+);
+
+/**
  * manually set the interrupt of a device
- * - deviceId: id returned from `add_js_device` call
+ * - deviceId: id returned from the `add_js_device` or `add_sys_via_stub` call
  * - interrupt: whether interrupt is set
  */
 ch22System.set_device_interrupt(deviceId, interrupt);
@@ -106,13 +124,10 @@ ch22System.add_static_device(addresses, readValue, oneMhz, panicOnWrite);
 
 ```js
 /**
- * reset cpu
- */
-ch22System.reset();
-
-/**
  * executes instructions until until the next field is ready for render
  * returns number of cycles
+ *
+ * the first call also powers on the machine, which can't be reset again yet
  */
 const cycleCount = ch22System.run_one_field();
 ```
@@ -136,6 +151,27 @@ const memory = new Uint8Array(
   wasmMemory.buffer,
   ch22System.video_field_start(),
   ch22System.video_field_size(),
+);
+```
+
+### Reading sound register writes
+
+```js
+/**
+ * get buffer of the sound chip register writes made during the last field
+ * all values are little endian
+ * - 8 bytes    - base cycle count (the cycle the field started on)
+ * - 4 bytes    - number of entries
+ * - 1 byte     - dropped write flags: 0x01 => buffer full, 0x02 => cycle offset beyond 65535
+ * - 3 bytes per entry, up to 500:
+ *   - 2 bytes  - cycle offset from the base cycle count
+ *   - 1 byte   - data
+ * the buffer is emptied at the start of each field; a write that doesn't fit is ignored and flagged
+ */
+const memory = new Uint8Array(
+  wasmMemory.buffer,
+  ch22System.sound_register_writes_start(),
+  ch22System.sound_register_writes_size(),
 );
 ```
 

@@ -5,7 +5,8 @@ use wasm_bindgen::prelude::*;
 
 use super::core::{Core, ROMS_LEN};
 use crate::cpu::InterruptType;
-use crate::devices::{DeviceSpeed, DeviceID, JsDevice, StaticDevice};
+use crate::devices::{DeviceID, DeviceSpeed, JsDevice, StaticDevice, new_via_stub};
+use crate::sound::SoundRegisterWrites;
 use crate::utils;
 use crate::video::Field;
 
@@ -33,6 +34,14 @@ impl SystemFfi {
 
     pub fn video_field_size(&self) -> usize {
         size_of::<Field>()
+    }
+
+    pub fn sound_register_writes_start(&mut self) -> *const SoundRegisterWrites {
+        self.core.get_sound_register_writes_start()
+    }
+
+    pub fn sound_register_writes_size(&self) -> usize {
+        size_of::<SoundRegisterWrites>()
     }
 
     pub fn load_rom(&mut self, bank: usize, data: &[u8]) {
@@ -71,7 +80,6 @@ impl SystemFfi {
         addresses: &[u16],
         js_read: Function,
         js_write: Function,
-        js_on_vsync_change: Option<Function>,
         js_handle_trigger: Function,
         flags: u8,
     ) -> DeviceID {
@@ -86,24 +94,41 @@ impl SystemFfi {
             _ => DeviceSpeed::TwoMhz,
         };
 
-        let ic32_latch = self.core.ic32_latch.clone();
         self.core.io_space.add_device(
             addresses,
             Box::new(JsDevice::new(
                 js_read,
                 js_write,
-                js_on_vsync_change,
                 js_handle_trigger,
                 flags & JS_DEVICE_PHASE_2_WRITE != 0,
-                ic32_latch,
             )),
             interrupt_type,
             speed,
         )
     }
 
-    pub fn reset(&mut self) {
-        self.core.reset();
+    pub fn add_sys_via_stub(
+        &mut self,
+        addresses: &[u16],
+        js_read: Function,
+        js_write: Function,
+        js_on_vsync_change: Function,
+        js_handle_trigger: Function,
+    ) -> DeviceID {
+        let sys_via_bus = self.core.get_sys_via_bus();
+
+        self.core.io_space.add_device(
+            addresses,
+            Box::new(new_via_stub(
+                js_read,
+                js_write,
+                js_on_vsync_change,
+                js_handle_trigger,
+                sys_via_bus,
+            )),
+            Some(InterruptType::IRQ),
+            DeviceSpeed::OneMhz,
+        )
     }
 
     pub fn run_one_field(&mut self) -> u64 {

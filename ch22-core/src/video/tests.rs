@@ -1,5 +1,5 @@
 use super::Video;
-use crate::video::VideoRegisters;
+use crate::video::{VideoBase, VideoRegisters};
 
 #[test]
 fn process_scanline_accumulates_next_scanline_trigger() {
@@ -23,7 +23,7 @@ fn process_scanline_accumulates_next_scanline_trigger() {
     let before = video.get_next_scanline_trigger();
     let expected_increment = video.crtc.get_next_scanline_cycles(&registers);
 
-    video.process_scanline(0, |_| &[], |_| {});
+    video.process_scanline(VideoBase::Base4000, |_| &[], |_| {});
 
     assert!(
         expected_increment > 0,
@@ -57,7 +57,7 @@ fn process_scanline_increments_field_counter_at_new_field_boundary() {
     // Prove the field buffer is reset on a new field boundary.
     video.field_data.get_line_raw_data_mut(0)[0] = 0xff;
 
-    video.process_scanline(0, |_| &[], |_| {});
+    video.process_scanline(VideoBase::Base4000, |_| &[], |_| {});
 
     assert_eq!(
         video.field_counter, 1,
@@ -89,7 +89,11 @@ fn process_scanline_invokes_vsync_callback_on_state_changes() {
 
     let mut callback_events = Vec::new();
     for iteration in 0..12 {
-        video.process_scanline(0, |_| &[], |value| callback_events.push((iteration, value)));
+        video.process_scanline(
+            VideoBase::Base4000,
+            |_| &[],
+            |value| callback_events.push((iteration, value)),
+        );
     }
 
     assert_eq!(
@@ -126,7 +130,7 @@ fn process_scanline_skips_snapshot_when_scanline_is_not_displayed() {
     video.vsync = false;
     video.next_scanline_trigger = 0;
 
-    video.process_scanline(0, |_| &[], |_| {});
+    video.process_scanline(VideoBase::Base4000, |_| &[], |_| {});
 
     let line_flags = video.field_data.get_line_raw_data(0)[0];
     assert_eq!(
@@ -161,6 +165,6 @@ fn is_field_complete_matches_beam_reset_boundary() {
             "field completion mismatch at iteration {iteration}"
         );
 
-        video.process_scanline(0, |_| &[], |_| {});
+        video.process_scanline(VideoBase::Base4000, |_| &[], |_| {});
     }
 }

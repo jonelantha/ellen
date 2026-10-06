@@ -1,4 +1,4 @@
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 use super::{
@@ -7,9 +7,13 @@ use super::{
     runner::Runner,
 };
 use crate::address_spaces::{IOSpace, Ram, Rom};
-use crate::devices::RomSelect;
+use crate::devices::{RomSelect, SysViaBus};
+use crate::sound::SoundRegisterWrites;
 use crate::video::Video;
 use crate::{cpu::Cpu, devices::DeviceSpeed};
+
+#[cfg(test)]
+mod tests;
 
 #[derive(Default)]
 pub struct Core {
@@ -18,9 +22,9 @@ pub struct Core {
     ram: Ram,
     pub roms: [Rom; ROMS_LEN],
     pub io_space: IOSpace,
-    pub ic32_latch: Rc<Cell<u8>>,
     rom_select_latch: Rc<Cell<usize>>,
     pub video: Video,
+    sys_via_bus: Rc<RefCell<SysViaBus>>,
 }
 
 impl Core {
@@ -74,18 +78,25 @@ impl Core {
         }
     }
 
-    pub fn reset(&mut self) {
-        self.get_runner().reset();
-    }
-
     pub fn run_one_field(&mut self) -> u64 {
+        self.sys_via_bus
+            .borrow_mut()
+            .sound_mut()
+            .start_field(self.clock.get_cycles());
+
+        if self.clock.get_cycles() == 0 {
+            self.get_runner().power_on();
+        }
+
         loop {
             let next_scanline_trigger = self.video.get_next_scanline_trigger();
 
             self.get_runner().run(next_scanline_trigger);
 
+            let video_base = self.sys_via_bus.borrow().video_base();
+
             self.video.process_scanline(
-                self.ic32_latch.get(),
+                video_base,
                 |range| self.ram.slice(range),
                 |vsync| self.io_space.on_vsync_change(vsync),
             );
@@ -106,6 +117,14 @@ impl Core {
             Self::address_map(),
             &mut self.cpu,
         )
+    }
+
+    pub fn get_sound_register_writes_start(&self) -> *const SoundRegisterWrites {
+        self.sys_via_bus.borrow().sound().register_writes_ptr()
+    }
+
+    pub fn get_sys_via_bus(&self) -> Rc<RefCell<SysViaBus>> {
+        self.sys_via_bus.clone()
     }
 }
 
