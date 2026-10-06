@@ -57,6 +57,7 @@ impl SoundRegisterWrites {
     /// channel keeps whatever its last recorded write set until it is
     /// written again.
     pub fn push(&mut self, cycles: u64, data: u8) {
+        // The clock only moves forward, so a write is never before the field's base.
         debug_assert!(
             self.base_cycle_count <= cycles,
             "Sound register write is before the base cycle count",
